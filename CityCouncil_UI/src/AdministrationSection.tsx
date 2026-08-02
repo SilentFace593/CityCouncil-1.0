@@ -1,0 +1,291 @@
+import { Component, useMemo } from "react";
+import { bindValue, useValue } from "cs2/api";
+import { useLocalization } from "cs2/l10n";
+import {
+  translatePartyName,
+  PARTY_LABELS,
+  PARTY_ORDER,
+  resolvePartyColor,
+  resolvePartyLabel,
+  type PartyResultDto,
+} from "./PartyResultDto";
+
+// --- Bindings exposés par CouncilUISystem.cs (group "cityCouncil") ---
+const adminVisible$ = bindValue<boolean>("cityCouncil", "adminVisible");
+const adminPhase$ = bindValue<string>("cityCouncil", "adminPhase");
+const adminLeadingParty$ = bindValue<string>("cityCouncil", "adminLeadingParty");
+const adminFinalist1$ = bindValue<string>("cityCouncil", "adminFinalist1");
+const adminFinalist2$ = bindValue<string>("cityCouncil", "adminFinalist2");
+const adminSeats$ = bindValue<number>("cityCouncil", "adminSeats");
+const adminVoters$ = bindValue<number>("cityCouncil", "adminVoters");
+const adminAbstention$ = bindValue<number>("cityCouncil", "adminAbstention");
+const adminResultsJson$ = bindValue<string>("cityCouncil", "adminResultsJson");
+const cityEventHeadline$ = bindValue<string>("cityCouncil", "cityEventHeadline");
+
+function partyBadgeSrc(party: string): string | null {
+  return null;
+}
+
+class SafeBoundary extends Component<{ children: any }, { crashed: boolean }> {
+  constructor(props: any) {
+    super(props);
+    this.state = { crashed: false };
+  }
+  static getDerivedStateFromError() {
+    return { crashed: true };
+  }
+  render() {
+    if (this.state.crashed) return null;
+    return this.props.children;
+  }
+}
+
+function PartyBadge({ result }: { result: PartyResultDto }) {
+  const { translate } = useLocalization();
+  const t = (key: string, fallback: string): string => translate(key, fallback) ?? fallback; // AJOUT — manquait
+
+  const label = resolvePartyLabel(result, translate);
+  const color = resolvePartyColor(result);
+  const badgeSrc = partyBadgeSrc(result.party);
+  const seatsWord = result.seats > 1
+    ? t("CityCouncil.Admin.SEATS_PLURAL", "sièges")
+    : t("CityCouncil.Admin.SEATS_SINGULAR", "siège");
+  const seatsLine = `${result.seats} ${seatsWord}`;
+
+  return (
+    <div style={{ display: "flex", alignItems: "center" }}>
+      {badgeSrc ? (
+        <img src={badgeSrc} style={{ width: "36rem", height: "36rem", flexShrink: 0, marginRight: "8rem" }} />
+      ) : (
+        <div
+          style={{
+            width: "36rem",
+            height: "36rem",
+            borderRadius: "50%",
+            background: color,
+            flexShrink: 0,
+            marginRight: "8rem",
+          }}
+        />
+      )}
+      <div style={{ minWidth: 0 }}>
+        <div style={{ color: "white", fontSize: "15rem", fontWeight: 600, whiteSpace: "nowrap", wordBreak: "keep-all", overflowWrap: "normal" }}>
+          {label}
+        </div>
+        <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "13rem", whiteSpace: "nowrap", wordBreak: "keep-all", overflowWrap: "normal" }}>
+          {seatsLine}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StackedSeatBar({ results }: { results: PartyResultDto[] }) {
+  const totalSeats = results.reduce((sum, r) => sum + r.seats, 0);
+  if (totalSeats === 0) return null;
+
+  const byParty: Record<string, PartyResultDto> = {};
+  for (const r of results) byParty[r.party] = r;
+
+  const segments = PARTY_ORDER.map((party) => byParty[party]).filter(
+    (r): r is PartyResultDto => !!r && r.seats > 0
+  );
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        width: "100%",
+        height: "22rem",
+        borderRadius: "4rem",
+        overflow: "hidden",
+        background: "rgba(255,255,255,0.06)",
+      }}
+    >
+      {segments.map((r) => {
+        const widthPct = (r.seats / totalSeats) * 100;
+        const showNumber = widthPct > 8;
+        return (
+          <div
+            key={r.party}
+            style={{
+              width: `${widthPct}%`,
+              background: resolvePartyColor(r),
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            {showNumber && (
+              <span style={{ color: "white", fontSize: "12rem", fontWeight: 700, whiteSpace: "nowrap", wordBreak: "keep-all", overflowWrap: "normal" }}>
+                {r.seats}
+              </span>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+const AdministrationSectionInner = ({ InfoSection }: { InfoSection: any }) => {
+  const { translate } = useLocalization();
+  const t = (key: string, fallback: string): string => translate(key, fallback) ?? fallback;
+
+  const visible = useValue(adminVisible$);
+  const phase = useValue(adminPhase$);
+  const leadingParty = useValue(adminLeadingParty$);
+  const finalist1 = useValue(adminFinalist1$);
+  const finalist2 = useValue(adminFinalist2$);
+  const seats = useValue(adminSeats$);
+  const voters = useValue(adminVoters$);
+  const abstention = useValue(adminAbstention$);
+  const resultsJson = useValue(adminResultsJson$);
+  const results: PartyResultDto[] = useMemo(() => {
+    try {
+      const parsed = JSON.parse(resultsJson);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }, [resultsJson]);
+  const cityEventHeadline = useValue(cityEventHeadline$);
+
+  if (!visible || !InfoSection) return null;
+
+  const totalCast = voters + abstention;
+  const abstentionPct = totalCast > 0 ? Math.round((abstention / totalCast) * 100) : 0;
+  const abstentionLine = `${abstention.toLocaleString()}\u00A0(${abstentionPct}%)`;
+
+  const leadingResult = results.find((r) => r.party === leadingParty);
+  const leadingLabel = leadingParty ? translatePartyName(leadingParty, translate) : "";
+
+  const round1WonPrefix = t("CityCouncil.Admin.ROUND1_WON_PREFIX", "District remporté par le Parti \"");
+  const round1WonSuffix = t("CityCouncil.Admin.ROUND1_WON_SUFFIX", "\" dès le 1er Tour. Election terminée et en attente de la fin du 2ème tour général.");
+  const round1WonLine = `${round1WonPrefix}${leadingLabel}${round1WonSuffix}`;
+
+  const finalist1Label = finalist1 ? translatePartyName(finalist1, translate) : "";
+  const finalist2Label = finalist2 ? translatePartyName(finalist2, translate) : "";
+
+  const round1PendingPrefix = t("CityCouncil.Admin.ROUND1_PENDING_PREFIX", "Aucune majorité au 1er tour. Second tour en attente entre ");
+  const round1PendingMiddle = t("CityCouncil.Admin.ROUND1_PENDING_MIDDLE", " et ");
+  const round1PendingSuffix = t("CityCouncil.Admin.ROUND1_PENDING_SUFFIX", ".");
+  const round1PendingLine = `${round1PendingPrefix}${finalist1Label}${round1PendingMiddle}${finalist2Label}${round1PendingSuffix}`;
+
+  return (
+    <InfoSection focusKey="cityCouncilAdmin" disableFoldout={true}>
+      <div style={{ padding: "4rem 0" }}>
+        <div
+          style={{
+            color: "rgba(255,255,255,0.7)",
+            fontSize: "14rem",
+            textTransform: "uppercase",
+            marginBottom: "8rem",
+            whiteSpace: "nowrap", wordBreak: "keep-all", overflowWrap: "normal",
+          }}
+        >
+          {t("CityCouncil.Admin.HEADER", "Administration")}
+        </div>
+
+        {phase === "NoElection" && (
+          <div style={{ color: "rgba(255,255,255,0.85)", fontSize: "14rem" }}>
+            {t("CityCouncil.Admin.NO_ELECTION_DESC", "Pas d'élections dans ce District car aucun habitant. Il est géré par une Commission Spéciale.")}
+          </div>
+        )}
+
+        {phase === "Round1Done" && (
+          <div style={{ color: "rgba(255,255,255,0.85)", fontSize: "14rem" }}>
+            {leadingParty
+              ? round1WonLine
+              : finalist1 && finalist2
+              ? round1PendingLine
+              : t("CityCouncil.Admin.ROUND1_PENDING_DEFAULT", "Aucune majorité au 1er tour. Le 2e tour est en attente.")}
+          </div>
+        )}
+
+        {phase === "Completed" && leadingParty && (
+          <div>
+            <PartyBadge result={leadingResult ?? { party: leadingParty, seats, voteShare: 0 }} />
+
+            <div style={{ marginTop: "10rem" }}>
+              <div style={{ marginBottom: "6rem" }}>
+                <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "12rem", whiteSpace: "nowrap", wordBreak: "keep-all", overflowWrap: "normal" }}>
+                  {t("CityCouncil.Admin.VOTERS_LABEL", "Votants")}
+                </div>
+                <div style={{ color: "white", fontSize: "15rem", whiteSpace: "nowrap", wordBreak: "keep-all", overflowWrap: "normal" }}>
+                  {voters.toLocaleString()}
+                </div>
+              </div>
+              <div>
+                <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "12rem", whiteSpace: "nowrap", wordBreak: "keep-all", overflowWrap: "normal" }}>
+                  {t("CityCouncil.Admin.ABSTENTION_LABEL", "Abstention")}
+                </div>
+                <div style={{ color: "white", fontSize: "15rem", whiteSpace: "nowrap", wordBreak: "keep-all", overflowWrap: "normal" }}>
+                  {abstentionLine}
+                </div>
+              </div>
+            </div>
+
+            {results.length > 1 && (
+              <div style={{ marginTop: "10rem" }}>
+                <StackedSeatBar results={results} />
+
+                <div style={{ display: "flex", flexDirection: "column", marginTop: "8rem" }}>
+                  {results.map((r) => (
+                    <div
+                      key={r.party}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        fontSize: "12rem",
+                        color: "rgba(255,255,255,0.8)",
+                        marginBottom: "4rem",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: "10rem",
+                          height: "10rem",
+                          borderRadius: "50%",
+                          background: resolvePartyColor(r),
+                          flexShrink: 0,
+                          marginRight: "6rem",
+                        }}
+                      />
+                      <span style={{ flex: 1, minWidth: 0, whiteSpace: "nowrap", wordBreak: "keep-all", overflowWrap: "normal" }}>
+                        {resolvePartyLabel(r, translate)}
+                      </span>
+                      <span style={{ whiteSpace: "nowrap", wordBreak: "keep-all", overflowWrap: "normal" }}>{r.seats}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {cityEventHeadline && (
+          <div
+            style={{
+              marginTop: "10rem",
+              paddingTop: "8rem",
+              borderTop: "1rem solid rgba(255,255,255,0.15)",
+              color: "rgba(255,220,150,0.9)",
+              fontSize: "12rem",
+              fontFamily: "Overpass, 'Noto Sans', sans-serif",
+            }}
+          >
+            {t(cityEventHeadline, cityEventHeadline)}
+          </div>
+        )}
+      </div>
+    </InfoSection>
+  );
+};
+
+export const AdministrationSection = (InfoSection: any) => (props: any) => (
+  <SafeBoundary>
+    <AdministrationSectionInner InfoSection={InfoSection} />
+  </SafeBoundary>
+);
