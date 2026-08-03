@@ -53,6 +53,35 @@ namespace CityCouncil
             m_MembershipSystem = World.GetOrCreateSystemManaged<CouncilPartyMembershipSystem>();
         }
 
+        protected override void OnGamePreload(Colossal.Serialization.Entities.Purpose purpose, Game.GameMode mode)
+        {
+            base.OnGamePreload(purpose, mode);
+            DestroyExistingSingleton();
+        }
+
+        /// <summary>
+        /// Détruit l'entité singleton AVANT la désérialisation d'une nouvelle sauvegarde. Sans ça,
+        /// une entité créée manuellement pendant une session précédente (save A) peut survivre au
+        /// chargement d'une autre sauvegarde (save B) qui ne la contient pas réellement, si le World
+        /// n'est pas entièrement recréé entre deux chargements. EnsureSingleton() (appelé après, dans
+        /// OnGameLoaded) repart alors sur un état garanti frais, ou sur les données réellement
+        /// désérialisées pour CETTE sauvegarde si elles existent.
+        /// </summary>
+        private void DestroyExistingSingleton()
+        {
+            var existing = m_SingletonQuery.ToEntityArray(Allocator.Temp);
+            try
+            {
+                foreach (var e in existing)
+                    EntityManager.DestroyEntity(e);
+            }
+            finally
+            {
+                existing.Dispose();
+            }
+            m_SingletonEntity = Entity.Null;
+        }
+
         protected override void OnGameLoaded(Context serializationContext)
         {
             base.OnGameLoaded(serializationContext);

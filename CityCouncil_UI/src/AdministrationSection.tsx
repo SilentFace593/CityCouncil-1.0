@@ -5,6 +5,7 @@ import {
   translatePartyName,
   PARTY_LABELS,
   PARTY_ORDER,
+  PARTY_COLORS,
   resolvePartyColor,
   resolvePartyLabel,
   type PartyResultDto,
@@ -21,6 +22,9 @@ const adminVoters$ = bindValue<number>("cityCouncil", "adminVoters");
 const adminAbstention$ = bindValue<number>("cityCouncil", "adminAbstention");
 const adminResultsJson$ = bindValue<string>("cityCouncil", "adminResultsJson");
 const cityEventHeadline$ = bindValue<string>("cityCouncil", "cityEventHeadline");
+const adminBastionStreakParty$ = bindValue<string>("cityCouncil", "adminBastionStreakParty");
+const adminBastionStreakCount$ = bindValue<number>("cityCouncil", "adminBastionStreakCount");
+const adminBastionActive$ = bindValue<boolean>("cityCouncil", "adminBastionActive");
 
 function partyBadgeSrc(party: string): string | null {
   return null;
@@ -129,6 +133,61 @@ function StackedSeatBar({ results }: { results: PartyResultDto[] }) {
   );
 }
 
+// --- Bastion Progress Bar ---
+function BastionProgressBar({
+  streakParty,
+  streakCount,
+  active,
+  translate,
+}: {
+  streakParty: string;
+  streakCount: number;
+  active: boolean;
+  translate: (key: string, fallback: string | null) => string | null;
+}) {
+  const t = (key: string, fallback: string): string => translate(key, fallback) ?? fallback;
+
+  if (!streakParty || streakCount <= 0) return null;
+
+  const color = PARTY_COLORS[streakParty] ?? "#888";
+  const partyLabel = translatePartyName(streakParty, translate);
+
+  // Une seule chaîne (contrainte du moteur) : label + nom de parti, plus suffixe si Bastion actif.
+  const bastionLabelPrefix = t("CityCouncil.Admin.BASTION_LABEL", "Bastion : ");
+  const bastionActiveSuffix = active ? t("CityCouncil.Admin.BASTION_ACTIVE_SUFFIX", " — Bonus actif (+4%)") : "";
+  const bastionLine = `${bastionLabelPrefix}${partyLabel}${bastionActiveSuffix}`;
+
+  return (
+    <div style={{ marginTop: "10rem" }}>
+      <div
+        style={{
+          color: active ? "rgba(150,190,255,0.95)" : "rgba(255,255,255,0.6)",
+          fontSize: "12rem",
+          fontWeight: active ? 700 : 400,
+          whiteSpace: "nowrap",
+          marginBottom: "6rem",
+        }}
+      >
+        {bastionLine}
+      </div>
+      <div style={{ display: "flex", gap: "4rem" }}>
+        {[0, 1, 2].map((i) => (
+          <div
+            key={i}
+            style={{
+              flex: 1,
+              height: "8rem",
+              borderRadius: "3rem",
+              background: i < streakCount ? color : "rgba(255,255,255,0.10)",
+              border: "1rem solid rgba(120,170,255,0.4)",
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 const AdministrationSectionInner = ({ InfoSection }: { InfoSection: any }) => {
   const { translate } = useLocalization();
   const t = (key: string, fallback: string): string => translate(key, fallback) ?? fallback;
@@ -142,6 +201,9 @@ const AdministrationSectionInner = ({ InfoSection }: { InfoSection: any }) => {
   const voters = useValue(adminVoters$);
   const abstention = useValue(adminAbstention$);
   const resultsJson = useValue(adminResultsJson$);
+  const bastionStreakParty = useValue(adminBastionStreakParty$);
+  const bastionStreakCount = useValue(adminBastionStreakCount$);
+  const bastionActive = useValue(adminBastionActive$);
   const results: PartyResultDto[] = useMemo(() => {
     try {
       const parsed = JSON.parse(resultsJson);
@@ -262,6 +324,13 @@ const AdministrationSectionInner = ({ InfoSection }: { InfoSection: any }) => {
                 </div>
               </div>
             )}
+            <BastionProgressBar
+      streakParty={bastionStreakParty}
+      streakCount={bastionStreakCount}
+      active={bastionActive}
+      translate={translate}
+    />
+
           </div>
         )}
 

@@ -23,6 +23,7 @@ namespace CityCouncil
                 { LocaleKeys.YourPartyTab_NamePlaceholder, "Ex : Renouveau Citoyen" },
                 { LocaleKeys.YourPartyTab_ColorLabel, "Couleur" },
                 { LocaleKeys.YourPartyTab_SpaceLabel, "Espace politique" },
+                { LocaleKeys.YourPartyTab_PendingActivation, "Votre parti ne pourra concourir qu'à partir de la prochaine élection." },
 
                 // HemicyclePanel
                 { LocaleKeys.Hemicycle_PanelTitle, "Conseil municipal" },
@@ -59,6 +60,8 @@ namespace CityCouncil
                 { LocaleKeys.Forces_DescPopuliste, "Porte-voix des mécontentements populaires, critique des taxes et des élites locales." },
                 { LocaleKeys.Forces_DescRepublicain, "Défend l'ordre, la sécurité et une gestion rigoureuse des finances municipales." },
                 { LocaleKeys.Forces_DescGaucheRadicale, "Milite pour une redistribution radicale des richesses et des services publics renforcés." },
+                { LocaleKeys.Forces_PendingReplacement, "Parti remplacé à la prochaine élection !" },
+
 
                 // City Events
                 { LocaleKeys.Event_ScandalePolitique, "Un scandale politique éclate dans la ville, les citoyens sont désabusés !" },
@@ -78,6 +81,11 @@ namespace CityCouncil
                 { LocaleKeys.Funding_FixedAmountHint, "Répartie à parts égales entre les 5 partis à la fin du cycle électoral." },
                 { LocaleKeys.Funding_LockedMessage, "Montant verrouillé jusqu'à la prochaine distribution." },
                 { LocaleKeys.Funding_VariableInfo, "Part variable : 1 000 crédits par siège obtenu, versée automatiquement." },
+
+                // Bastion
+                { LocaleKeys.Admin_BastionLabel, "Bastion : " },            
+                { LocaleKeys.Admin_BastionActiveSuffix, " — Bonus actif (+4%)" },
+
             };
         }
         public void Unload() { }

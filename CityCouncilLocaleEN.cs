@@ -23,6 +23,7 @@ namespace CityCouncil
                 { LocaleKeys.YourPartyTab_NamePlaceholder, "E.g.: Citizens' Renewal" },
                 { LocaleKeys.YourPartyTab_ColorLabel, "Color" },
                 { LocaleKeys.YourPartyTab_SpaceLabel, "Political space" },
+                { LocaleKeys.YourPartyTab_PendingActivation, "Your party will only be able to compete starting from the next election." },
 
                 // HemicyclePanel
                 { LocaleKeys.Hemicycle_PanelTitle, "City Council" },
@@ -59,6 +60,8 @@ namespace CityCouncil
                 { LocaleKeys.Forces_DescPopuliste, "Voice of popular discontent, critical of local taxes and elites." },
                 { LocaleKeys.Forces_DescRepublicain, "Defends order, security, and rigorous management of municipal finances." },
                 { LocaleKeys.Forces_DescGaucheRadicale, "Campaigns for radical wealth redistribution and strengthened public services." },
+                { LocaleKeys.Forces_PendingReplacement, "Party replaced at the next election!" },
+
 
                 // City Events
                 { LocaleKeys.Event_ScandalePolitique, "A political scandal breaks out in the city, citizens are disillusioned!" },
@@ -79,6 +82,10 @@ namespace CityCouncil
                 { LocaleKeys.Funding_ValidateButton, "Confirm amount" },
                 { LocaleKeys.Funding_LockedMessage, "Amount locked until the next distribution." },
                 { LocaleKeys.Funding_VariableInfo, "Variable share: 1,000 credits per seat won, paid automatically." },
+
+                // Bastion
+                { LocaleKeys.Admin_BastionLabel, "Stronghold: " },
+                { LocaleKeys.Admin_BastionActiveSuffix, " — Bonus active (+4%)" },
             };
         }
         public void Unload() { }

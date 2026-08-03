@@ -53,6 +53,36 @@ namespace CityCouncil
             m_SimulationSystem = World.GetOrCreateSystemManaged<SimulationSystem>();
         }
 
+        protected override void OnGamePreload(Colossal.Serialization.Entities.Purpose purpose, Game.GameMode mode)
+        {
+            base.OnGamePreload(purpose, mode);
+            DestroyExistingSingleton();
+        }
+
+        /// <summary>
+        /// Détruit l'entité singleton AVANT la désérialisation d'une nouvelle sauvegarde. Sans ça,
+        /// une entité créée manuellement pendant une session précédente (save A) peut survivre au
+        /// chargement d'une autre sauvegarde (save B) qui ne la contient pas réellement, si le World
+        /// n'est pas entièrement recréé entre deux chargements. EnsureSingleton() (appelé après, dans
+        /// OnGameLoaded) repart alors sur un état garanti frais, ou sur les données réellement
+        /// désérialisées pour CETTE sauvegarde si elles existent.
+        /// </summary>
+        private void DestroyExistingSingleton()
+        {
+            var existing = m_SingletonQuery.ToEntityArray(Allocator.Temp);
+            try
+            {
+                foreach (var e in existing)
+                    EntityManager.DestroyEntity(e);
+            }
+            finally
+            {
+                existing.Dispose();
+            }
+            m_SingletonEntity = Entity.Null;
+        }
+
+
         protected override void OnGameLoaded(Context serializationContext)
         {
             base.OnGameLoaded(serializationContext);
@@ -266,5 +296,30 @@ namespace CityCouncil
 
             s_Log.Info("[CouncilPartyMembershipSystem] Cycle d'adhérents traité (cotisations + bonus/malus).");
         }
+
+        /// <summary>
+        /// Remet à zéro adhérents et trésorerie d'un parti donné. Utilisé par CouncilCustomPartySystem
+        /// au moment où une substitution de parti joueur devient effective (le nouveau parti ne
+        /// n'hérite pas du passif de celui qu'il remplace).
+        /// </summary>
+        public void ResetPartyTreasuryAndMembers(PoliticalParty party)
+        {
+            var data = GetData();
+            var entries = data.m_Entries;
+
+            for (int i = 0; i < entries.Length; i++)
+            {
+                if (entries[i].m_Party != party) continue;
+                var entry = entries[i];
+                entry.m_Members = 0f;
+                entry.m_Treasury = 0;
+                entries[i] = entry;
+                break;
+            }
+
+            data.m_Entries = entries;
+            SetData(data);
+        }
+
     }
 }

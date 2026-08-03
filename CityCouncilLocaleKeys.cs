@@ -15,6 +15,7 @@
         public const string YourPartyTab_NamePlaceholder = "CityCouncil.YourPartyTab.NAME_PLACEHOLDER";
         public const string YourPartyTab_ColorLabel = "CityCouncil.YourPartyTab.COLOR_LABEL";
         public const string YourPartyTab_SpaceLabel = "CityCouncil.YourPartyTab.SPACE_LABEL";
+        public const string YourPartyTab_PendingActivation = "CityCouncil.YourPartyTab.PENDING_ACTIVATION";
 
         // --- HemicyclePanel ---
         public const string Hemicycle_PanelTitle = "CityCouncil.Hemicycle.PANEL_TITLE";
@@ -51,6 +52,8 @@
         public const string Forces_DescPopuliste = "CityCouncil.Forces.DESC_POPULISTE";
         public const string Forces_DescRepublicain = "CityCouncil.Forces.DESC_REPUBLICAIN";
         public const string Forces_DescGaucheRadicale = "CityCouncil.Forces.DESC_GAUCHERADICALE";
+        public const string Forces_PendingReplacement = "CityCouncil.Forces.PENDING_REPLACEMENT";
+        
 
         // --- City Events ---
         public const string Event_ScandalePolitique = "CityCouncil.Event.SCANDALE_POLITIQUE";
@@ -71,6 +74,10 @@
         public const string Funding_ValidateButton = "CityCouncil.Funding.VALIDATE_BUTTON";
         public const string Funding_LockedMessage = "CityCouncil.Funding.LOCKED_MESSAGE";
         public const string Funding_VariableInfo = "CityCouncil.Funding.VARIABLE_INFO";
+
+        // --- Bastion ---
+        public const string Admin_BastionLabel = "CityCouncil.Admin.BASTION_LABEL";
+        public const string Admin_BastionActiveSuffix = "CityCouncil.Admin.BASTION_ACTIVE_SUFFIX";
 
     }
 }

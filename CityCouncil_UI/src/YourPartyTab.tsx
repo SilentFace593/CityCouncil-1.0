@@ -16,6 +16,7 @@ const customPartyName$ = bindValue<string>("cityCouncil", "customPartyName");
 const customPartyColor$ = bindValue<string>("cityCouncil", "customPartyColor");
 const customPartySpace$ = bindValue<string>("cityCouncil", "customPartySpace");
 const customPartyPendingDeletion$ = bindValue<boolean>("cityCouncil", "customPartyPendingDeletion");
+const customPartyPendingActivation$ = bindValue<boolean>("cityCouncil", "customPartyPendingActivation");
 
 const SPACES = PARTY_ORDER;
 
@@ -112,6 +113,7 @@ export function YourPartyTab() {
   const currentColor = useValue(customPartyColor$);
   const currentSpace = useValue(customPartySpace$);
   const pendingDeletion = useValue(customPartyPendingDeletion$);
+  const pendingActivation = useValue(customPartyPendingActivation$);
 
   const [name, setName] = useState("");
   const [color, setColor] = useState<string>("Bleu");
@@ -146,6 +148,7 @@ export function YourPartyTab() {
   const currentPartyLine = `${spacePrefix}${translatePartyName(currentSpace, translate)}`;
 
   const pendingDeletionLine = t("CityCouncil.YourPartyTab.PENDING_DELETION", "Suppression prévue à la prochaine élection.");
+  const pendingActivationLine = t("CityCouncil.YourPartyTab.PENDING_ACTIVATION", "Activation prévue à la prochaine élection.");
   const deleteButtonLabel = t("CityCouncil.YourPartyTab.DELETE_BUTTON", "Supprimer le parti");
   const cancelButtonLabel = t("CityCouncil.YourPartyTab.CANCEL_BUTTON", "Annuler");
 
@@ -191,6 +194,19 @@ export function YourPartyTab() {
           <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "12rem", whiteSpace: "nowrap" }}>
             {currentPartyLine}
           </div>
+
+          {pendingActivation && (
+            <div
+              style={{
+                marginTop: "8rem",
+                color: "rgba(255,180,120,0.9)",
+                fontSize: "12rem",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {pendingActivationLine}
+            </div>
+          )}
 
           {pendingDeletion ? (
             <div

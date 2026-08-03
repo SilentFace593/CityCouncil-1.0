@@ -246,6 +246,8 @@ namespace CityCouncil
         // tirés aléatoirement par tranche d'âge et par élection. Ajustable ici sans
         // toucher au reste de la logique.
         private const float MarginOfErrorPct = 0.025f;
+        // AJOUT — bonus fixe du système Bastion, appliqué symétriquement chez séniors et adultes.
+        private const float BastionBonusPct = 0.04f;
 
         /// <summary>
         /// Calcule le résultat du 1er tour pour un district.
@@ -257,10 +259,12 @@ namespace CityCouncil
         /// <param name="cityLeadingParty">Parti actuellement majoritaire à l'échelle de la ville,
         /// nécessaire uniquement si un effet cible EventEffectTarget.LeadingPartyCityWide ; null sinon.</param>
         public static RoundResult ComputeRound1(
-            int seniors, int adults, WealthLevel wealth, int seed,
-            IEnumerable<string> activePolicies,
-            EventEffect[] activeEventEffects = null,
-            PoliticalParty? cityLeadingParty = null)
+       int seniors, int adults, WealthLevel wealth, int seed,
+       IEnumerable<string> activePolicies,
+       EventEffect[] activeEventEffects = null,
+       PoliticalParty? cityLeadingParty = null,
+       bool isBastion = false,                        // AJOUT
+       PoliticalParty bastionParty = default)          // AJOUT
         {
             var rng = new Random(seed);
             var seniorBaseWithMargin = ApplyMarginOfError(SeniorBase, rng, MarginOfErrorPct);
@@ -271,6 +275,13 @@ namespace CityCouncil
 
             ApplyEventEffects(seniorShares, ref seniorAbst, isAdult: false, activeEventEffects, cityLeadingParty);
             ApplyEventEffects(adultShares, ref adultAbst, isAdult: true, activeEventEffects, cityLeadingParty);
+
+            // AJOUT — bonus Bastion, appliqué après évènements/richesse, avant fusion des tranches.
+            if (isBastion)
+            {
+                Boost(seniorShares, bastionParty, BastionBonusPct);
+                Boost(adultShares, bastionParty, BastionBonusPct);
+            }
 
             int seniorVoters = (int)Math.Round(seniors * (1f - seniorAbst));
             int adultVoters = (int)Math.Round(adults * (1f - adultAbst));
@@ -285,8 +296,6 @@ namespace CityCouncil
                 combined[p] = totalVoters > 0 ? (votesFromSeniors + votesFromAdults) / totalVoters : 0f;
             }
 
-            // Politiques de district : appliquées une seule fois sur le résultat combiné
-            // (pas de distinction séniors/adultes dans les valeurs demandées).
             ApplyPolicyModifiers(combined, activePolicies);
 
             var leader = combined.OrderByDescending(kv => kv.Value).First();

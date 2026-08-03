@@ -16,6 +16,7 @@ const customPartyExists$ = bindValue<boolean>("cityCouncil", "customPartyExists"
 const customPartyName$ = bindValue<string>("cityCouncil", "customPartyName");
 const customPartyColor$ = bindValue<string>("cityCouncil", "customPartyColor");
 const customPartySpace$ = bindValue<string>("cityCouncil", "customPartySpace");
+const customPartyPendingActivation$ = bindValue<boolean>("cityCouncil", "customPartyPendingActivation");
 
 interface PartyMembershipDto {
   party: string;
@@ -35,6 +36,7 @@ interface ForceEntry {
   members: number;
   seats: number;
   treasury: number;
+  pendingReplacement: boolean;
 }
 
 export function PoliticalForcesTab() {
@@ -47,6 +49,7 @@ export function PoliticalForcesTab() {
   const customName = useValue(customPartyName$);
   const customColor = useValue(customPartyColor$);
   const customSpace = useValue(customPartySpace$);
+  const customPendingActivation = useValue(customPartyPendingActivation$);
 
   const partyDescriptions: Record<string, string> = {
     Ecologiste: t("CityCouncil.Forces.DESC_ECOLOGISTE", "Défend une transition écologique ambitieuse et la préservation des espaces naturels."),
@@ -78,7 +81,11 @@ export function PoliticalForcesTab() {
     return PARTY_ORDER.map((partyKey) => {
       const seatEntry = seatResults.find((r) => r.party === partyKey);
       const memberEntry = membership.find((m) => m.party === partyKey);
-      const isCustomHere = customExists && customSpace === partyKey;
+   // Décoré uniquement si la substitution est ACTIVE (le serveur ne remplit displayName/
+      // displayColor sur seatResults que dans ce cas, mais on garde une logique cohérente
+      // côté client pour label/couleur/description qui ne passent pas par le DTO).
+      const isCustomHere = customExists && !customPendingActivation && customSpace === partyKey;
+      const isPendingReplacement = customExists && customPendingActivation && customSpace === partyKey; // AJOUT
 
       return {
         key: partyKey,
@@ -90,9 +97,10 @@ export function PoliticalForcesTab() {
         members: memberEntry?.members ?? 0,
         seats: seatEntry?.seats ?? 0,
         treasury: memberEntry?.treasury ?? 0,
+        pendingReplacement: isPendingReplacement, // AJOUT
       };
     });
-  }, [seatResults, membership, customExists, customName, customColor, customSpace, partyDescriptions]);
+  }, [seatResults, membership, customExists, customName, customColor, customSpace, customPendingActivation, partyDescriptions]);
 
   const [selectedKey, setSelectedKey] = useState<string>(PARTY_ORDER[0]);
   const selected = entries.find((e) => e.key === selectedKey) ?? entries[0];
@@ -109,6 +117,8 @@ export function PoliticalForcesTab() {
 
   const treasurySuffix = t("CityCouncil.Forces.TREASURY", "crédits en caisse");
   const treasuryLine = selected ? `${selected.treasury.toLocaleString()} ${treasurySuffix}` : "";
+  const pendingReplacementLabel = t("CityCouncil.Forces.PENDING_REPLACEMENT", "Parti remplacé à la prochaine élection !");
+
 
   return (
     <div style={{ display: "flex", width: "100%", height: "100%", boxSizing: "border-box" }}>
@@ -177,6 +187,20 @@ export function PoliticalForcesTab() {
             <div style={{ color: "rgba(255,255,255,0.8)", fontSize: "13rem", marginBottom: "14rem", lineHeight: "18rem" }}>
               {selected.description}
             </div>
+
+{selected.pendingReplacement && (
+  <div
+    style={{
+      color: "rgba(255,180,120,0.9)",
+      fontSize: "12rem",
+      fontWeight: 700,
+      marginBottom: "10rem",
+      whiteSpace: "nowrap",
+    }}
+  >
+{pendingReplacementLabel}
+  </div>
+)}
 
             <div style={{ display: "flex", flexDirection: "column", gap: "6rem" }}>
               <div style={{ color: "rgba(255,255,255,0.9)", fontSize: "13rem", whiteSpace: "nowrap" }}>{membersLine}</div>

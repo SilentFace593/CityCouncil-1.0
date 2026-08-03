@@ -29,6 +29,7 @@ namespace CityCouncil.Systems
         private CityCouncil.CouncilCityEventSystem m_CityEventSystem;
         private CityCouncil.CouncilCustomPartySystem m_CustomPartySystem;
         private CityCouncil.CouncilFundingSystem m_FundingSystem;
+        private CityCouncil.CouncilElectionSystem m_ElectionSystem;
 
         // --- Évènement de ville actif (affiché en bas de l'encart Administration) ---
         private ValueBinding<string> m_CityEventHeadlineBinding;
@@ -44,6 +45,9 @@ namespace CityCouncil.Systems
         private ValueBinding<int> m_AdminVotersBinding;
         private ValueBinding<int> m_AdminAbstentionBinding;
         private ValueBinding<string> m_AdminResultsBinding; // répartition finale des sièges, sérialisée en JSON
+        private ValueBinding<string> m_AdminBastionStreakPartyBinding; // nom du parti en série, ou "" si aucune série
+        private ValueBinding<int> m_AdminBastionStreakCountBinding;    // 0..3
+        private ValueBinding<bool> m_AdminBastionActiveBinding;        // true si Bastion effectivement acquis
 
         // --- Panneau hémicycle (ville entière) ---
         private ValueBinding<string> m_HemicycleSeatsBinding; // agrégat tous districts confondus, sérialisé en JSON
@@ -57,6 +61,7 @@ namespace CityCouncil.Systems
         private ValueBinding<string> m_CustomPartyColorBinding;   // enum PartyColor, sérialisé en ToString()
         private ValueBinding<string> m_CustomPartySpaceBinding;   // enum PoliticalParty, sérialisé en ToString()
         private ValueBinding<bool> m_CustomPartyPendingDeletionBinding;
+        private ValueBinding<bool> m_CustomPartyPendingActivationBinding;
 
         // État caché pour détecter les changements
         private Entity m_LastSelectedEntity = Entity.Null;
@@ -83,6 +88,7 @@ namespace CityCouncil.Systems
             m_CustomPartySystem = World.GetOrCreateSystemManaged<CityCouncil.CouncilCustomPartySystem>();
             m_MembershipSystem = World.GetOrCreateSystemManaged<CouncilPartyMembershipSystem>();
             m_FundingSystem = World.GetOrCreateSystemManaged<CityCouncil.CouncilFundingSystem>();
+            m_ElectionSystem = World.GetOrCreateSystemManaged<CityCouncil.CouncilElectionSystem>();
 
 
 
@@ -106,8 +112,12 @@ namespace CityCouncil.Systems
             m_CustomPartyColorBinding = new ValueBinding<string>(kGroup, "customPartyColor", "");
             m_CustomPartySpaceBinding = new ValueBinding<string>(kGroup, "customPartySpace", "");
             m_CustomPartyPendingDeletionBinding = new ValueBinding<bool>(kGroup, "customPartyPendingDeletion", false);
+            m_CustomPartyPendingActivationBinding = new ValueBinding<bool>(kGroup, "customPartyPendingActivation", false);
             m_FundingFixedAmountBinding = new ValueBinding<int>(kGroup, "fundingFixedAmount", 0);
             m_FundingLockedBinding = new ValueBinding<bool>(kGroup, "fundingLocked", false);
+            m_AdminBastionStreakPartyBinding = new ValueBinding<string>(kGroup, "adminBastionStreakParty", "");
+            m_AdminBastionStreakCountBinding = new ValueBinding<int>(kGroup, "adminBastionStreakCount", 0);
+            m_AdminBastionActiveBinding = new ValueBinding<bool>(kGroup, "adminBastionActive", false);
 
             AddBinding(m_AdminVisibleBinding);
             AddBinding(m_AdminPhaseBinding);
@@ -128,9 +138,17 @@ namespace CityCouncil.Systems
             AddBinding(m_CustomPartyColorBinding);
             AddBinding(m_CustomPartySpaceBinding);
             AddBinding(m_CustomPartyPendingDeletionBinding);
+            AddBinding(m_CustomPartyPendingActivationBinding);
             AddBinding(m_PartyMembershipJsonBinding);
             AddBinding(m_FundingFixedAmountBinding);
             AddBinding(m_FundingLockedBinding);
+            AddBinding(m_AdminBastionStreakPartyBinding);
+            AddBinding(m_AdminBastionStreakCountBinding);
+            AddBinding(m_AdminBastionActiveBinding);
+
+            // OUTIL DE DEBUG TEMPORAIRE — cf. CouncilElectionSystem.DebugForceAllDistrictsToNextStep.
+            AddBinding(new TriggerBinding(kGroup, "debugForceNextElection",
+                () => m_ElectionSystem.DebugForceAllDistrictsToNextStep()));
 
             // Déclenché par le clic sur l'icône hémicycle en haut à gauche.
             AddBinding(new TriggerBinding(kGroup, "refreshHemicycle", RefreshHemicycle));
@@ -317,6 +335,12 @@ namespace CityCouncil.Systems
             m_CustomPartyColorBinding.Update(data.m_Exists ? data.m_Color.ToString() : "");
             m_CustomPartySpaceBinding.Update(data.m_Exists ? data.m_Space.ToString() : "");
             m_CustomPartyPendingDeletionBinding.Update(data.m_Exists && data.m_PendingDeletion);
+
+            // AJOUT — true tant que la substitution n'a pas encore pris effet (création ou
+            // changement de bord en attente de la prochaine élection).
+            bool pendingActivation = data.m_Exists && !data.m_PendingDeletion
+                && (!data.m_SubstitutionActive || data.m_ActiveSpace != data.m_Space);
+            m_CustomPartyPendingActivationBinding.Update(pendingActivation);
         }
 
         private void PushAdminData(CouncilDistrictData data)
@@ -349,6 +373,12 @@ namespace CityCouncil.Systems
                 ? data.m_FinalResults.ToArray().Select(PartyResultDto.From).Select(DecorateWithCustomParty).ToArray()
                 : System.Array.Empty<PartyResultDto>();
             m_AdminResultsBinding.Update(PartyResultDto.ToJsonArray(results));
+            // AJOUT — barre de progression Bastion. On affiche la série même avant le 3e palier
+            // (progression visible), le nom du parti reste celui de m_StreakParty tant qu'une série
+            // est en cours (0 = aucune série connue, ne devrait pas arriver dès la 1ère élection).
+            m_AdminBastionStreakPartyBinding.Update(data.m_StreakCount > 0 ? data.m_StreakParty.ToString() : "");
+            m_AdminBastionStreakCountBinding.Update(data.m_StreakCount);
+            m_AdminBastionActiveBinding.Update(data.m_IsBastion);
         }
 
         /// <summary>
@@ -403,10 +433,12 @@ namespace CityCouncil.Systems
         /// "party" (utilisée pour PARTY_COLORS/PARTY_ORDER côté React comme fallback et pour
         /// le tri idéologique) reste inchangée : seuls displayName/displayColor sont ajoutés.
         /// </summary>
+        /// 
+        // --- DecorateWithCustomParty : ne décore que si la substitution est ACTIVE ---
         private PartyResultDto DecorateWithCustomParty(PartyResultDto dto)
         {
             var custom = m_CustomPartySystem.GetData();
-            if (custom.m_Exists && custom.m_Space.ToString() == dto.party)
+            if (custom.m_Exists && custom.m_SubstitutionActive && custom.m_ActiveSpace.ToString() == dto.party)
             {
                 dto.displayName = custom.m_Name.ToString();
                 dto.displayColor = custom.m_Color.ToString();
@@ -417,12 +449,15 @@ namespace CityCouncil.Systems
         private static bool DataEquals(in CouncilDistrictData a, in CouncilDistrictData b)
         {
             return a.m_Phase == b.m_Phase
-                && a.m_LeadingParty == b.m_LeadingParty
-                && a.m_TotalSeats == b.m_TotalSeats
-                && a.m_VotersRound1 == b.m_VotersRound1
-                && a.m_AbstentionRound1 == b.m_AbstentionRound1
-                && a.m_VotersRound2 == b.m_VotersRound2
-                && a.m_AbstentionRound2 == b.m_AbstentionRound2;
+               && a.m_LeadingParty == b.m_LeadingParty
+               && a.m_TotalSeats == b.m_TotalSeats
+               && a.m_VotersRound1 == b.m_VotersRound1
+               && a.m_AbstentionRound1 == b.m_AbstentionRound1
+               && a.m_VotersRound2 == b.m_VotersRound2
+               && a.m_AbstentionRound2 == b.m_AbstentionRound2
+               && a.m_StreakParty == b.m_StreakParty       
+               && a.m_StreakCount == b.m_StreakCount       
+               && a.m_IsBastion == b.m_IsBastion;          
         }
     }
 
@@ -513,6 +548,7 @@ namespace CityCouncil.Systems
             sb.Append(']');
             return sb.ToString();
         }
+
     }
 
 }

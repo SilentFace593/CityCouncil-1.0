@@ -217,9 +217,13 @@ namespace CityCouncil
             // Coût du calcul du parti majoritaire évité quand aucun évènement n'est actif.
             PoliticalParty? cityLeadingParty = activeEvent != null ? GetCityLeadingParty() : null;
 
+            // AJOUT — l'état Bastion utilisé ici est celui d'AVANT cette élection (m_IsBastion/
+            // m_BastionParty ne sont mis à jour qu'après, dans FinalizeResults), donc le bonus profite
+            // bien au détenteur actuel pour DÉFENDRE son district, pas à un futur vainqueur.
             var result = VoteCalculator.ComputeRound1(
                 seniors, adults, wealth, seed, activePolicies,
-                activeEvent?.Effects, cityLeadingParty);
+                activeEvent?.Effects, cityLeadingParty,
+                data.m_IsBastion, data.m_BastionParty); // AJOUT
 
             data.m_VotersRound1 = result.m_Voters;
             data.m_AbstentionRound1 = result.m_Abstention;
@@ -300,7 +304,39 @@ namespace CityCouncil
                 data.m_FinalResults.Add(r);
 
             m_MembershipSystem.ApplyDistrictSeatDelta(oldResults, allocated);
-            m_FundingSystem.DistributeForFinalizedDistrict(allocated); // AJOUT
+            m_FundingSystem.DistributeForFinalizedDistrict(allocated);
+
+            UpdateBastionStreak(ref data); // AJOUT
+        }
+
+        /// <summary>
+        /// Met à jour la série de victoires consécutives du district à partir de data.m_LeadingParty
+        /// (déjà renseigné par l'appelant avant FinalizeResults, pour le 1er comme le 2e tour).
+        /// Le Bastion est acquis à la 3e victoire consécutive, et perdu IMMÉDIATEMENT dès qu'un autre
+        /// parti remporte le district (la série repart à 1 pour le nouveau vainqueur, comme demandé :
+        /// "si le parti perd une élection le compteur est remis à zéro et perd le bonus").
+        /// </summary>
+        private void UpdateBastionStreak(ref CouncilDistrictData data)
+        {
+            var winner = data.m_LeadingParty;
+
+            if (data.m_StreakCount > 0 && data.m_StreakParty == winner)
+            {
+                data.m_StreakCount = System.Math.Min(3, data.m_StreakCount + 1);
+            }
+            else
+            {
+                data.m_StreakParty = winner;
+                data.m_StreakCount = 1;
+                data.m_IsBastion = false; // série précédente rompue -> perte immédiate du bonus
+            }
+
+            if (data.m_StreakCount >= 3)
+            {
+                data.m_IsBastion = true;
+                data.m_BastionParty = winner;
+                s_Log.Info($"[CouncilElectionSystem] Bastion : {winner} détient désormais ce district (3 victoires consécutives).");
+            }
         }
 
         private void SetData(Entity districtEntity, CouncilDistrictData data)
@@ -430,6 +466,49 @@ namespace CityCouncil
 
             uint frameIndex = m_SimulationSystem.frameIndex;
             return (double)frameIndex / ticksPerDay;
+        }
+
+        /// <summary>
+        /// OUTIL DE DEBUG TEMPORAIRE — force tous les districts à traiter leur prochaine échéance
+        /// électorale dès le prochain OnUpdate, en ramenant leurs timers au jour courant (ou légèrement
+        /// avant, pour passer les comparaisons ">="). Ne modifie ni ElectionCycleDays ni Round2DelayDays :
+        /// on avance seulement les rendez-vous déjà planifiés, ce qui permet de dérouler toute la boucle
+        /// (1er tour -> 2e tour si besoin -> cycle suivant) exactement comme en jeu normal, juste sans
+        /// attendre. À retirer (ou masquer derrière une build de dev) une fois les tests terminés.
+        /// </summary>
+        public void DebugForceAllDistrictsToNextStep()
+        {
+            double currentDay = GetCurrentSimulationDay();
+            var districts = m_DistrictQuery.ToEntityArray(Allocator.Temp);
+            try
+            {
+                foreach (var districtEntity in districts)
+                {
+                    if (!EntityManager.HasComponent<CouncilDistrictData>(districtEntity)) continue;
+                    var data = EntityManager.GetComponentData<CouncilDistrictData>(districtEntity);
+
+                    switch (data.m_Phase)
+                    {
+                        case ElectionPhase.Round1Scheduled:
+                        case ElectionPhase.Completed:
+                            data.m_NextRound1Day = currentDay - 0.001;
+                            break;
+
+                        case ElectionPhase.Round1Done:
+                            // Force la condition currentDay >= m_Round1CompletedDay + Round2DelayDays
+                            data.m_Round1CompletedDay = currentDay - Round2DelayDays - 0.001;
+                            break;
+                    }
+
+                    EntityManager.SetComponentData(districtEntity, data);
+                }
+            }
+            finally
+            {
+                districts.Dispose();
+            }
+
+            s_Log.Info("[CouncilElectionSystem] DEBUG : toutes les échéances électorales forcées au jour courant.");
         }
     }
 }

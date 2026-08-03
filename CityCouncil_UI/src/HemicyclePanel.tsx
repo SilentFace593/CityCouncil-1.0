@@ -178,6 +178,25 @@ function HemicycleResultsContent() {
           </div>
         ))}
       </div>
+       //* OUTIL DE DEBUG TEMPORAIRE — force l'avancement de toutes les élections en cours.
+       //* À retirer avant release.
+      <button
+        onClick={() => trigger("cityCouncil", "debugForceNextElection")}
+        style={{
+          marginTop: "14rem",
+          width: "100%",
+          background: "rgba(220,80,80,0.85)",
+          color: "white",
+          border: "none",
+          borderRadius: "4rem",
+          padding: "8rem 10rem",
+          fontSize: "12rem",
+          fontWeight: "bold",
+          cursor: "pointer",
+        }}
+      >
+        [DEBUG] Forcer l'étape électorale suivante
+      </button>
     </div>
   );
 }

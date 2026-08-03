@@ -98,8 +98,14 @@ namespace CityCouncil
         public FixedList128Bytes<PartyResult> m_Round1Results;
         // Résultats finaux (après 2e tour ou victoire au 1er tour), jusqu'à 5 partis
         public FixedList128Bytes<PartyResult> m_FinalResults;
+        // AJOUT — système Bastion : série de victoires consécutives d'un même parti dans ce district.
+        public PoliticalParty m_StreakParty;  // parti actuellement en série (valide seulement si m_StreakCount > 0)
+        public int m_StreakCount;             // 0..3, remis à 1 dès qu'un autre parti gagne
+        public bool m_IsBastion;              // true dès que m_StreakCount atteint 3
+        public PoliticalParty m_BastionParty; // parti détenteur (valide seulement si m_IsBastion)
 
-        private const int kCurrentDataVersion = 1;
+
+        private const int kCurrentDataVersion = 2;
 
         public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
         {
@@ -120,6 +126,11 @@ namespace CityCouncil
 
             WriteResults(writer, m_Round1Results);
             WriteResults(writer, m_FinalResults);
+
+            writer.Write((byte)m_StreakParty);
+            writer.Write(m_StreakCount);
+            writer.Write(m_IsBastion);
+            writer.Write((byte)m_BastionParty);
         }
 
         public void Deserialize<TReader>(TReader reader) where TReader : IReader
@@ -141,6 +152,24 @@ namespace CityCouncil
 
             m_Round1Results = ReadResults(reader);
             m_FinalResults = ReadResults(reader);
+
+            if (dataVersion >= 2)
+            {
+                reader.Read(out byte streakParty); m_StreakParty = (PoliticalParty)streakParty;
+                reader.Read(out m_StreakCount);
+                reader.Read(out m_IsBastion);
+                reader.Read(out byte bastionParty); m_BastionParty = (PoliticalParty)bastionParty;
+            }
+            else
+            {
+                // Compat sauvegardes v1 : aucune série connue avant ce système, on repart à zéro
+                // plutôt que de deviner un historique — cohérent avec un ajout de fonctionnalité,
+                // pas une régression pour les parties déjà en cours.
+                m_StreakParty = default;
+                m_StreakCount = 0;
+                m_IsBastion = false;
+                m_BastionParty = default;
+            }
         }
 
         /// <summary>
@@ -259,8 +288,13 @@ namespace CityCouncil
         // l'état "vivant" affiché (m_Exists) de l'intention en attente (m_PendingDeletion),
         // résolue par CouncilCustomPartySystem.ApplyPendingChangesForNewElection().
         public bool m_PendingDeletion;
+        // AJOUT — substitution différée : la décoration visuelle (nom/couleur remplaçant l'hôte)
+        // ne s'active qu'à la prochaine élection (cf. ApplyPendingChangesForNewElection), pas
+        // immédiatement à la création/au changement de bord.
+        public bool m_SubstitutionActive;
+        public PoliticalParty m_ActiveSpace;   // bord réellement substitué (valide seulement si m_SubstitutionActive)
 
-        private const int kVersion = 1;
+        private const int kVersion = 2;
 
         public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
         {
@@ -270,16 +304,31 @@ namespace CityCouncil
             writer.Write((byte)m_Color);
             writer.Write((byte)m_Space);
             writer.Write(m_PendingDeletion);
+            writer.Write(m_SubstitutionActive);
+            writer.Write((byte)m_ActiveSpace);
         }
 
         public void Deserialize<TReader>(TReader reader) where TReader : IReader
         {
-            reader.Read(out int _);
+            reader.Read(out int version);
             reader.Read(out m_Exists);
             reader.Read(out string name); m_Name = name;
             reader.Read(out byte color); m_Color = (PartyColor)color;
             reader.Read(out byte space); m_Space = (PoliticalParty)space;
             reader.Read(out m_PendingDeletion);
+
+            if (version >= 2)
+            {
+                reader.Read(out m_SubstitutionActive);
+                reader.Read(out byte activeSpace); m_ActiveSpace = (PoliticalParty)activeSpace;
+            }
+            else
+            {
+                // Compat sauvegardes v1 : un parti déjà existant à l'époque était immédiatement actif
+                // (ancien comportement), on préserve ce comportement pour ne pas casser une partie en cours.
+                m_SubstitutionActive = m_Exists;
+                m_ActiveSpace = m_Space;
+            }
         }
     }
 

@@ -18,12 +18,44 @@ namespace CityCouncil
 
         private EntityQuery m_SingletonQuery;
         private Entity m_SingletonEntity = Entity.Null;
+        private CouncilPartyMembershipSystem m_MembershipSystem;
 
         protected override void OnCreate()
         {
             base.OnCreate();
             m_SingletonQuery = GetEntityQuery(ComponentType.ReadOnly<CouncilCustomPartyData>());
+            m_MembershipSystem = World.GetOrCreateSystemManaged<CouncilPartyMembershipSystem>();
         }
+
+        protected override void OnGamePreload(Colossal.Serialization.Entities.Purpose purpose, Game.GameMode mode)
+        {
+            base.OnGamePreload(purpose, mode);
+            DestroyExistingSingleton();
+        }
+
+        /// <summary>
+        /// Détruit l'entité singleton AVANT la désérialisation d'une nouvelle sauvegarde. Sans ça,
+        /// une entité créée manuellement pendant une session précédente (save A) peut survivre au
+        /// chargement d'une autre sauvegarde (save B) qui ne la contient pas réellement, si le World
+        /// n'est pas entièrement recréé entre deux chargements. EnsureSingleton() (appelé après, dans
+        /// OnGameLoaded) repart alors sur un état garanti frais, ou sur les données réellement
+        /// désérialisées pour CETTE sauvegarde si elles existent.
+        /// </summary>
+        private void DestroyExistingSingleton()
+        {
+            var existing = m_SingletonQuery.ToEntityArray(Allocator.Temp);
+            try
+            {
+                foreach (var e in existing)
+                    EntityManager.DestroyEntity(e);
+            }
+            finally
+            {
+                existing.Dispose();
+            }
+            m_SingletonEntity = Entity.Null;
+        }
+
 
         protected override void OnGameLoaded(Context serializationContext)
         {
@@ -107,6 +139,14 @@ namespace CityCouncil
         /// Effective IMMÉDIATEMENT (contrairement à la suppression) : rien dans l'énoncé
         /// n'impose de délai pour la création/le renommage, seulement pour la suppression.
         /// </summary>
+        /// <summary>
+        /// Création ou mise à jour. Nom/couleur/bord ciblé sont mis à jour immédiatement (utilisés
+        /// tels quels dès la prochaine activation), mais la SUBSTITUTION VISUELLE elle-même
+        /// (remplacement effectif de l'hôte) reste gouvernée par m_SubstitutionActive/m_ActiveSpace,
+        /// jamais touchés ici — seule ApplyPendingChangesForNewElection peut les faire évoluer.
+        /// Un changement de m_Space vers un bord différent de m_ActiveSpace remet donc naturellement
+        /// la substitution "en attente" jusqu'à la prochaine élection, même pour un parti déjà actif.
+        /// </summary>
         public bool TryCreateOrUpdate(string name, PartyColor color, PoliticalParty space, out string error)
         {
             error = null;
@@ -124,12 +164,13 @@ namespace CityCouncil
             data.m_Name = name;
             data.m_Color = color;
             data.m_Space = space;
-            data.m_PendingDeletion = false; // une création/màj annule une suppression en attente
+            data.m_PendingDeletion = false;
             SetData(data);
 
-            s_Log.Info($"[CouncilCustomPartySystem] Parti joueur défini : '{name}' ({color}, bord {space}).");
+            s_Log.Info($"[CouncilCustomPartySystem] Parti joueur défini : '{name}' ({color}, bord ciblé {space}).");
             return true;
         }
+
 
         /// <summary>Marque le parti pour suppression : reste actif jusqu'à la prochaine élection.</summary>
         public void RequestDeletion()
@@ -160,16 +201,46 @@ namespace CityCouncil
         /// appliquer une suppression en attente. Idempotent si rien n'est en attente : peut
         /// être appelé plusieurs fois par cycle électoral (une fois par district) sans risque.
         /// </summary>
+        /// <summary>
+        /// Appelé par CouncilElectionSystem juste avant un nouveau 1er tour. Deux responsabilités,
+        /// mutuellement exclusives pour un même appel :
+        ///   - suppression en attente -> désactivation complète du parti joueur ;
+        ///   - sinon, activation d'une substitution en attente (première création OU changement de
+        ///     bord ciblé) -> la décoration prend effet à partir de CETTE élection, et les adhérents/
+        ///     trésorerie du bord nouvellement substitué repartent à zéro (le nouveau parti ne
+        ///     n'hérite PAS du passif de l'ancien).
+        /// Idempotent (peut être rappelé plusieurs fois par cycle, une fois par district).
+        /// </summary>
         public void ApplyPendingChangesForNewElection()
         {
             var data = GetData();
-            if (!data.m_Exists || !data.m_PendingDeletion) return;
+            if (!data.m_Exists) return;
 
-            data.m_Exists = false;
-            data.m_PendingDeletion = false;
-            data.m_Name = default;
+            if (data.m_PendingDeletion)
+            {
+                data.m_Exists = false;
+                data.m_PendingDeletion = false;
+                data.m_SubstitutionActive = false;
+                data.m_Name = default;
+                SetData(data);
+                s_Log.Info("[CouncilCustomPartySystem] Parti joueur supprimé (effectif dès cette élection).");
+                return;
+            }
+
+            bool needsActivation = !data.m_SubstitutionActive || data.m_ActiveSpace != data.m_Space;
+            if (!needsActivation) return;
+
+            var newSpace = data.m_Space;
+            data.m_ActiveSpace = newSpace;
+            data.m_SubstitutionActive = true;
             SetData(data);
-            s_Log.Info("[CouncilCustomPartySystem] Parti joueur supprimé (effectif dès cette élection).");
+
+            // Repart de zéro sur le bord nouvellement substitué : le nouveau parti n'hérite pas
+            // du passif (adhérents/trésorerie) de l'ancien. Les sièges n'ont pas besoin d'un reset
+            // manuel : ils sont recalculés intégralement à chaque élection (m_FinalResults).
+            m_MembershipSystem.ResetPartyTreasuryAndMembers(newSpace);
+
+            s_Log.Info($"[CouncilCustomPartySystem] Substitution activée pour le bord {newSpace} (adhérents/trésorerie remis à zéro).");
         }
 
         // Pas de logique per-frame nécessaire, ce système est purement passif
