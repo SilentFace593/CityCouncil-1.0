@@ -5,6 +5,7 @@ import { useLocalization } from "cs2/l10n";
 import { translatePartyName, PARTY_LABELS, PARTY_ORDER, resolvePartyColor, resolvePartyLabel, type PartyResultDto } from "./PartyResultDto";
 import { YourPartyTab } from "./YourPartyTab";
 import { PoliticalForcesTab } from "./PoliticalForcesTab";
+import { FundingTab } from "./FundingTab";
 
 // --- Bindings exposés par CouncilUISystem.cs (group "cityCouncil") ---
 const hemicycleSeatsJson$ = bindValue<string>("cityCouncil", "hemicycleSeatsJson");
@@ -181,7 +182,7 @@ function HemicycleResultsContent() {
   );
 }
 
-type TabKey = "results" | "yourParty" | "forces";
+type TabKey = "results" | "yourParty" | "forces" | "funding";
 
 const PANEL_WIDTH = "440rem";
 const PANEL_CONTENT_HEIGHT = "560rem";
@@ -213,12 +214,16 @@ function HemicycleTabs() {
         <div style={tabStyle("forces")} onClick={() => setTab("forces")}>
           {t("CityCouncil.Hemicycle.TAB_FORCES", "Forces Politiques")}
         </div>
+        <div style={tabStyle("funding")} onClick={() => setTab("funding")}>
+          {t("CityCouncil.Hemicycle.TAB_FUNDING", "Financement")}
+        </div>
       </div>
 
       <div style={{ height: PANEL_CONTENT_HEIGHT, overflowY: "auto", boxSizing: "border-box" }}>
         {tab === "results" && <HemicycleResultsContent />}
         {tab === "yourParty" && <YourPartyTab />}
         {tab === "forces" && <PoliticalForcesTab />}
+        {tab === "funding" && <FundingTab />}
       </div>
     </div>
   );

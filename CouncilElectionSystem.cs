@@ -37,6 +37,7 @@ namespace CityCouncil
         private CouncilCityEventSystem m_CityEventSystem;
         private CouncilCustomPartySystem m_CustomPartySystem; // AJOUT
         private CouncilPartyMembershipSystem m_MembershipSystem;
+        private CouncilFundingSystem m_FundingSystem;
 
         protected override void OnCreate()
         {
@@ -47,6 +48,7 @@ namespace CityCouncil
             m_CityEventSystem = World.GetOrCreateSystemManaged<CouncilCityEventSystem>();
             m_CustomPartySystem = World.GetOrCreateSystemManaged<CouncilCustomPartySystem>(); // AJOUT
             m_MembershipSystem = World.GetOrCreateSystemManaged<CouncilPartyMembershipSystem>(); // AJOUT
+            m_FundingSystem = World.GetOrCreateSystemManaged<CouncilFundingSystem>();
 
             m_DistrictQuery = GetEntityQuery(new EntityQueryDesc
             {
@@ -290,8 +292,6 @@ namespace CityCouncil
 
         private void FinalizeResults(ref CouncilDistrictData data, Dictionary<PoliticalParty, float> shares, int seatCount)
         {
-            // Capture AVANT écrasement : référence pour le delta d'adhérents ±10/siège
-            // (CouncilPartyMembershipSystem.ApplyDistrictSeatDelta compare oldResults à allocated).
             var oldResults = data.m_FinalResults.ToArray();
 
             var allocated = VoteCalculator.AllocateSeats(shares, seatCount);
@@ -299,7 +299,8 @@ namespace CityCouncil
             foreach (var r in allocated)
                 data.m_FinalResults.Add(r);
 
-            m_MembershipSystem.ApplyDistrictSeatDelta(oldResults, allocated); // AJOUT
+            m_MembershipSystem.ApplyDistrictSeatDelta(oldResults, allocated);
+            m_FundingSystem.DistributeForFinalizedDistrict(allocated); // AJOUT
         }
 
         private void SetData(Entity districtEntity, CouncilDistrictData data)

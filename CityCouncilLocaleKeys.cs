@@ -63,5 +63,14 @@
         public const string Party_Populiste = "CityCouncil.Party.POPULISTE";
         public const string Party_Republicain = "CityCouncil.Party.REPUBLICAIN";
         public const string Party_GaucheRadicale = "CityCouncil.Party.GAUCHE_RADICALE";
+
+        // --- FundingTab ---
+        public const string Funding_TabLabel = "CityCouncil.Funding.TAB_LABEL";
+        public const string Funding_FixedAmountLabel = "CityCouncil.Funding.FIXED_AMOUNT_LABEL";
+        public const string Funding_FixedAmountHint = "CityCouncil.Funding.FIXED_AMOUNT_HINT";
+        public const string Funding_ValidateButton = "CityCouncil.Funding.VALIDATE_BUTTON";
+        public const string Funding_LockedMessage = "CityCouncil.Funding.LOCKED_MESSAGE";
+        public const string Funding_VariableInfo = "CityCouncil.Funding.VARIABLE_INFO";
+
     }
 }

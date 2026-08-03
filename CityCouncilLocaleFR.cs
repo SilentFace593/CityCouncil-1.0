@@ -71,6 +71,13 @@ namespace CityCouncil
                 { LocaleKeys.Party_Populiste, "Populiste" },
                 { LocaleKeys.Party_Republicain, "Républicain" },
                 { LocaleKeys.Party_GaucheRadicale, "Gauche radicale" },
+
+                // FundingTab
+                { LocaleKeys.Funding_TabLabel, "Financement Politique" },
+                { LocaleKeys.Funding_FixedAmountLabel, "Part fixe (par cycle)" },
+                { LocaleKeys.Funding_FixedAmountHint, "Répartie à parts égales entre les 5 partis à la fin du cycle électoral." },
+                { LocaleKeys.Funding_LockedMessage, "Montant verrouillé jusqu'à la prochaine distribution." },
+                { LocaleKeys.Funding_VariableInfo, "Part variable : 1 000 crédits par siège obtenu, versée automatiquement." },
             };
         }
         public void Unload() { }

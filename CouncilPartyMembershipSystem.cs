@@ -178,6 +178,34 @@ namespace CityCouncil
             SetData(data);
         }
 
+
+        /// <summary>
+        /// Crédite (ou débite, si amount négatif) la trésorerie d'un seul parti. Utilisé par
+        /// CouncilFundingSystem pour verser la part fixe et la part variable du financement
+        /// politique. La trésorerie reste possédée par ce système (source de vérité unique,
+        /// même principe que les adhérents) — CouncilFundingSystem ne fait qu'appeler cette
+        /// méthode plutôt que manipuler CouncilPartyMembershipData directement.
+        /// </summary>
+        public void AddTreasury(PoliticalParty party, int amount)
+        {
+            if (amount == 0) return;
+
+            var data = GetData();
+            var entries = data.m_Entries;
+
+            for (int i = 0; i < entries.Length; i++)
+            {
+                if (entries[i].m_Party != party) continue;
+                var entry = entries[i];
+                entry.m_Treasury += amount;
+                entries[i] = entry;
+                break;
+            }
+
+            data.m_Entries = entries;
+            SetData(data);
+        }
+
         /// <summary>
         /// Contrôle ville entière périodique : cotisation des adhérents (trésorerie) puis
         /// bonus +3% (parti vainqueur d'au moins un district, ou majoritaire en sièges ville

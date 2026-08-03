@@ -1,6 +1,8 @@
 using Colossal.Serialization.Entities;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Entities.UniversalDelegates;
+using static Colossal.IO.AssetDatabase.AtlasFrame;
 
 namespace CityCouncil
 {
@@ -280,4 +282,43 @@ namespace CityCouncil
             reader.Read(out m_PendingDeletion);
         }
     }
+
+
+    /// <summary>
+    /// Composant SINGLETON (même pattern que CouncilCustomPartyData) portant le paramètre de
+    /// financement fixe de la vie politique, géré par CouncilFundingSystem.
+    /// </summary>
+    public struct CouncilFundingData : IComponentData, ISerializable
+    {
+        public int m_FixedAmount;
+        public bool m_FixedAmountLocked;
+        public bool m_FixedAmountPendingDistribution; // AJOUT — true entre validation et 1er FinalizeResults qui suit
+
+        private const int kVersion = 2; // AJOUT champ -> bump version
+
+        public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
+        {
+            writer.Write(kVersion);
+            writer.Write(m_FixedAmount);
+            writer.Write(m_FixedAmountLocked);
+            writer.Write(m_FixedAmountPendingDistribution);
+        }
+
+        public void Deserialize<TReader>(TReader reader) where TReader : IReader
+        {
+            reader.Read(out int version);
+            reader.Read(out m_FixedAmount);
+            reader.Read(out m_FixedAmountLocked);
+            // Compat sauvegardes v1 : le champ n'existait pas, donc rien en attente par défaut.
+            m_FixedAmountPendingDistribution = version >= 2 && ReadPending(reader);
+        }
+
+        private static bool ReadPending<TReader>(TReader reader) where TReader : IReader
+        {
+            reader.Read(out bool pending);
+            return pending;
+        }
+
+    }
+
 }

@@ -28,6 +28,7 @@ namespace CityCouncil.Systems
         private EntityQuery m_DistrictQuery;
         private CityCouncil.CouncilCityEventSystem m_CityEventSystem;
         private CityCouncil.CouncilCustomPartySystem m_CustomPartySystem;
+        private CityCouncil.CouncilFundingSystem m_FundingSystem;
 
         // --- Évènement de ville actif (affiché en bas de l'encart Administration) ---
         private ValueBinding<string> m_CityEventHeadlineBinding;
@@ -47,6 +48,8 @@ namespace CityCouncil.Systems
         // --- Panneau hémicycle (ville entière) ---
         private ValueBinding<string> m_HemicycleSeatsBinding; // agrégat tous districts confondus, sérialisé en JSON
         private ValueBinding<string> m_HemicycleLeaderBinding;
+        private ValueBinding<int> m_FundingFixedAmountBinding;
+        private ValueBinding<bool> m_FundingLockedBinding;
 
         // --- Onglet "Votre Parti" ---
         private ValueBinding<bool> m_CustomPartyExistsBinding;
@@ -64,6 +67,10 @@ namespace CityCouncil.Systems
         private ValueBinding<string> m_PartyMembershipJsonBinding;
         private CouncilPartyMembershipData m_LastPushedMembership;
         private bool m_HasLastPushedMembership;
+        private int m_LastPushedFundingAmount = -1;
+        private bool m_LastPushedFundingLocked;
+        private bool m_HasLastPushedFunding;
+
 
         protected override void OnCreate()
         {
@@ -75,8 +82,9 @@ namespace CityCouncil.Systems
             m_CityEventSystem = World.GetOrCreateSystemManaged<CityCouncil.CouncilCityEventSystem>();
             m_CustomPartySystem = World.GetOrCreateSystemManaged<CityCouncil.CouncilCustomPartySystem>();
             m_MembershipSystem = World.GetOrCreateSystemManaged<CouncilPartyMembershipSystem>();
-           
-           
+            m_FundingSystem = World.GetOrCreateSystemManaged<CityCouncil.CouncilFundingSystem>();
+
+
 
             m_AdminVisibleBinding = new ValueBinding<bool>(kGroup, "adminVisible", false);
             m_AdminPhaseBinding = new ValueBinding<string>(kGroup, "adminPhase", "NoElection");
@@ -98,6 +106,8 @@ namespace CityCouncil.Systems
             m_CustomPartyColorBinding = new ValueBinding<string>(kGroup, "customPartyColor", "");
             m_CustomPartySpaceBinding = new ValueBinding<string>(kGroup, "customPartySpace", "");
             m_CustomPartyPendingDeletionBinding = new ValueBinding<bool>(kGroup, "customPartyPendingDeletion", false);
+            m_FundingFixedAmountBinding = new ValueBinding<int>(kGroup, "fundingFixedAmount", 0);
+            m_FundingLockedBinding = new ValueBinding<bool>(kGroup, "fundingLocked", false);
 
             AddBinding(m_AdminVisibleBinding);
             AddBinding(m_AdminPhaseBinding);
@@ -119,6 +129,8 @@ namespace CityCouncil.Systems
             AddBinding(m_CustomPartySpaceBinding);
             AddBinding(m_CustomPartyPendingDeletionBinding);
             AddBinding(m_PartyMembershipJsonBinding);
+            AddBinding(m_FundingFixedAmountBinding);
+            AddBinding(m_FundingLockedBinding);
 
             // Déclenché par le clic sur l'icône hémicycle en haut à gauche.
             AddBinding(new TriggerBinding(kGroup, "refreshHemicycle", RefreshHemicycle));
@@ -140,6 +152,7 @@ namespace CityCouncil.Systems
 
          m_CustomPartySystem.TryCreateOrUpdate(name, color, space, out _);
          PushCustomPartyState();
+         PushFundingState();
      }));
 
             AddBinding(new TriggerBinding(kGroup, "requestDeleteCustomParty",
@@ -151,6 +164,17 @@ namespace CityCouncil.Systems
             m_LastSelectedEntity = m_ToolSystem.selected;
 
             PushCustomPartyState();
+
+            AddBinding(new TriggerBinding<string>(kGroup, "setFundingFixedAmount",
+    (amountStr) =>
+    {
+        if (int.TryParse(amountStr, out var amount))
+            m_FundingSystem.TrySetFixedAmount(amount, out _);
+        PushFundingState();
+    }));
+
+            AddBinding(new TriggerBinding(kGroup, "validateFundingFixedAmount",
+                () => { m_FundingSystem.ValidateFixedAmount(); PushFundingState(); }));
         }
 
         protected override void OnUpdate()
@@ -158,6 +182,7 @@ namespace CityCouncil.Systems
             base.OnUpdate();
 
             UpdateMembershipBindingIfChanged();
+            UpdateFundingBindingIfChanged();
             UpdateCityEventBinding();
 
             Entity selected = m_ToolSystem.selected;
@@ -244,8 +269,29 @@ namespace CityCouncil.Systems
             // sérialisation terminée, pour que l'UI reflète l'état réellement chargé.
             PushCustomPartyState();
             PushMembershipState(); // AJOUT — même raison : lire l'état APRÈS restauration, pas avant
+            PushFundingState();
         }
 
+        private void UpdateFundingBindingIfChanged()
+        {
+            var data = m_FundingSystem.GetData();
+            if (m_HasLastPushedFunding
+                && data.m_FixedAmount == m_LastPushedFundingAmount
+                && data.m_FixedAmountLocked == m_LastPushedFundingLocked)
+                return;
+
+            PushFundingState(data);
+        }
+
+        private void PushFundingState(CouncilFundingData? preloaded = null)
+        {
+            var data = preloaded ?? m_FundingSystem.GetData();
+            m_FundingFixedAmountBinding.Update(data.m_FixedAmount);
+            m_FundingLockedBinding.Update(data.m_FixedAmountLocked);
+            m_LastPushedFundingAmount = data.m_FixedAmount;
+            m_LastPushedFundingLocked = data.m_FixedAmountLocked;
+            m_HasLastPushedFunding = true;
+        }
 
         /// <summary>
         /// Pousse le texte de l'évènement de ville actif (ou "" si aucun), uniquement quand
