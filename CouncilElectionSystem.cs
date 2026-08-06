@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Colossal.Entities;
@@ -38,6 +39,8 @@ namespace CityCouncil
         private CouncilCustomPartySystem m_CustomPartySystem; // AJOUT
         private CouncilPartyMembershipSystem m_MembershipSystem;
         private CouncilFundingSystem m_FundingSystem;
+        private CouncilBonusSystem m_BonusSystem;
+        private CouncilPropagandaSystem m_PropagandaSystem;
 
         protected override void OnCreate()
         {
@@ -49,6 +52,9 @@ namespace CityCouncil
             m_CustomPartySystem = World.GetOrCreateSystemManaged<CouncilCustomPartySystem>(); // AJOUT
             m_MembershipSystem = World.GetOrCreateSystemManaged<CouncilPartyMembershipSystem>(); // AJOUT
             m_FundingSystem = World.GetOrCreateSystemManaged<CouncilFundingSystem>();
+            m_BonusSystem = World.GetOrCreateSystemManaged<CouncilBonusSystem>();
+            m_PropagandaSystem = World.GetOrCreateSystemManaged<CouncilPropagandaSystem>();
+
 
             m_DistrictQuery = GetEntityQuery(new EntityQueryDesc
             {
@@ -207,6 +213,7 @@ namespace CityCouncil
             // Idempotent : sans effet si rien n'est en attente, donc pas grave d'être appelé une fois
             // par district traité dans le même tick plutôt qu'une seule fois globalement.
             m_CustomPartySystem.ApplyPendingChangesForNewElection(); // AJOUT
+            data = EntityManager.GetComponentData<CouncilDistrictData>(districtEntity);
 
             // Seed dérivée du district + jour courant : varie par district et par élection,
             // tout en restant reproductible pour une même combinaison (utile en debug).
@@ -217,13 +224,18 @@ namespace CityCouncil
             // Coût du calcul du parti majoritaire évité quand aucun évènement n'est actif.
             PoliticalParty? cityLeadingParty = activeEvent != null ? GetCityLeadingParty() : null;
 
+            var offensiveHolders = GetOffensiveBonusHolders(data);
+            var activeCampaigns = m_PropagandaSystem.GetActiveCampaigns();
+
             // AJOUT — l'état Bastion utilisé ici est celui d'AVANT cette élection (m_IsBastion/
             // m_BastionParty ne sont mis à jour qu'après, dans FinalizeResults), donc le bonus profite
             // bien au détenteur actuel pour DÉFENDRE son district, pas à un futur vainqueur.
             var result = VoteCalculator.ComputeRound1(
                 seniors, adults, wealth, seed, activePolicies,
                 activeEvent?.Effects, cityLeadingParty,
-                data.m_IsBastion, data.m_BastionParty); // AJOUT
+                data.m_IsBastion, data.m_BastionParty, // AJOUT
+            offensiveHolders,
+            activeCampaigns);
 
             data.m_VotersRound1 = result.m_Voters;
             data.m_AbstentionRound1 = result.m_Abstention;
@@ -263,6 +275,28 @@ namespace CityCouncil
             }
         }
 
+        /// <summary>
+        /// Liste les partis détenant le bonus Offensif dont ce district (Bastion ou non) n'est PAS
+        /// le fief : n'a d'effet que si data.m_IsBastion est vrai et appartient à un autre parti.
+        /// Utilise l'état du district AVANT cette élection (FinalizeResults/UpdateBastionStreak ne
+        /// modifient m_IsBastion/m_BastionParty qu'après ce calcul).
+        /// </summary>
+        private List<PoliticalParty> GetOffensiveBonusHolders(in CouncilDistrictData data)
+        {
+            var holders = new List<PoliticalParty>();
+            if (!data.m_IsBastion) return holders; // aucun effet hors Bastion
+
+            foreach (PoliticalParty p in Enum.GetValues(typeof(PoliticalParty)))
+            {
+                if (p == data.m_BastionParty) continue; // le détenteur du Bastion n'est jamais visé
+                if (m_BonusSystem.GetBonus(p) == PermanentBonusType.Offensif)
+                    holders.Add(p);
+            }
+            return holders;
+        }
+
+
+
         private void RunRound2(Entity districtEntity, ref CouncilDistrictData data, int totalPopulation)
         {
             var round1Shares = data.m_Round1Results
@@ -296,17 +330,23 @@ namespace CityCouncil
 
         private void FinalizeResults(ref CouncilDistrictData data, Dictionary<PoliticalParty, float> shares, int seatCount)
         {
-            var oldResults = data.m_FinalResults.ToArray();
+            // CORRECTIF — dédoublonnage défensif de l'état AVANT capture, au cas où m_FinalResults
+            // contiendrait déjà des doublons hérités d'un état incohérent antérieur (cause exacte non
+            // confirmée, mais ce garde-fou empêche la propagation vers ApplyDistrictSeatDelta).
+            var oldResultsRaw = data.m_FinalResults.ToArray();
+            var oldResults = new Dictionary<PoliticalParty, PartyResult>();
+            foreach (var r in oldResultsRaw) oldResults[r.m_Party] = r; // dernier gagne en cas de doublon
+            var dedupedOldResults = oldResults.Values;
 
             var allocated = VoteCalculator.AllocateSeats(shares, seatCount);
             data.m_FinalResults.Clear();
             foreach (var r in allocated)
                 data.m_FinalResults.Add(r);
 
-            m_MembershipSystem.ApplyDistrictSeatDelta(oldResults, allocated);
+            m_MembershipSystem.ApplyDistrictSeatDelta(dedupedOldResults, allocated);
             m_FundingSystem.DistributeForFinalizedDistrict(allocated);
 
-            UpdateBastionStreak(ref data); // AJOUT
+            UpdateBastionStreak(ref data);
         }
 
         /// <summary>
@@ -320,6 +360,21 @@ namespace CityCouncil
         {
             var winner = data.m_LeadingParty;
 
+            bool defenderLosing = data.m_StreakCount > 0
+                && data.m_StreakParty != winner
+                && m_BonusSystem.GetBonus(data.m_StreakParty) == PermanentBonusType.Defensif;
+
+            if (defenderLosing)
+            {
+                bool wasBastion = data.m_IsBastion;
+                data.m_IsBastion = false;
+                data.m_StreakCount = System.Math.Max(0, data.m_StreakCount - 1);
+
+                s_Log.Info($"[CouncilElectionSystem] Bonus défensif : {data.m_StreakParty} " +
+                           $"{(wasBastion ? "perd le Bastion et " : "")}conserve {data.m_StreakCount} case(s) restante(s).");
+                return; // le vainqueur de cette élection ne prend PAS la main sur la série
+            }
+
             if (data.m_StreakCount > 0 && data.m_StreakParty == winner)
             {
                 data.m_StreakCount = System.Math.Min(3, data.m_StreakCount + 1);
@@ -328,7 +383,7 @@ namespace CityCouncil
             {
                 data.m_StreakParty = winner;
                 data.m_StreakCount = 1;
-                data.m_IsBastion = false; // série précédente rompue -> perte immédiate du bonus
+                data.m_IsBastion = false;
             }
 
             if (data.m_StreakCount >= 3)
@@ -436,7 +491,7 @@ namespace CityCouncil
                     buildings.Dispose();
                 }
 
-                WealthLevel wealth = WealthLevel.Moyen;
+                WealthLevel wealth = WealthLevel.Modest; // était WealthLevel.Moyen
                 if (households.Length > 0)
                 {
                     var happinessData = m_HappinessParameterQuery.GetSingleton<Game.Prefabs.CitizenHappinessParameterData>();

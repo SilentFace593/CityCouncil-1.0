@@ -79,5 +79,40 @@
         public const string Admin_BastionLabel = "CityCouncil.Admin.BASTION_LABEL";
         public const string Admin_BastionActiveSuffix = "CityCouncil.Admin.BASTION_ACTIVE_SUFFIX";
 
+        // --- Bonus permanents ---
+        public const string Forces_BonusDefensifLabel = "CityCouncil.Forces.BONUS_DEFENSIF_LABEL";
+        public const string Forces_BonusOffensifLabel = "CityCouncil.Forces.BONUS_OFFENSIF_LABEL";
+        public const string Admin_BonusDefensifTooltip = "CityCouncil.Admin.BONUS_DEFENSIF_TOOLTIP";
+        public const string Admin_BonusOffensifTooltip = "CityCouncil.Admin.BONUS_OFFENSIF_TOOLTIP";
+        public const string Hemicycle_BonusChoiceTitle = "CityCouncil.Hemicycle.BONUS_CHOICE_TITLE";
+        public const string Hemicycle_BonusChoiceDesc = "CityCouncil.Hemicycle.BONUS_CHOICE_DESC";
+        public const string Hemicycle_BonusChoiceDefensif = "CityCouncil.Hemicycle.BONUS_CHOICE_DEFENSIF";
+        public const string Hemicycle_BonusChoiceOffensif = "CityCouncil.Hemicycle.BONUS_CHOICE_OFFENSIF";
+        public const string Hemicycle_BonusChoiceConfirm = "CityCouncil.Hemicycle.BONUS_CHOICE_CONFIRM";
+        public const string Hemicycle_BonusChoiceHint = "CityCouncil.Hemicycle.BONUS_CHOICE_HINT";
+        public const string Hemicycle_BonusPendingTooltip = "CityCouncil.Hemicycle.BONUS_PENDING_TOOLTIP";
+
+        // --- PropagandaTab ---
+        public const string Propaganda_TabLabel = "CityCouncil.Propaganda.TAB_LABEL";
+        public const string Propaganda_PartyLabel = "CityCouncil.Propaganda.PARTY_LABEL";
+        public const string Propaganda_TargetLabel = "CityCouncil.Propaganda.TARGET_LABEL";
+        public const string Propaganda_TargetAdults = "CityCouncil.Propaganda.TARGET_ADULTS";
+        public const string Propaganda_TargetSeniors = "CityCouncil.Propaganda.TARGET_SENIORS";
+        public const string Propaganda_IntensityLabel = "CityCouncil.Propaganda.INTENSITY_LABEL";
+        public const string Propaganda_IntensitySmall = "CityCouncil.Propaganda.INTENSITY_SMALL";
+        public const string Propaganda_IntensityMedium = "CityCouncil.Propaganda.INTENSITY_MEDIUM";
+        public const string Propaganda_IntensityStrong = "CityCouncil.Propaganda.INTENSITY_STRONG";
+        public const string Propaganda_CostLabel = "CityCouncil.Propaganda.COST_LABEL";
+        public const string Propaganda_BonusLabel = "CityCouncil.Propaganda.BONUS_LABEL";
+        public const string Propaganda_TreasuryLabel = "CityCouncil.Propaganda.TREASURY_LABEL";
+        public const string Propaganda_LaunchButton = "CityCouncil.Propaganda.LAUNCH_BUTTON";
+        public const string Propaganda_InsufficientFunds = "CityCouncil.Propaganda.INSUFFICIENT_FUNDS";
+        public const string Propaganda_ActiveCampaignsHeader = "CityCouncil.Propaganda.ACTIVE_CAMPAIGNS_HEADER";
+        public const string Propaganda_NoActiveCampaigns = "CityCouncil.Propaganda.NO_ACTIVE_CAMPAIGNS";
+        public const string Propaganda_NoPlayerParty = "CityCouncil.Propaganda.NO_PLAYER_PARTY";
+        public const string Propaganda_AutoRenewLabel = "CityCouncil.Propaganda.AUTO_RENEW_LABEL";
+        public const string Propaganda_AlreadyActive = "CityCouncil.Propaganda.ALREADY_ACTIVE";
+        public const string Propaganda_CancelButton = "CityCouncil.Propaganda.CANCEL_BUTTON";
+
     }
 }

@@ -9,6 +9,7 @@ import {
   resolvePartyColor,
   resolvePartyLabel,
   type PartyResultDto,
+  BONUS_BADGE
 } from "./PartyResultDto";
 
 // --- Bindings exposés par CouncilUISystem.cs (group "cityCouncil") ---
@@ -25,6 +26,7 @@ const cityEventHeadline$ = bindValue<string>("cityCouncil", "cityEventHeadline")
 const adminBastionStreakParty$ = bindValue<string>("cityCouncil", "adminBastionStreakParty");
 const adminBastionStreakCount$ = bindValue<number>("cityCouncil", "adminBastionStreakCount");
 const adminBastionActive$ = bindValue<boolean>("cityCouncil", "adminBastionActive");
+const adminLeadingPartyBonus$ = bindValue<string>("cityCouncil", "adminLeadingPartyBonus");
 
 function partyBadgeSrc(party: string): string | null {
   return null;
@@ -44,37 +46,46 @@ class SafeBoundary extends Component<{ children: any }, { crashed: boolean }> {
   }
 }
 
-function PartyBadge({ result }: { result: PartyResultDto }) {
+function PartyBadge({ result, bonus }: { result: PartyResultDto; bonus?: string }) {
   const { translate } = useLocalization();
-  const t = (key: string, fallback: string): string => translate(key, fallback) ?? fallback; // AJOUT — manquait
+  const t = (key: string, fallback: string): string => translate(key, fallback) ?? fallback;
 
   const label = resolvePartyLabel(result, translate);
   const color = resolvePartyColor(result);
-  const badgeSrc = partyBadgeSrc(result.party);
   const seatsWord = result.seats > 1
     ? t("CityCouncil.Admin.SEATS_PLURAL", "sièges")
     : t("CityCouncil.Admin.SEATS_SINGULAR", "siège");
   const seatsLine = `${result.seats} ${seatsWord}`;
 
+  const bonusTooltip = bonus === "Defensif"
+    ? t("CityCouncil.Admin.BONUS_DEFENSIF_TOOLTIP", "Bonus permanent Défensif")
+    : bonus === "Offensif"
+    ? t("CityCouncil.Admin.BONUS_OFFENSIF_TOOLTIP", "Bonus permanent Offensif")
+    : "";
+
   return (
     <div style={{ display: "flex", alignItems: "center" }}>
-      {badgeSrc ? (
-        <img src={badgeSrc} style={{ width: "36rem", height: "36rem", flexShrink: 0, marginRight: "8rem" }} />
-      ) : (
-        <div
-          style={{
-            width: "36rem",
-            height: "36rem",
-            borderRadius: "50%",
-            background: color,
-            flexShrink: 0,
-            marginRight: "8rem",
-          }}
-        />
-      )}
+      <div
+        style={{
+          width: "36rem",
+          height: "36rem",
+          borderRadius: "50%",
+          background: color,
+          flexShrink: 0,
+          marginRight: "8rem",
+        }}
+      />
       <div style={{ minWidth: 0 }}>
-        <div style={{ color: "white", fontSize: "15rem", fontWeight: 600, whiteSpace: "nowrap", wordBreak: "keep-all", overflowWrap: "normal" }}>
-          {label}
+        <div style={{ display: "flex", alignItems: "center" }}>
+          <span style={{ color: "white", fontSize: "15rem", fontWeight: 600, whiteSpace: "nowrap", wordBreak: "keep-all", overflowWrap: "normal" }}>
+            {label}
+          </span>
+          {/* TODO : remplacer par une vraie icône .png une fois le design disponible. */}
+          {bonus && bonus !== "None" && (
+            <span title={bonusTooltip} style={{ marginLeft: "6rem", fontSize: "14rem" }}>
+              {BONUS_BADGE[bonus] ?? ""}
+            </span>
+          )}
         </div>
         <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "13rem", whiteSpace: "nowrap", wordBreak: "keep-all", overflowWrap: "normal" }}>
           {seatsLine}
@@ -204,14 +215,15 @@ const AdministrationSectionInner = ({ InfoSection }: { InfoSection: any }) => {
   const bastionStreakParty = useValue(adminBastionStreakParty$);
   const bastionStreakCount = useValue(adminBastionStreakCount$);
   const bastionActive = useValue(adminBastionActive$);
-  const results: PartyResultDto[] = useMemo(() => {
-    try {
-      const parsed = JSON.parse(resultsJson);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  }, [resultsJson]);
+  const leadingPartyBonus = useValue(adminLeadingPartyBonus$);
+const results: PartyResultDto[] = useMemo(() => {
+  try {
+    const parsed = JSON.parse(resultsJson ?? "[]"); // GARDE
+    return Array.isArray(parsed) ? parsed.filter((r) => r && typeof r.party === "string") : []; // GARDE
+  } catch {
+    return [];
+  }
+}, [resultsJson]);
   const cityEventHeadline = useValue(cityEventHeadline$);
 
   if (!visible || !InfoSection) return null;
@@ -268,7 +280,7 @@ const AdministrationSectionInner = ({ InfoSection }: { InfoSection: any }) => {
 
         {phase === "Completed" && leadingParty && (
           <div>
-            <PartyBadge result={leadingResult ?? { party: leadingParty, seats, voteShare: 0 }} />
+            <PartyBadge result={leadingResult ?? { party: leadingParty, seats, voteShare: 0 }} bonus={leadingPartyBonus} />
 
             <div style={{ marginTop: "10rem" }}>
               <div style={{ marginBottom: "6rem" }}>

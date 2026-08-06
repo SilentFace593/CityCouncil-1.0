@@ -17,6 +17,7 @@ namespace CityCouncil
         private static readonly ILog s_Log = LogManager.GetLogger("CityCouncil").SetShowsErrorsInUI(false);
 
         private EntityQuery m_SingletonQuery;
+        private EntityQuery m_DistrictQuery;
         private Entity m_SingletonEntity = Entity.Null;
         private CouncilPartyMembershipSystem m_MembershipSystem;
 
@@ -24,6 +25,7 @@ namespace CityCouncil
         {
             base.OnCreate();
             m_SingletonQuery = GetEntityQuery(ComponentType.ReadOnly<CouncilCustomPartyData>());
+            m_DistrictQuery = GetEntityQuery(ComponentType.ReadOnly<CouncilDistrictData>());
             m_MembershipSystem = World.GetOrCreateSystemManaged<CouncilPartyMembershipSystem>();
         }
 
@@ -235,12 +237,50 @@ namespace CityCouncil
             data.m_SubstitutionActive = true;
             SetData(data);
 
-            // Repart de zéro sur le bord nouvellement substitué : le nouveau parti n'hérite pas
-            // du passif (adhérents/trésorerie) de l'ancien. Les sièges n'ont pas besoin d'un reset
-            // manuel : ils sont recalculés intégralement à chaque élection (m_FinalResults).
             m_MembershipSystem.ResetPartyTreasuryAndMembers(newSpace);
+            ResetBastionProgressForParty(newSpace); // AJOUT
 
-            s_Log.Info($"[CouncilCustomPartySystem] Substitution activée pour le bord {newSpace} (adhérents/trésorerie remis à zéro).");
+            s_Log.Info($"[CouncilCustomPartySystem] Substitution activée pour le bord {newSpace} (adhérents/trésorerie/Bastion remis à zéro).");
+        }
+
+        /// <summary>
+        /// Remet à zéro la progression Bastion (série + statut) de TOUS les districts où ce slot
+        /// politique était en série ou détenait le titre — cohérent avec le fait qu'un parti
+        /// nouvellement créé n'a aucun historique électoral, contrairement au parti hôte qu'il
+        /// remplace visuellement.
+        /// </summary>
+        private void ResetBastionProgressForParty(PoliticalParty party)
+        {
+            var districts = m_DistrictQuery.ToEntityArray(Allocator.Temp);
+            try
+            {
+                foreach (var d in districts)
+                {
+                    var districtData = EntityManager.GetComponentData<CouncilDistrictData>(d);
+                    bool touched = false;
+
+                    if (districtData.m_StreakCount > 0 && districtData.m_StreakParty == party)
+                    {
+                        districtData.m_StreakCount = 0;
+                        districtData.m_StreakParty = default;
+                        touched = true;
+                    }
+
+                    if (districtData.m_IsBastion && districtData.m_BastionParty == party)
+                    {
+                        districtData.m_IsBastion = false;
+                        districtData.m_BastionParty = default;
+                        touched = true;
+                    }
+
+                    if (touched)
+                        EntityManager.SetComponentData(d, districtData);
+                }
+            }
+            finally
+            {
+                districts.Dispose();
+            }
         }
 
         // Pas de logique per-frame nécessaire, ce système est purement passif

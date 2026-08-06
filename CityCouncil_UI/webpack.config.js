@@ -23,6 +23,7 @@ const banner = `
 `;
 
 module.exports = {
+  devtool: "eval-source-map", // ou "eval-source-map" en dev, plus lisible dans Chrome DevTools
   mode: "production",
   stats: "none",
   entry: {

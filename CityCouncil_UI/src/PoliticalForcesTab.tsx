@@ -6,6 +6,7 @@ import {
   PARTY_LABELS,
   PARTY_COLORS,
   PARTY_ORDER,
+  BONUS_BADGE,
   CUSTOM_PARTY_PALETTE_HEX,
   type PartyResultDto,
 } from "./PartyResultDto";
@@ -17,11 +18,17 @@ const customPartyName$ = bindValue<string>("cityCouncil", "customPartyName");
 const customPartyColor$ = bindValue<string>("cityCouncil", "customPartyColor");
 const customPartySpace$ = bindValue<string>("cityCouncil", "customPartySpace");
 const customPartyPendingActivation$ = bindValue<boolean>("cityCouncil", "customPartyPendingActivation");
+const partyBonusesJson$ = bindValue<string>("cityCouncil", "partyBonusesJson"); 
 
 interface PartyMembershipDto {
   party: string;
   members: number;
   treasury: number;
+}
+
+interface PartyBonusDto {
+  party: string;
+  bonus: string;
 }
 
 function partyPhotoSrc(_party: string): string | null {
@@ -37,6 +44,7 @@ interface ForceEntry {
   seats: number;
   treasury: number;
   pendingReplacement: boolean;
+  bonus: string;
 }
 
 export function PoliticalForcesTab() {
@@ -50,6 +58,7 @@ export function PoliticalForcesTab() {
   const customColor = useValue(customPartyColor$);
   const customSpace = useValue(customPartySpace$);
   const customPendingActivation = useValue(customPartyPendingActivation$);
+  const bonusesJson = useValue(partyBonusesJson$);
 
   const partyDescriptions: Record<string, string> = {
     Ecologiste: t("CityCouncil.Forces.DESC_ECOLOGISTE", "Défend une transition écologique ambitieuse et la préservation des espaces naturels."),
@@ -60,22 +69,31 @@ export function PoliticalForcesTab() {
   };
 
   const seatResults: PartyResultDto[] = useMemo(() => {
-    try {
-      const parsed = JSON.parse(seatsJson);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  }, [seatsJson]);
+  try {
+    const parsed = JSON.parse(seatsJson ?? "[]");
+    return Array.isArray(parsed) ? parsed.filter((r) => r && typeof r.party === "string") : [];
+  } catch {
+    return [];
+  }
+}, [seatsJson]);
 
-  const membership: PartyMembershipDto[] = useMemo(() => {
-    try {
-      const parsed = JSON.parse(membershipJson);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  }, [membershipJson]);
+const membership: PartyMembershipDto[] = useMemo(() => {
+  try {
+    const parsed = JSON.parse(membershipJson ?? "[]");
+    return Array.isArray(parsed) ? parsed.filter((m) => m && typeof m.party === "string") : [];
+  } catch {
+    return [];
+  }
+}, [membershipJson]);
+
+const bonuses: PartyBonusDto[] = useMemo(() => {
+  try {
+    const parsed = JSON.parse(bonusesJson ?? "[]");
+    return Array.isArray(parsed) ? parsed.filter((b) => b && typeof b.party === "string") : [];
+  } catch {
+    return [];
+  }
+}, [bonusesJson]);
 
   const entries: ForceEntry[] = useMemo(() => {
     return PARTY_ORDER.map((partyKey) => {
@@ -84,6 +102,7 @@ export function PoliticalForcesTab() {
    // Décoré uniquement si la substitution est ACTIVE (le serveur ne remplit displayName/
       // displayColor sur seatResults que dans ce cas, mais on garde une logique cohérente
       // côté client pour label/couleur/description qui ne passent pas par le DTO).
+      const bonusEntry = bonuses.find((b) => b.party === partyKey); 
       const isCustomHere = customExists && !customPendingActivation && customSpace === partyKey;
       const isPendingReplacement = customExists && customPendingActivation && customSpace === partyKey; // AJOUT
 
@@ -98,6 +117,7 @@ export function PoliticalForcesTab() {
         seats: seatEntry?.seats ?? 0,
         treasury: memberEntry?.treasury ?? 0,
         pendingReplacement: isPendingReplacement, // AJOUT
+        bonus: bonusEntry?.bonus ?? "",
       };
     });
   }, [seatResults, membership, customExists, customName, customColor, customSpace, customPendingActivation, partyDescriptions]);
@@ -118,6 +138,11 @@ export function PoliticalForcesTab() {
   const treasurySuffix = t("CityCouncil.Forces.TREASURY", "crédits en caisse");
   const treasuryLine = selected ? `${selected.treasury.toLocaleString()} ${treasurySuffix}` : "";
   const pendingReplacementLabel = t("CityCouncil.Forces.PENDING_REPLACEMENT", "Parti remplacé à la prochaine élection !");
+   const bonusLabel = selected && selected.bonus !== "None"
+    ? (selected.bonus === "Defensif"
+        ? t("CityCouncil.Forces.BONUS_DEFENSIF_LABEL", "Bonus permanent : Défensif")
+        : t("CityCouncil.Forces.BONUS_OFFENSIF_LABEL", "Bonus permanent : Offensif"))
+    : "";
 
 
   return (
@@ -149,8 +174,9 @@ export function PoliticalForcesTab() {
                   marginRight: "8rem",
                 }}
               />
-              <div style={{ color: "white", fontSize: "12rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                {e.label}
+             <div style={{ color: "white", fontSize: "12rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", display: "flex", alignItems: "center", gap: "4rem" }}>
+                <span>{e.label}</span>
+                {e.bonus !== "None" && <span style={{ fontSize: "11rem" }}>{BONUS_BADGE[e.bonus] ?? ""}</span>}
               </div>
             </div>
           );
@@ -184,23 +210,29 @@ export function PoliticalForcesTab() {
               </div>
             </div>
 
-            <div style={{ color: "rgba(255,255,255,0.8)", fontSize: "13rem", marginBottom: "14rem", lineHeight: "18rem" }}>
+          <div style={{ color: "rgba(255,255,255,0.8)", fontSize: "13rem", marginBottom: "14rem", lineHeight: "18rem" }}>
               {selected.description}
             </div>
 
-{selected.pendingReplacement && (
-  <div
-    style={{
-      color: "rgba(255,180,120,0.9)",
-      fontSize: "12rem",
-      fontWeight: 700,
-      marginBottom: "10rem",
-      whiteSpace: "nowrap",
-    }}
-  >
-{pendingReplacementLabel}
-  </div>
-)}
+            {selected.pendingReplacement && (
+              <div
+                style={{
+                  color: "rgba(255,180,120,0.9)",
+                  fontSize: "12rem",
+                  fontWeight: 700,
+                  marginBottom: "10rem",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {pendingReplacementLabel}
+              </div>
+            )}
+
+            {bonusLabel && (
+              <div style={{ color: "rgba(150,190,255,0.9)", fontSize: "12rem", fontWeight: 700, marginBottom: "10rem", whiteSpace: "nowrap" }}>
+                {bonusLabel}
+              </div>
+            )}
 
             <div style={{ display: "flex", flexDirection: "column", gap: "6rem" }}>
               <div style={{ color: "rgba(255,255,255,0.9)", fontSize: "13rem", whiteSpace: "nowrap" }}>{membersLine}</div>

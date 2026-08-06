@@ -86,6 +86,40 @@ namespace CityCouncil
                 // Bastion
                 { LocaleKeys.Admin_BastionLabel, "Stronghold: " },
                 { LocaleKeys.Admin_BastionActiveSuffix, " — Bonus active (+4%)" },
+
+                { LocaleKeys.Forces_BonusDefensifLabel, "Permanent bonus: Defensive" },
+                { LocaleKeys.Forces_BonusOffensifLabel, "Permanent bonus: Offensive" },
+                { LocaleKeys.Admin_BonusDefensifTooltip, "Permanent Defensive bonus" },
+                { LocaleKeys.Admin_BonusOffensifTooltip, "Permanent Offensive bonus" },
+                { LocaleKeys.Hemicycle_BonusChoiceTitle, "Permanent bonus earned!" },
+                { LocaleKeys.Hemicycle_BonusChoiceDesc, "Your party has won the city council majority several times in a row. Choose your permanent bonus:" },
+                { LocaleKeys.Hemicycle_BonusChoiceDefensif, "Defensive" },
+                { LocaleKeys.Hemicycle_BonusChoiceOffensif, "Offensive" },
+                { LocaleKeys.Hemicycle_BonusChoiceConfirm, "Confirm" },
+                { LocaleKeys.Hemicycle_BonusChoiceHint, "To change bonus, you'll need to win the majority at least once more." },
+                { LocaleKeys.Hemicycle_BonusPendingTooltip, "Permanent Bonus to choose!" },
+
+                // Propaganda
+                { LocaleKeys.Propaganda_TabLabel, "Propaganda" },
+                { LocaleKeys.Propaganda_PartyLabel, "Party" },
+                { LocaleKeys.Propaganda_TargetLabel, "Target" },
+                { LocaleKeys.Propaganda_TargetAdults, "Adults" },
+                { LocaleKeys.Propaganda_TargetSeniors, "Seniors" },
+                { LocaleKeys.Propaganda_IntensityLabel, "Intensity" },
+                { LocaleKeys.Propaganda_IntensitySmall, "Small campaign" },
+                { LocaleKeys.Propaganda_IntensityMedium, "Medium campaign" },
+                { LocaleKeys.Propaganda_IntensityStrong, "Strong campaign" },
+                { LocaleKeys.Propaganda_CostLabel, "Cost: " },
+                { LocaleKeys.Propaganda_BonusLabel, "Bonus: " },
+                { LocaleKeys.Propaganda_TreasuryLabel, "Reserves: " },
+                { LocaleKeys.Propaganda_LaunchButton, "Launch campaign" },
+                { LocaleKeys.Propaganda_InsufficientFunds, "Insufficient reserves." },
+                { LocaleKeys.Propaganda_ActiveCampaignsHeader, "Ongoing campaigns" },
+                { LocaleKeys.Propaganda_NoActiveCampaigns, "No active campaign." },
+                { LocaleKeys.Propaganda_NoPlayerParty, "Create your own party (\"Your Party\" tab) to launch your own propaganda campaigns." },
+                { LocaleKeys.Propaganda_AutoRenewLabel, "Automatically renew" },
+                { LocaleKeys.Propaganda_AlreadyActive, "A campaign is already running for your party. Cancel it or wait for it to end before launching a new one." },
+                { LocaleKeys.Propaganda_CancelButton, "Cancel campaign" },
             };
         }
         public void Unload() { }

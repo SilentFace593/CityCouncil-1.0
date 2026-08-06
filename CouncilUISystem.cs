@@ -30,6 +30,8 @@ namespace CityCouncil.Systems
         private CityCouncil.CouncilCustomPartySystem m_CustomPartySystem;
         private CityCouncil.CouncilFundingSystem m_FundingSystem;
         private CityCouncil.CouncilElectionSystem m_ElectionSystem;
+        private CouncilCustomPartyData m_LastPushedCustomPartyData;
+       
 
         // --- Évènement de ville actif (affiché en bas de l'encart Administration) ---
         private ValueBinding<string> m_CityEventHeadlineBinding;
@@ -76,6 +78,23 @@ namespace CityCouncil.Systems
         private bool m_LastPushedFundingLocked;
         private bool m_HasLastPushedFunding;
 
+        // Bonus offensif et défensif
+        private CityCouncil.CouncilBonusSystem m_BonusSystem;
+        private ValueBinding<string> m_AdminLeadingPartyBonusBinding; // "None" | "Defensif" | "Offensif"
+        private ValueBinding<string> m_PartyBonusesJsonBinding;
+        private ValueBinding<bool> m_PlayerBonusChoicePendingBinding;
+        private ValueBinding<string> m_PlayerBonusChoiceSpaceBinding;
+        private string m_LastPushedPartyBonusesJson;
+        private bool m_LastPushedBonusPending;
+        private bool m_HasLastPushedBonus;
+        private bool m_HasLastPushedCustomParty;
+
+        //Propagande
+        private CityCouncil.CouncilPropagandaSystem m_PropagandaSystem;
+        private ValueBinding<string> m_PropagandaStateJsonBinding;
+        private string m_LastPushedPropagandaJson;
+        private bool m_HasLastPushedPropaganda;
+
 
         protected override void OnCreate()
         {
@@ -89,6 +108,8 @@ namespace CityCouncil.Systems
             m_MembershipSystem = World.GetOrCreateSystemManaged<CouncilPartyMembershipSystem>();
             m_FundingSystem = World.GetOrCreateSystemManaged<CityCouncil.CouncilFundingSystem>();
             m_ElectionSystem = World.GetOrCreateSystemManaged<CityCouncil.CouncilElectionSystem>();
+            m_BonusSystem = World.GetOrCreateSystemManaged<CityCouncil.CouncilBonusSystem>();
+            m_PropagandaSystem = World.GetOrCreateSystemManaged<CityCouncil.CouncilPropagandaSystem>();
 
 
 
@@ -118,6 +139,14 @@ namespace CityCouncil.Systems
             m_AdminBastionStreakPartyBinding = new ValueBinding<string>(kGroup, "adminBastionStreakParty", "");
             m_AdminBastionStreakCountBinding = new ValueBinding<int>(kGroup, "adminBastionStreakCount", 0);
             m_AdminBastionActiveBinding = new ValueBinding<bool>(kGroup, "adminBastionActive", false);
+            m_AdminLeadingPartyBonusBinding = new ValueBinding<string>(kGroup, "adminLeadingPartyBonus", "None");
+            m_PartyBonusesJsonBinding = new ValueBinding<string>(kGroup, "partyBonusesJson", "[]");
+            m_PlayerBonusChoicePendingBinding = new ValueBinding<bool>(kGroup, "playerBonusChoicePending", false);
+            m_PlayerBonusChoiceSpaceBinding = new ValueBinding<string>(kGroup, "playerBonusChoiceSpace", "");
+            m_PropagandaStateJsonBinding = new ValueBinding<string>(kGroup, "propagandaStateJson", "[]");
+            
+
+
 
             AddBinding(m_AdminVisibleBinding);
             AddBinding(m_AdminPhaseBinding);
@@ -145,6 +174,51 @@ namespace CityCouncil.Systems
             AddBinding(m_AdminBastionStreakPartyBinding);
             AddBinding(m_AdminBastionStreakCountBinding);
             AddBinding(m_AdminBastionActiveBinding);
+            AddBinding(m_AdminLeadingPartyBonusBinding);
+            AddBinding(m_PartyBonusesJsonBinding);
+            AddBinding(m_PlayerBonusChoicePendingBinding);
+            AddBinding(m_PlayerBonusChoiceSpaceBinding);
+            AddBinding(m_PropagandaStateJsonBinding);
+
+            AddBinding(new TriggerBinding<string, string, string, string>(kGroup, "launchCampaign", // AJOUT un paramètre string
+    (partyStr, targetStr, intensityStr, autoRenewStr) =>
+    {
+        if (System.Enum.TryParse<PoliticalParty>(partyStr, out var party)
+            && System.Enum.TryParse<CampaignTarget>(targetStr, out var target)
+            && System.Enum.TryParse<CampaignIntensity>(intensityStr, out var intensity))
+        {
+            bool autoRenew = autoRenewStr == "true";
+            m_PropagandaSystem.TryLaunchCampaign(party, target, intensity, autoRenew, out _);
+        }
+        UpdatePropagandaBindingIfChanged(force: true);
+    }));
+
+            AddBinding(new TriggerBinding<string>(kGroup, "cancelCampaign",
+    (partyStr) =>
+    {
+        if (System.Enum.TryParse<PoliticalParty>(partyStr, out var party))
+            m_PropagandaSystem.TryCancelCampaign(party, out _);
+        UpdatePropagandaBindingIfChanged(force: true);
+    }));
+
+            AddBinding(new TriggerBinding<string>(kGroup, "choosePlayerPermanentBonus",
+    (typeStr) =>
+    {
+        if (System.Enum.TryParse<PermanentBonusType>(typeStr, out var type))
+            m_BonusSystem.ChoosePlayerBonus(type);
+        UpdateBonusBindingIfChanged(force: true);
+    }));
+
+            AddBinding(new TriggerBinding(kGroup, "debugExpireCampaigns",
+    () => m_PropagandaSystem.DebugExpireAllCampaigns()));
+
+            // OUTIL DEBUG TEMPORAIRE POUR COMPTAGE DES ADHERENTS ET COTISATION
+            AddBinding(new TriggerBinding(kGroup, "debugForceCycleCheck",
+    () => m_MembershipSystem.DebugForceCycleCheck()));
+
+            // OUTIL DE DEBUG TEMPORAIRE POUR BONUS PERMANENT
+            AddBinding(new TriggerBinding(kGroup, "debugForceMajorityCheck",
+                () => m_BonusSystem.DebugForceMajorityCheck()));
 
             // OUTIL DE DEBUG TEMPORAIRE — cf. CouncilElectionSystem.DebugForceAllDistrictsToNextStep.
             AddBinding(new TriggerBinding(kGroup, "debugForceNextElection",
@@ -202,6 +276,10 @@ namespace CityCouncil.Systems
             UpdateMembershipBindingIfChanged();
             UpdateFundingBindingIfChanged();
             UpdateCityEventBinding();
+            UpdateBonusBindingIfChanged();
+            UpdateCustomPartyBindingIfChanged();
+            UpdatePropagandaBindingIfChanged();
+
 
             Entity selected = m_ToolSystem.selected;
             bool isDistrict = selected != Entity.Null
@@ -241,6 +319,25 @@ namespace CityCouncil.Systems
             PushAdminData(data);
             m_LastPushedData = data;
             m_HasLastPushedData = true;
+        }
+
+        private void UpdateCustomPartyBindingIfChanged()
+        {
+            var data = m_CustomPartySystem.GetData();
+            if (m_HasLastPushedCustomParty && CustomPartyEquals(data, m_LastPushedCustomPartyData)) return;
+
+            PushCustomPartyState(data);
+        }
+
+        private static bool CustomPartyEquals(in CouncilCustomPartyData a, in CouncilCustomPartyData b)
+        {
+            return a.m_Exists == b.m_Exists
+                && a.m_Name.Equals(b.m_Name)
+                && a.m_Color == b.m_Color
+                && a.m_Space == b.m_Space
+                && a.m_PendingDeletion == b.m_PendingDeletion
+                && a.m_SubstitutionActive == b.m_SubstitutionActive
+                && a.m_ActiveSpace == b.m_ActiveSpace;
         }
 
         private void UpdateMembershipBindingIfChanged()
@@ -288,6 +385,28 @@ namespace CityCouncil.Systems
             PushCustomPartyState();
             PushMembershipState(); // AJOUT — même raison : lire l'état APRÈS restauration, pas avant
             PushFundingState();
+            UpdateBonusBindingIfChanged(force: true);
+            UpdatePropagandaBindingIfChanged(force: true);
+        }
+
+        private void UpdatePropagandaBindingIfChanged(bool force = false)
+        {
+            var data = m_PropagandaSystem.GetData();
+            string json = PropagandaDto.ToJsonArray(
+                data.m_Entries.ToArray().Select(e => new PropagandaDto
+                {
+                    party = e.m_Party.ToString(),
+                    active = e.m_Active,
+                    target = e.m_Active ? e.m_Target.ToString() : "",
+                    bonusPercent = e.m_Active ? e.m_BonusPercent : 0f,
+                    autoRenew = e.m_Active && e.m_AutoRenew // AJOUT
+                }));
+
+            if (!force && m_HasLastPushedPropaganda && json == m_LastPushedPropagandaJson) return;
+
+            m_PropagandaStateJsonBinding.Update(json);
+            m_LastPushedPropagandaJson = json;
+            m_HasLastPushedPropaganda = true;
         }
 
         private void UpdateFundingBindingIfChanged()
@@ -327,20 +446,21 @@ namespace CityCouncil.Systems
         }
 
         /// <summary>Pousse l'état complet du parti joueur (appelé au OnCreate et après chaque action).</summary>
-        private void PushCustomPartyState()
+        private void PushCustomPartyState(CouncilCustomPartyData? preloaded = null)
         {
-            var data = m_CustomPartySystem.GetData();
+            var data = preloaded ?? m_CustomPartySystem.GetData();
             m_CustomPartyExistsBinding.Update(data.m_Exists);
             m_CustomPartyNameBinding.Update(data.m_Exists ? data.m_Name.ToString() : "");
             m_CustomPartyColorBinding.Update(data.m_Exists ? data.m_Color.ToString() : "");
             m_CustomPartySpaceBinding.Update(data.m_Exists ? data.m_Space.ToString() : "");
             m_CustomPartyPendingDeletionBinding.Update(data.m_Exists && data.m_PendingDeletion);
 
-            // AJOUT — true tant que la substitution n'a pas encore pris effet (création ou
-            // changement de bord en attente de la prochaine élection).
             bool pendingActivation = data.m_Exists && !data.m_PendingDeletion
                 && (!data.m_SubstitutionActive || data.m_ActiveSpace != data.m_Space);
             m_CustomPartyPendingActivationBinding.Update(pendingActivation);
+
+            m_LastPushedCustomPartyData = data;
+            m_HasLastPushedCustomParty = true;
         }
 
         private void PushAdminData(CouncilDistrictData data)
@@ -370,15 +490,94 @@ namespace CityCouncil.Systems
             m_AdminAbstentionBinding.Update(round2Done ? data.m_AbstentionRound2 : data.m_AbstentionRound1);
 
             var results = hasResults
-                ? data.m_FinalResults.ToArray().Select(PartyResultDto.From).Select(DecorateWithCustomParty).ToArray()
-                : System.Array.Empty<PartyResultDto>();
+     ? data.m_FinalResults.ToArray().Select(PartyResultDto.From).Select(DecorateWithCustomParty).ToArray()
+     : System.Array.Empty<PartyResultDto>();
             m_AdminResultsBinding.Update(PartyResultDto.ToJsonArray(results));
-            // AJOUT — barre de progression Bastion. On affiche la série même avant le 3e palier
-            // (progression visible), le nom du parti reste celui de m_StreakParty tant qu'une série
-            // est en cours (0 = aucune série connue, ne devrait pas arriver dès la 1ère élection).
+
+            // Barre de progression Bastion.
             m_AdminBastionStreakPartyBinding.Update(data.m_StreakCount > 0 ? data.m_StreakParty.ToString() : "");
             m_AdminBastionStreakCountBinding.Update(data.m_StreakCount);
             m_AdminBastionActiveBinding.Update(data.m_IsBastion);
+
+            // Bonus permanent du parti leader (icône affichée à côté du logo côté React).
+            m_AdminLeadingPartyBonusBinding.Update(
+                hasResults ? m_BonusSystem.GetBonus(data.m_LeadingParty).ToString() : "None");
+        }
+
+        private void UpdateBonusBindingIfChanged(bool force = false)
+        {
+            var bonusData = m_BonusSystem.GetData();
+            string json = PartyBonusDto.ToJsonArray(
+                System.Enum.GetValues(typeof(PoliticalParty))
+                    .Cast<PoliticalParty>()
+                    .Select(p => new PartyBonusDto { party = p.ToString(), bonus = m_BonusSystem.GetBonus(p).ToString() }));
+
+            bool pending = bonusData.m_PlayerChoicePending;
+
+            if (!force && m_HasLastPushedBonus && json == m_LastPushedPartyBonusesJson && pending == m_LastPushedBonusPending)
+                return;
+
+            m_PartyBonusesJsonBinding.Update(json);
+            m_PlayerBonusChoicePendingBinding.Update(pending);
+            m_PlayerBonusChoiceSpaceBinding.Update(pending ? bonusData.m_PlayerChoiceSpace.ToString() : "");
+
+            m_LastPushedPartyBonusesJson = json;
+            m_LastPushedBonusPending = pending;
+            m_HasLastPushedBonus = true;
+        }
+
+        public struct PartyBonusDto
+        {
+            public string party;
+            public string bonus;
+
+            public static string ToJsonArray(System.Collections.Generic.IEnumerable<PartyBonusDto> items)
+            {
+                var sb = new System.Text.StringBuilder();
+                sb.Append('[');
+                bool first = true;
+                foreach (var e in items)
+                {
+                    if (!first) sb.Append(',');
+                    first = false;
+                    sb.Append('{');
+                    sb.Append("\"party\":\"").Append(e.party).Append("\",");
+                    sb.Append("\"bonus\":\"").Append(e.bonus).Append("\"");
+                    sb.Append('}');
+                }
+                sb.Append(']');
+                return sb.ToString();
+            }
+        }
+
+        public struct PropagandaDto
+        {
+            public string party;
+            public bool active;
+            public string target;
+            public float bonusPercent;
+            public bool autoRenew; // AJOUT
+
+            public static string ToJsonArray(System.Collections.Generic.IEnumerable<PropagandaDto> items)
+            {
+                var sb = new System.Text.StringBuilder();
+                sb.Append('[');
+                bool first = true;
+                foreach (var e in items)
+                {
+                    if (!first) sb.Append(',');
+                    first = false;
+                    sb.Append('{');
+                    sb.Append("\"party\":\"").Append(e.party).Append("\",");
+                    sb.Append("\"active\":").Append(e.active ? "true" : "false").Append(',');
+                    sb.Append("\"target\":\"").Append(e.target).Append("\",");
+                    sb.Append("\"bonusPercent\":").Append(e.bonusPercent.ToString(System.Globalization.CultureInfo.InvariantCulture)).Append(',');
+                    sb.Append("\"autoRenew\":").Append(e.autoRenew ? "true" : "false"); // AJOUT
+                    sb.Append('}');
+                }
+                sb.Append(']');
+                return sb.ToString();
+            }
         }
 
         /// <summary>
@@ -524,6 +723,8 @@ namespace CityCouncil.Systems
             s.Replace("\\", "\\\\").Replace("\"", "\\\"");
     }
 
+
+
     public struct PartyMembershipDto
     {
         public string party;
@@ -549,6 +750,8 @@ namespace CityCouncil.Systems
             return sb.ToString();
         }
 
+
     }
+
 
 }

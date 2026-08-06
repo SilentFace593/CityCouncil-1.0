@@ -86,3 +86,8 @@ export function resolvePartyColor(r: PartyResultDto): string {
   }
   return PARTY_COLORS[r.party] ?? "#888";
 }
+
+export const BONUS_BADGE: Record<string, string> = {
+  Defensif: "🛡️",
+  Offensif: "⚔️",
+};

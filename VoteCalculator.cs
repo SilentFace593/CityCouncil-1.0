@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.IO.Ports;
 using System.Linq;
+using Game.Events;
 
 namespace CityCouncil
 {
@@ -81,44 +83,67 @@ namespace CityCouncil
         /// Retourne des parts renormalisées à 1 (hors abstention) + l'abstention ajustée.
         /// </summary>
         private static (Dictionary<PoliticalParty, float> shares, float abstention) ApplyWealthModifiers(
-            Dictionary<PoliticalParty, float> baseShares, float baseAbstention, WealthLevel wealth, bool isAdult)
+    Dictionary<PoliticalParty, float> baseShares, float baseAbstention, WealthLevel wealth, bool isAdult)
         {
             var shares = new Dictionary<PoliticalParty, float>(baseShares);
             float abstention = baseAbstention;
 
             switch (wealth)
             {
-                case WealthLevel.Pauvre:
-                    // Populiste et Gauche radicale +75% pour toutes tranches d'âge
+                case WealthLevel.Wretched:
+                    // Toutes tranches d'âge confondues, d'après l'énoncé.
+                    Boost(shares, PoliticalParty.Populiste, 0.80f);
+                    Boost(shares, PoliticalParty.GaucheRadicale, 0.40f);
+                    abstention *= 1.65f;
+                    break;
+
+                case WealthLevel.Poor:
+                    // Comportement identique à l'ancien palier "Pauvre" (inchangé).
                     Boost(shares, PoliticalParty.Populiste, 0.75f);
                     Boost(shares, PoliticalParty.GaucheRadicale, 0.75f);
-                    // Abstention +50% chez les adultes uniquement
                     if (isAdult)
                         abstention *= 1.50f;
                     break;
 
-                case WealthLevel.Moyen:
+                case WealthLevel.Modest:
                     if (isAdult)
                     {
-                        Boost(shares, PoliticalParty.Democrate, 0.02f);
-                        Boost(shares, PoliticalParty.Ecologiste, 0.25f);
+                        Boost(shares, PoliticalParty.Populiste, 0.04f);
+                        Boost(shares, PoliticalParty.GaucheRadicale, 0.02f);
                     }
                     else
                     {
-                        Boost(shares, PoliticalParty.Republicain, 0.10f);
+                        Boost(shares, PoliticalParty.Republicain, 0.01f);
+                        Boost(shares, PoliticalParty.Populiste, 0.20f);
                     }
                     break;
 
-                case WealthLevel.Riche:
-                    Boost(shares, PoliticalParty.Democrate, 0.05f);
-                    Boost(shares, PoliticalParty.Republicain, 0.05f);
-                    Boost(shares, PoliticalParty.Ecologiste, 0.25f);
+                case WealthLevel.Comfortable:
+                    if (isAdult)
+                    {
+                        Boost(shares, PoliticalParty.Ecologiste, 0.10f);
+                        Boost(shares, PoliticalParty.Democrate, 0.04f);
+                    }
+                    else
+                    {
+                        Boost(shares, PoliticalParty.Republicain, 0.04f);
+                    }
+                    break;
+
+                case WealthLevel.Wealthy:
+                    if (isAdult)
+                    {
+                        Boost(shares, PoliticalParty.Democrate, 0.05f);
+                        Boost(shares, PoliticalParty.Ecologiste, 0.10f);
+                    }
+                    else
+                    {
+                        Boost(shares, PoliticalParty.Republicain, 0.05f);
+                    }
                     break;
             }
 
             // Renormalisation : la part "exprimée" totale (hors abstention) doit rester cohérente.
-            // On renormalise les parts entre partis pour qu'elles somment à 1, l'abstention
-            // étant gérée séparément (elle réduit le nombre de votants, pas les proportions entre partis).
             float sum = shares.Values.Sum();
             var keys = shares.Keys.ToList();
             foreach (var k in keys)
@@ -258,13 +283,20 @@ namespace CityCouncil
         /// <param name="activeEventEffects">Effets de l'évènement de ville actif, ou null si aucun.</param>
         /// <param name="cityLeadingParty">Parti actuellement majoritaire à l'échelle de la ville,
         /// nécessaire uniquement si un effet cible EventEffectTarget.LeadingPartyCityWide ; null sinon.</param>
+        /// 
+        // AJOUT — bonus offensif : impact de +3 % sur un district Bastion qui n'appartient pas au
+// détenteur du bonus. Même point du pipeline que le bonus Bastion.
+        private const float OffensiveBonusPct = 0.03f;
+
         public static RoundResult ComputeRound1(
-       int seniors, int adults, WealthLevel wealth, int seed,
-       IEnumerable<string> activePolicies,
-       EventEffect[] activeEventEffects = null,
-       PoliticalParty? cityLeadingParty = null,
-       bool isBastion = false,                        // AJOUT
-       PoliticalParty bastionParty = default)          // AJOUT
+    int seniors, int adults, WealthLevel wealth, int seed,
+    IEnumerable<string> activePolicies,
+    EventEffect[] activeEventEffects = null,
+    PoliticalParty? cityLeadingParty = null,
+    bool isBastion = false,
+    PoliticalParty bastionParty = default,
+    IEnumerable<PoliticalParty> offensiveBonusHolders = null,
+    IEnumerable<(PoliticalParty party, CampaignTarget target, float percent)> activeCampaigns = null) // AJOUT
         {
             var rng = new Random(seed);
             var seniorBaseWithMargin = ApplyMarginOfError(SeniorBase, rng, MarginOfErrorPct);
@@ -276,11 +308,33 @@ namespace CityCouncil
             ApplyEventEffects(seniorShares, ref seniorAbst, isAdult: false, activeEventEffects, cityLeadingParty);
             ApplyEventEffects(adultShares, ref adultAbst, isAdult: true, activeEventEffects, cityLeadingParty);
 
-            // AJOUT — bonus Bastion, appliqué après évènements/richesse, avant fusion des tranches.
             if (isBastion)
             {
                 Boost(seniorShares, bastionParty, BastionBonusPct);
                 Boost(adultShares, bastionParty, BastionBonusPct);
+            }
+
+            if (offensiveBonusHolders != null)
+            {
+                foreach (var party in offensiveBonusHolders)
+                {
+                    Boost(seniorShares, party, OffensiveBonusPct);
+                    Boost(adultShares, party, OffensiveBonusPct);
+                }
+            }
+
+            // AJOUT — bonus de campagne de propagande, ciblé par tranche d'âge, city-wide (identique
+            // dans tous les districts puisque activeCampaigns provient d'un état ville entière, pas
+            // par district).
+            if (activeCampaigns != null)
+            {
+                foreach (var (party, target, percent) in activeCampaigns)
+                {
+                    if (target == CampaignTarget.Adultes)
+                        Boost(adultShares, party, percent);
+                    else
+                        Boost(seniorShares, party, percent);
+                }
             }
 
             int seniorVoters = (int)Math.Round(seniors * (1f - seniorAbst));

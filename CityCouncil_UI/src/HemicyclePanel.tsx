@@ -6,10 +6,14 @@ import { translatePartyName, PARTY_LABELS, PARTY_ORDER, resolvePartyColor, resol
 import { YourPartyTab } from "./YourPartyTab";
 import { PoliticalForcesTab } from "./PoliticalForcesTab";
 import { FundingTab } from "./FundingTab";
+import { PropagandaTab } from "./PropagandaTab"; 
 
 // --- Bindings exposés par CouncilUISystem.cs (group "cityCouncil") ---
 const hemicycleSeatsJson$ = bindValue<string>("cityCouncil", "hemicycleSeatsJson");
 const hemicycleLeader$ = bindValue<string>("cityCouncil", "hemicycleLeader");
+const playerBonusChoicePending$ = bindValue<boolean>("cityCouncil", "playerBonusChoicePending"); // AJOUT
+const playerBonusChoiceSpace$ = bindValue<string>("cityCouncil", "playerBonusChoiceSpace"); // AJOUT
+
 
 // Error Boundary
 class SafeBoundary extends Component<{ children: any }, { crashed: boolean }> {
@@ -113,6 +117,81 @@ function HemicycleFan({ results }: { results: PartyResultDto[] }) {
   );
 }
 
+function BonusChoicePrompt() {
+  const { translate } = useLocalization();
+  const t = (key: string, fallback: string): string => translate(key, fallback) ?? fallback;
+
+  const pending = useValue(playerBonusChoicePending$);
+  const [selection, setSelection] = useState<"Defensif" | "Offensif" | null>(null);
+
+  if (!pending) return null;
+
+  const title = t("CityCouncil.Hemicycle.BONUS_CHOICE_TITLE", "Bonus permanent obtenu !");
+  const desc = t("CityCouncil.Hemicycle.BONUS_CHOICE_DESC", "Votre parti a remporté la majorité au conseil municipal plusieurs fois de suite. Choisissez votre bonus permanent :");
+  const defensifLabel = t("CityCouncil.Hemicycle.BONUS_CHOICE_DEFENSIF", "Défensif");
+  const offensifLabel = t("CityCouncil.Hemicycle.BONUS_CHOICE_OFFENSIF", "Offensif");
+  const confirmLabel = t("CityCouncil.Hemicycle.BONUS_CHOICE_CONFIRM", "Valider");
+  const hint = t("CityCouncil.Hemicycle.BONUS_CHOICE_HINT", "Pour changer de bonus, vous devrez remporter la majorité au moins une fois de plus.");
+
+  const optionStyle = (key: "Defensif" | "Offensif") => ({
+    flex: 1,
+    padding: "10rem",
+    borderRadius: "6rem",
+    cursor: "pointer",
+    textAlign: "center" as const,
+    background: selection === key ? "rgba(70,130,220,0.85)" : "rgba(255,255,255,0.08)",
+    border: selection === key ? "1rem solid rgba(150,190,255,0.9)" : "1rem solid rgba(255,255,255,0.15)",
+    color: "white",
+    fontSize: "13rem",
+  });
+
+  return (
+    <div style={{ marginTop: "14rem", padding: "10rem", background: "rgba(255,255,255,0.06)", borderRadius: "6rem" }}>
+      <div style={{ color: "rgba(150,190,255,0.9)", fontSize: "13rem", fontWeight: 700, marginBottom: "6rem", whiteSpace: "nowrap" }}>
+        {title}
+      </div>
+      <div style={{ color: "rgba(255,255,255,0.8)", fontSize: "12rem", lineHeight: "16rem", marginBottom: "10rem" }}>
+        {desc}
+      </div>
+
+      <div style={{ display: "flex", gap: "8rem", marginBottom: "10rem" }}>
+        {/* TODO : remplacer les emoji par de vraies icônes .png une fois le design disponible. */}
+        <div style={optionStyle("Defensif")} onClick={() => setSelection("Defensif")}>
+          <div style={{ fontSize: "20rem", marginBottom: "4rem" }}>🛡️</div>
+          <div>{defensifLabel}</div>
+        </div>
+        <div style={optionStyle("Offensif")} onClick={() => setSelection("Offensif")}>
+          <div style={{ fontSize: "20rem", marginBottom: "4rem" }}>⚔️</div>
+          <div>{offensifLabel}</div>
+        </div>
+      </div>
+
+      <button
+        disabled={!selection}
+        onClick={() => selection && trigger("cityCouncil", "choosePlayerPermanentBonus", selection)}
+        style={{
+          width: "100%",
+          background: selection ? "rgba(70,130,220,0.85)" : "rgba(255,255,255,0.08)",
+          color: "white",
+          border: "none",
+          borderRadius: "4rem",
+          padding: "8rem 10rem",
+          fontSize: "13rem",
+          fontWeight: "bold",
+          cursor: selection ? "pointer" : "default",
+          marginBottom: "8rem",
+        }}
+      >
+        {confirmLabel}
+      </button>
+
+      <div style={{ color: "rgba(255,255,255,0.5)", fontSize: "11rem", lineHeight: "15rem" }}>
+        {hint}
+      </div>
+    </div>
+  );
+}
+
 function HemicycleResultsContent() {
   const { translate } = useLocalization();
   const t = (key: string, fallback: string): string => translate(key, fallback) ?? fallback;
@@ -120,14 +199,14 @@ function HemicycleResultsContent() {
   const seatsJson = useValue(hemicycleSeatsJson$);
   const results: PartyResultDto[] = useMemo(() => {
     try {
-      const parsed = JSON.parse(seatsJson);
-      return Array.isArray(parsed) ? parsed : [];
+      const parsed = JSON.parse(seatsJson ?? "[]"); // GARDE
+      return Array.isArray(parsed) ? parsed.filter((r) => r && typeof r.party === "string") : []; // GARDE
     } catch {
       return [];
     }
   }, [seatsJson]);
   const leader = useValue(hemicycleLeader$);
-  const totalSeats = results.reduce((sum, r) => sum + r.seats, 0);
+  const totalSeats = results.reduce((sum, r) => sum + (r.seats ?? 0), 0); // GARDE
   const leaderResult = results.find((r) => r.party === leader);
 
   // Construction sécurisée de la ligne de résumé sous forme d'une seule chaîne (template literal)
@@ -178,6 +257,8 @@ function HemicycleResultsContent() {
           </div>
         ))}
       </div>
+
+       <BonusChoicePrompt />
        //* OUTIL DE DEBUG TEMPORAIRE — force l'avancement de toutes les élections en cours.
        //* À retirer avant release.
       <button
@@ -197,13 +278,62 @@ function HemicycleResultsContent() {
       >
         [DEBUG] Forcer l'étape électorale suivante
       </button>
+
+      {/* OUTIL DE DEBUG TEMPORAIRE — force le contrôle de majorité (bonus permanent) sans
+    attendre le cycle réel de 7 jours in-game, nécessaire quand on enchaîne les élections
+    via le bouton ci-dessus. À retirer avant release, comme l'autre bouton [DEBUG]. */}
+<button
+  onClick={() => trigger("cityCouncil", "debugForceMajorityCheck")}
+  style={{
+    marginTop: "8rem",
+    width: "100%",
+    background: "rgba(220,80,80,0.85)",
+    color: "white",
+    border: "none",
+    borderRadius: "4rem",
+    padding: "8rem 10rem",
+    fontSize: "12rem",
+    fontWeight: "bold",
+    cursor: "pointer",
+  }}
+>
+  [DEBUG] Forcer le contrôle de majorité (bonus)
+</button>
+
+{/* OUTIL DE DEBUG TEMPORAIRE — force le cycle de cotisation des adhérents (trésorerie),
+    même remarque que les deux boutons précédents. À retirer avant release. */}
+<button
+  onClick={() => trigger("cityCouncil", "debugForceCycleCheck")}
+  style={{
+    marginTop: "8rem",
+    width: "100%",
+    background: "rgba(220,80,80,0.85)",
+    color: "white",
+    border: "none",
+    borderRadius: "4rem",
+    padding: "8rem 10rem",
+    fontSize: "12rem",
+    fontWeight: "bold",
+    cursor: "pointer",
+  }}
+>
+  [DEBUG] Forcer le cycle de cotisation (trésorerie)
+</button>
+
+<button
+  onClick={() => trigger("cityCouncil", "debugExpireCampaigns")}
+  style={{ marginTop: "8rem", width: "100%", background: "rgba(220,80,80,0.85)", color: "white", border: "none", borderRadius: "4rem", padding: "8rem 10rem", fontSize: "12rem", fontWeight: "bold", cursor: "pointer" }}
+>
+  [DEBUG] Forcer l'expiration des campagnes
+</button>
+
     </div>
   );
 }
 
-type TabKey = "results" | "yourParty" | "forces" | "funding";
+type TabKey = "results" | "yourParty" | "forces" | "funding" | "propaganda";
 
-const PANEL_WIDTH = "440rem";
+const PANEL_WIDTH = "520rem";
 const PANEL_CONTENT_HEIGHT = "560rem";
 
 function HemicycleTabs() {
@@ -236,14 +366,18 @@ function HemicycleTabs() {
         <div style={tabStyle("funding")} onClick={() => setTab("funding")}>
           {t("CityCouncil.Hemicycle.TAB_FUNDING", "Financement")}
         </div>
+        <div style={tabStyle("propaganda")} onClick={() => setTab("propaganda")}>
+  {t("CityCouncil.Propaganda.TAB_LABEL", "Propagande")}
+</div>
       </div>
 
       <div style={{ height: PANEL_CONTENT_HEIGHT, overflowY: "auto", boxSizing: "border-box" }}>
-        {tab === "results" && <HemicycleResultsContent />}
-        {tab === "yourParty" && <YourPartyTab />}
-        {tab === "forces" && <PoliticalForcesTab />}
-        {tab === "funding" && <FundingTab />}
-      </div>
+  {tab === "results" && <SafeBoundary><HemicycleResultsContent /></SafeBoundary>}
+  {tab === "yourParty" && <SafeBoundary><YourPartyTab /></SafeBoundary>}
+  {tab === "forces" && <SafeBoundary><PoliticalForcesTab /></SafeBoundary>}
+  {tab === "funding" && <SafeBoundary><FundingTab /></SafeBoundary>}
+  {tab === "propaganda" && <SafeBoundary><PropagandaTab /></SafeBoundary>}
+</div>
     </div>
   );
 }
@@ -253,6 +387,7 @@ function HemicycleEntry() {
   const t = (key: string, fallback: string): string => translate(key, fallback) ?? fallback;
 
   const [open, setOpen] = useState(false);
+   const bonusPending = useValue(playerBonusChoicePending$);
 
   const handleOpen = () => {
     const next = !open;
@@ -262,11 +397,33 @@ function HemicycleEntry() {
     }
   };
 
+  // TODO : remplacer ce badge emoji par un vrai remplacement d'icône .png une fois le design
+  // disponible (ex. <img src="coui://.../hemicycle_bonus_pending.png" /> à la place du bouton
+  // normal). Pour l'instant : icône inchangée + petit indicateur rouge + tooltip natif.
+  const tooltip = bonusPending ? t("CityCouncil.Hemicycle.BONUS_PENDING_TOOLTIP", "Bonus Permanent à choisir !") : undefined;
+
   return (
     <>
-      <Button variant="flat" onSelect={handleOpen}>
-        <div style={{ fontSize: "16rem" }}>🏛</div>
-      </Button>
+      <div title={tooltip} style={{ position: "relative", display: "inline-block" }}>
+        <Button variant="flat" onSelect={handleOpen}>
+          <div style={{ fontSize: "16rem" }}>CityCouncil</div>
+        </Button>
+        {bonusPending && (
+          <div
+            style={{
+              position: "absolute",
+              top: "2rem",
+              right: "2rem",
+              width: "8rem",
+              height: "8rem",
+              borderRadius: "50%",
+              background: "rgba(220,80,80,0.95)",
+              border: "1rem solid white",
+              pointerEvents: "none",
+            }}
+          />
+        )}
+      </div>
 
       {open && (
         <Panel

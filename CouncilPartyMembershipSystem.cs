@@ -183,8 +183,15 @@ namespace CityCouncil
         /// </summary>
         public void ApplyDistrictSeatDelta(IEnumerable<PartyResult> oldResults, IEnumerable<PartyResult> newResults)
         {
-            var oldSeats = oldResults.ToDictionary(r => r.m_Party, r => r.m_Seats);
-            var newSeats = newResults.ToDictionary(r => r.m_Party, r => r.m_Seats);
+            // CORRECTIF — remplace .ToDictionary() (qui plante en cas de clé dupliquée, ex. état
+            // corrompu hérité d'une manipulation antérieure) par une accumulation manuelle tolérante :
+            // si un parti apparaît plusieurs fois, on garde le dernier sièges rencontré plutôt que de
+            // planter. Ne change rien au comportement normal (jamais de doublon en usage standard).
+            var oldSeats = new Dictionary<PoliticalParty, int>();
+            foreach (var r in oldResults) oldSeats[r.m_Party] = r.m_Seats;
+
+            var newSeats = new Dictionary<PoliticalParty, int>();
+            foreach (var r in newResults) newSeats[r.m_Party] = r.m_Seats;
 
             var data = GetData();
             var entries = data.m_Entries;
@@ -319,6 +326,48 @@ namespace CityCouncil
 
             data.m_Entries = entries;
             SetData(data);
+        }
+
+        /// <summary>
+        /// OUTIL DE DEBUG TEMPORAIRE — force l'exécution immédiate du cycle de cotisation/trésorerie,
+        /// sans attendre les 7 jours in-game réels. Même remarque que sur CouncilBonusSystem : ce
+        /// système dépend du temps de simulation réel, jamais avancé par le bouton d'élection accélérée.
+        /// </summary>
+        public void DebugForceCycleCheck()
+        {
+            double currentDay = (double)m_SimulationSystem.frameIndex / 262144.0;
+            m_LastCycleCheckDay = currentDay;
+            RunCycleCheck();
+            s_Log.Info("[CouncilPartyMembershipSystem] DEBUG : cycle de cotisation exécuté immédiatement.");
+        }
+
+        /// <summary>
+        /// Débite la trésorerie d'un parti si les fonds sont suffisants. Utilisé par
+        /// CouncilPropagandaSystem pour financer les campagnes. Retourne false (sans rien débiter)
+        /// si la trésorerie est insuffisante.
+        /// </summary>
+        public bool TrySpendTreasury(PoliticalParty party, int amount)
+        {
+            if (amount <= 0) return true;
+
+            var data = GetData();
+            var entries = data.m_Entries;
+
+            for (int i = 0; i < entries.Length; i++)
+            {
+                if (entries[i].m_Party != party) continue;
+                if (entries[i].m_Treasury < amount) return false;
+
+                var entry = entries[i];
+                entry.m_Treasury -= amount;
+                entries[i] = entry;
+
+                data.m_Entries = entries;
+                SetData(data);
+                return true;
+            }
+
+            return false; // parti introuvable (ne devrait pas arriver, les 5 entrées sont toujours présentes)
         }
 
     }

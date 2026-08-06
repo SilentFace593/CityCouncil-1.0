@@ -17,9 +17,108 @@ namespace CityCouncil
 
     public enum WealthLevel : byte
     {
-        Pauvre = 0,
-        Moyen = 1,
-        Riche = 2
+        Wretched = 0,
+        Poor = 1,
+        Modest = 2,
+        Comfortable = 3,
+        Wealthy = 4
+    }
+
+    public enum CampaignTarget : byte
+    {
+        Adultes = 0,
+        Seniors = 1
+    }
+
+    public enum CampaignIntensity : byte
+    {
+        Petite = 0,
+        Moyenne = 1,
+        Forte = 2
+    }
+
+    /// <summary>Catalogue statique coût/bonus par palier — ajustable librement sans toucher au reste.</summary>
+    public static class CampaignCatalog
+    {
+        public static readonly System.Collections.Generic.Dictionary<CampaignIntensity, (int cost, float bonusPct)> Tiers = new()
+    {
+        { CampaignIntensity.Petite, (25000, 0.02f) },
+        { CampaignIntensity.Moyenne, (75000, 0.04f) },
+        { CampaignIntensity.Forte, (150000, 0.06f) },
+    };
+
+        // Même durée qu'un cycle électoral complet — ajustable indépendamment.
+        public const double CampaignDurationDays = 7.0;
+    }
+
+    public struct CampaignEntry
+    {
+        public PoliticalParty m_Party;
+        public bool m_Active;
+        public CampaignTarget m_Target;
+        public CampaignIntensity m_Intensity; // AJOUT — nécessaire pour la reconduction automatique
+        public float m_BonusPercent;
+        public double m_ExpiryDay;
+        public bool m_AutoRenew;
+    }
+
+    public struct CouncilPropagandaData : IComponentData, ISerializable
+    {
+        public FixedList512Bytes<CampaignEntry> m_Entries;
+
+        private const int kVersion = 2; // AJOUT de champ -> bump version
+
+        public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
+        {
+            writer.Write(kVersion);
+            writer.Write(m_Entries.Length);
+            for (int i = 0; i < m_Entries.Length; i++)
+            {
+                writer.Write((byte)m_Entries[i].m_Party);
+                writer.Write(m_Entries[i].m_Active);
+                writer.Write((byte)m_Entries[i].m_Target);
+                writer.Write(m_Entries[i].m_BonusPercent);
+                writer.Write(m_Entries[i].m_ExpiryDay);
+                writer.Write(m_Entries[i].m_AutoRenew); // AJOUT
+                writer.Write((byte)m_Entries[i].m_Intensity);
+            }
+        }
+
+        public void Deserialize<TReader>(TReader reader) where TReader : IReader
+        {
+            reader.Read(out int version);
+            reader.Read(out int count);
+            m_Entries = new FixedList512Bytes<CampaignEntry>();
+            for (int i = 0; i < count; i++)
+            {
+                reader.Read(out byte party);
+                reader.Read(out bool active);
+                reader.Read(out byte target);
+                reader.Read(out float bonus);
+                reader.Read(out double expiry);
+
+                bool autoRenew = false;
+                var intensity = CampaignIntensity.Petite; // valeur par défaut pour compat v1
+
+                if (version >= 2)
+                {
+                    reader.Read(out autoRenew);
+                    reader.Read(out byte intensityByte);
+                    intensity = (CampaignIntensity)intensityByte;
+                }
+
+                m_Entries.Add(new CampaignEntry
+                {
+                    m_Party = (PoliticalParty)party,
+                    m_Active = active,
+                    m_Target = (CampaignTarget)target,
+                    m_Intensity = intensity,
+                    m_BonusPercent = bonus,
+                    m_ExpiryDay = expiry,
+                    m_AutoRenew = autoRenew
+                });
+            }
+        }
     }
 
     /// <summary>
@@ -41,6 +140,80 @@ namespace CityCouncil
         Noir = 9
     }
 
+    public enum PermanentBonusType : byte
+    {
+        None = 0,
+        Defensif = 1,
+        Offensif = 2
+    }
+    /// <summary>Bonus permanent détenu par un slot politique (parti vanilla, ou hôte du parti joueur).</summary>
+    public struct CouncilBonusEntry
+    {
+        public PoliticalParty m_Party;
+        public PermanentBonusType m_Bonus;
+    }
+
+    /// <summary>
+    /// Composant SINGLETON (même pattern que CouncilCustomPartyData) géré par CouncilBonusSystem.
+    /// Suit la série de victoires consécutives à la majorité du conseil municipal (vérifiée au même
+    /// rythme que le cycle de cotisation, cf. CouncilPartyMembershipSystem.RunCycleCheck — duplication
+    /// volontaire de la logique de calcul de majorité, même choix de découplage que documenté ailleurs
+    /// dans le mod), et les bonus permanents effectivement attribués par slot.
+    /// </summary>
+    public struct CouncilBonusData : IComponentData, ISerializable
+    {
+        public bool m_HasStreak;             // false tant qu'aucune majorité n'a encore été observée
+        public PoliticalParty m_StreakParty; // valide seulement si m_HasStreak
+        public int m_StreakCount;
+
+        public FixedList512Bytes<CouncilBonusEntry> m_Entries; // jusqu'à 5, un par PoliticalParty
+
+        // Choix en attente pour le parti joueur (si le slot en série appartient à sa substitution active).
+        public bool m_PlayerChoicePending;
+        public PoliticalParty m_PlayerChoiceSpace; // valide seulement si m_PlayerChoicePending
+
+        private const int kVersion = 1;
+
+        public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
+        {
+            writer.Write(kVersion);
+            writer.Write(m_HasStreak);
+            writer.Write((byte)m_StreakParty);
+            writer.Write(m_StreakCount);
+
+            writer.Write(m_Entries.Length);
+            for (int i = 0; i < m_Entries.Length; i++)
+            {
+                writer.Write((byte)m_Entries[i].m_Party);
+                writer.Write((byte)m_Entries[i].m_Bonus);
+            }
+
+            writer.Write(m_PlayerChoicePending);
+            writer.Write((byte)m_PlayerChoiceSpace);
+        }
+
+        public void Deserialize<TReader>(TReader reader) where TReader : IReader
+        {
+            reader.Read(out int _);
+            reader.Read(out m_HasStreak);
+            reader.Read(out byte streakParty); m_StreakParty = (PoliticalParty)streakParty;
+            reader.Read(out m_StreakCount);
+
+            reader.Read(out int count);
+            m_Entries = new FixedList512Bytes<CouncilBonusEntry>();
+            for (int i = 0; i < count; i++)
+            {
+                reader.Read(out byte party);
+                reader.Read(out byte bonus);
+                m_Entries.Add(new CouncilBonusEntry { m_Party = (PoliticalParty)party, m_Bonus = (PermanentBonusType)bonus });
+            }
+
+            reader.Read(out m_PlayerChoicePending);
+            reader.Read(out byte choiceSpace); m_PlayerChoiceSpace = (PoliticalParty)choiceSpace;
+        }
+    }
+
+
     /// <summary>
     /// Mappe l'enum vanilla à 5 paliers (Game.UI.InGame.HouseholdWealthKey) sur nos 3 paliers.
     /// </summary>
@@ -50,12 +223,12 @@ namespace CityCouncil
         {
             return key switch
             {
-                Game.UI.InGame.HouseholdWealthKey.Wretched => WealthLevel.Pauvre,
-                Game.UI.InGame.HouseholdWealthKey.Poor => WealthLevel.Pauvre,
-                Game.UI.InGame.HouseholdWealthKey.Modest => WealthLevel.Moyen,
-                Game.UI.InGame.HouseholdWealthKey.Comfortable => WealthLevel.Moyen,
-                Game.UI.InGame.HouseholdWealthKey.Wealthy => WealthLevel.Riche,
-                _ => WealthLevel.Moyen
+                Game.UI.InGame.HouseholdWealthKey.Wretched => WealthLevel.Wretched,
+                Game.UI.InGame.HouseholdWealthKey.Poor => WealthLevel.Poor,
+                Game.UI.InGame.HouseholdWealthKey.Modest => WealthLevel.Modest,
+                Game.UI.InGame.HouseholdWealthKey.Comfortable => WealthLevel.Comfortable,
+                Game.UI.InGame.HouseholdWealthKey.Wealthy => WealthLevel.Wealthy,
+                _ => WealthLevel.Modest
             };
         }
     }
