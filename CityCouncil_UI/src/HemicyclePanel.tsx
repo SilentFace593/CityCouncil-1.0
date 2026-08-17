@@ -351,7 +351,7 @@ function HemicycleResultsContent() {
 
 type TabKey = "results" | "yourParty" | "forces" | "funding" | "propaganda" | "commission";
 
-const PANEL_WIDTH = "520rem";
+const PANEL_WIDTH = "650rem";
 const PANEL_CONTENT_HEIGHT = "560rem";
 
 function HemicycleTabs() {
@@ -398,6 +398,7 @@ function HemicycleTabs() {
   {tab === "forces" && <SafeBoundary><PoliticalForcesTab /></SafeBoundary>}
   {tab === "funding" && <SafeBoundary><FundingTab /></SafeBoundary>}
   {tab === "propaganda" && <SafeBoundary><PropagandaTab /></SafeBoundary>}
+  {tab === "commission" && <SafeBoundary><ElectoralCommissionTab /></SafeBoundary>}
 </Scrollable>
     </div>
   );

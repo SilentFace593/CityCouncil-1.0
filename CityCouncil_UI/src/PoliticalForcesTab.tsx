@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { bindValue, useValue, trigger } from "cs2/api";
+import { bindValue, trigger, useValue } from "cs2/api";
 import { useLocalization } from "cs2/l10n";
 import {
   translatePartyName,
@@ -171,8 +171,6 @@ const blackFund: BlackFundDto = useMemo(() => {
 
 const [transferAmount, setTransferAmount] = useState<string>("");
 const [showCloseConfirm, setShowCloseConfirm] = useState(false);
-
-const isPlayerSelected = (playerControlsAvailable: boolean) => false;
 
   const partyDescriptions: Record<string, string> = {
     Ecologiste: t("CityCouncil.Forces.DESC_ECOLOGISTE", "Défend une transition écologique ambitieuse et la préservation des espaces naturels."),

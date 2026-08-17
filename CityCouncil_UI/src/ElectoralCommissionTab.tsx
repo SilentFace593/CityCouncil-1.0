@@ -2,8 +2,15 @@ import { useMemo, useState } from "react";
 import { bindValue, useValue } from "cs2/api";
 import { useLocalization } from "cs2/l10n";
 import { translatePartyName, PARTY_ORDER, PARTY_COLORS } from "./PartyResultDto";
+import eyeClosedIcon from "./images/eye_closed.png";
+import eyeSemiClosedIcon from "./images/eye_semiclosed.png";
+import eyeOpenIcon from "./images/eye_open.png";
 
 const commissionReportJson$ = bindValue<string>("cityCouncil", "commissionReportJson");
+const customPartyExists$ = bindValue<boolean>("cityCouncil", "customPartyExists");
+const customPartyName$ = bindValue<string>("cityCouncil", "customPartyName");
+const customPartySpace$ = bindValue<string>("cityCouncil", "customPartySpace");
+const customPartyPendingActivation$ = bindValue<boolean>("cityCouncil", "customPartyPendingActivation");
 
 interface CommissionReportDto {
   party: string;
@@ -16,14 +23,14 @@ interface CommissionReportDto {
 
 // Icônes 40x40px, cf. CityCouncil_UI/src/images/
 const VIGILANCE_ICONS: Record<string, string> = {
-  Low: "coui://citycouncil/eye_closed.png",
-  Medium: "coui://citycouncil/eye_semiclosed.png",
-  High: "coui://citycouncil/eye_open.png",
+  Low: eyeClosedIcon,
+  Medium: eyeSemiClosedIcon,
+  High: eyeOpenIcon,
 };
 
 function VigilanceIcon({ level }: { level: string }) {
   const src = VIGILANCE_ICONS[level] ?? VIGILANCE_ICONS.Low;
-  return <img src={src} style={{ width: "40rem", height: "40rem", flexShrink: 0 }} />;
+  return <img src={src} alt={level} style={{ width: "40rem", height: "40rem", flexShrink: 0 }} />;
 }
 
 export function ElectoralCommissionTab() {
@@ -31,6 +38,17 @@ export function ElectoralCommissionTab() {
   const t = (key: string, fallback: string): string => translate(key, fallback) ?? fallback;
 
   const reportJson = useValue(commissionReportJson$);
+  const customExists = useValue(customPartyExists$);
+  const customName = useValue(customPartyName$);
+  const customSpace = useValue(customPartySpace$);
+  const customPending = useValue(customPartyPendingActivation$);
+
+  const playerControlsAvailable = !!customExists && !customPending && !!customSpace;
+
+  const partyLabel = (partyKey: string): string => {
+    const isPlayerHere = playerControlsAvailable && customSpace === partyKey;
+    return isPlayerHere ? (customName || partyKey) : translatePartyName(partyKey, translate);
+  };
   const report: CommissionReportDto[] = useMemo(() => {
     try {
       const p = JSON.parse(reportJson ?? "[]");
@@ -73,8 +91,8 @@ export function ElectoralCommissionTab() {
             >
               <div style={{ width: "10rem", height: "10rem", borderRadius: "50%", background: color, flexShrink: 0, marginRight: "8rem" }} />
               <span style={{ color: "white", fontSize: "12rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                {translatePartyName(r.party, translate)}
-              </span>
+  {partyLabel(r.party)}
+</span>
             </div>
           );
         })}
@@ -88,7 +106,7 @@ export function ElectoralCommissionTab() {
               <VigilanceIcon level={selected.vigilanceLevel} />
               <div style={{ marginLeft: "10rem" }}>
                 <div style={{ color: "white", fontSize: "16rem", fontWeight: 700 }}>
-                  {translatePartyName(selected.party, translate)}
+  {partyLabel(selected.party)}
                 </div>
                 <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "13rem" }}>
                   {levelLabel(selected.vigilanceLevel)}
