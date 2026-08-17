@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Colossal.UI.Binding;
 using Game.Areas;
@@ -30,6 +31,8 @@ namespace CityCouncil.Systems
         private CityCouncil.CouncilCustomPartySystem m_CustomPartySystem;
         private CityCouncil.CouncilFundingSystem m_FundingSystem;
         private CityCouncil.CouncilElectionSystem m_ElectionSystem;
+        private CityCouncil.CouncilBlackFundSystem m_BlackFundSystem;
+        private CityCouncil.CouncilElectoralCommissionSystem m_CommissionSystem;
         private CouncilCustomPartyData m_LastPushedCustomPartyData;
        
 
@@ -92,8 +95,28 @@ namespace CityCouncil.Systems
         //Propagande
         private CityCouncil.CouncilPropagandaSystem m_PropagandaSystem;
         private ValueBinding<string> m_PropagandaStateJsonBinding;
+        private ValueBinding<string> m_DistrictListJsonBinding;      // [{id, name}] pour le menu déroulant
+        private ValueBinding<string> m_DistrictCampaignsJsonBinding; // campagnes actives du parti joueur, tous districts
+        private int m_LastPushedDistrictCount = -1;
         private string m_LastPushedPropagandaJson;
         private bool m_HasLastPushedPropaganda;
+        private string m_LastPushedDistrictCampaignsJson;
+        private bool m_HasLastPushedDistrictCampaigns;
+        private Game.UI.NameSystem m_NameSystem;
+
+
+        // caisse noire et campagnes illégales
+        private ValueBinding<string> m_BlackFundJsonBinding;         // état caisse noire du parti joueur
+        private ValueBinding<string> m_IllegalCampaignsJsonBinding;  // campagnes illégales du parti joueur
+        private ValueBinding<string> m_CommissionReportJsonBinding;  // vigilance + sanctions, tous partis
+        private ValueBinding<string> m_LastInvoiceLocaleKeyBinding;  // dernier libellé de facture tiré
+        private string m_LastPushedBlackFundJson;
+        private bool m_HasLastPushedBlackFund;
+        private string m_LastPushedIllegalCampaignsJson;
+        private bool m_HasLastPushedIllegalCampaigns;
+        private string m_LastPushedCommissionReportJson;
+        private bool m_HasLastPushedCommissionReport;
+
 
 
         protected override void OnCreate()
@@ -110,6 +133,9 @@ namespace CityCouncil.Systems
             m_ElectionSystem = World.GetOrCreateSystemManaged<CityCouncil.CouncilElectionSystem>();
             m_BonusSystem = World.GetOrCreateSystemManaged<CityCouncil.CouncilBonusSystem>();
             m_PropagandaSystem = World.GetOrCreateSystemManaged<CityCouncil.CouncilPropagandaSystem>();
+            m_NameSystem = World.GetOrCreateSystemManaged<Game.UI.NameSystem>();
+            m_BlackFundSystem = World.GetOrCreateSystemManaged<CityCouncil.CouncilBlackFundSystem>();
+            m_CommissionSystem = World.GetOrCreateSystemManaged<CityCouncil.CouncilElectoralCommissionSystem>();
 
 
 
@@ -144,7 +170,13 @@ namespace CityCouncil.Systems
             m_PlayerBonusChoicePendingBinding = new ValueBinding<bool>(kGroup, "playerBonusChoicePending", false);
             m_PlayerBonusChoiceSpaceBinding = new ValueBinding<string>(kGroup, "playerBonusChoiceSpace", "");
             m_PropagandaStateJsonBinding = new ValueBinding<string>(kGroup, "propagandaStateJson", "[]");
-            
+            m_DistrictListJsonBinding = new ValueBinding<string>(kGroup, "districtListJson", "[]");
+            m_DistrictCampaignsJsonBinding = new ValueBinding<string>(kGroup, "districtCampaignsJson", "[]");
+            m_BlackFundJsonBinding = new ValueBinding<string>(kGroup, "blackFundJson", "{}");
+            m_IllegalCampaignsJsonBinding = new ValueBinding<string>(kGroup, "illegalCampaignsJson", "[]");
+            m_CommissionReportJsonBinding = new ValueBinding<string>(kGroup, "commissionReportJson", "[]");
+            m_LastInvoiceLocaleKeyBinding = new ValueBinding<string>(kGroup, "lastInvoiceLocaleKey", "");
+
 
 
 
@@ -179,6 +211,12 @@ namespace CityCouncil.Systems
             AddBinding(m_PlayerBonusChoicePendingBinding);
             AddBinding(m_PlayerBonusChoiceSpaceBinding);
             AddBinding(m_PropagandaStateJsonBinding);
+            AddBinding(m_DistrictListJsonBinding);
+            AddBinding(m_DistrictCampaignsJsonBinding);
+            AddBinding(m_BlackFundJsonBinding);
+            AddBinding(m_IllegalCampaignsJsonBinding);
+            AddBinding(m_CommissionReportJsonBinding);
+            AddBinding(m_LastInvoiceLocaleKeyBinding);
 
             AddBinding(new TriggerBinding<string, string, string, string>(kGroup, "launchCampaign", // AJOUT un paramètre string
     (partyStr, targetStr, intensityStr, autoRenewStr) =>
@@ -211,6 +249,39 @@ namespace CityCouncil.Systems
 
             AddBinding(new TriggerBinding(kGroup, "debugExpireCampaigns",
     () => m_PropagandaSystem.DebugExpireAllCampaigns()));
+
+            AddBinding(new TriggerBinding<string, string, string, string>(kGroup, "launchDistrictCampaign",
+    (districtIdStr, typeStr, targetStr, tierStr) =>
+    {
+        if (!int.TryParse(districtIdStr, out int districtId)) return;
+        var districtEntity = FindDistrictByIndex(districtId);
+        if (districtEntity == Entity.Null) return;
+
+        var custom = m_CustomPartySystem.GetData();
+        if (!custom.m_Exists || !custom.m_SubstitutionActive) return;
+        var party = custom.m_ActiveSpace;
+
+        System.Enum.TryParse<DistrictCampaignType>(typeStr, out var type);
+        System.Enum.TryParse<PoliticalParty>(targetStr, out var target);
+        System.Enum.TryParse<CampaignIntensity>(tierStr, out var tier);
+
+        m_PropagandaSystem.TryLaunchDistrictCampaign(districtEntity, party, type, target, tier, out _);
+        UpdateDistrictCampaignsBinding();
+    }));
+
+            AddBinding(new TriggerBinding<string>(kGroup, "cancelDistrictCampaign",
+                (districtIdStr) =>
+                {
+                    if (!int.TryParse(districtIdStr, out int districtId)) return;
+                    var districtEntity = FindDistrictByIndex(districtId);
+                    if (districtEntity == Entity.Null) return;
+
+                    var custom = m_CustomPartySystem.GetData();
+                    if (!custom.m_Exists || !custom.m_SubstitutionActive) return;
+
+                    m_PropagandaSystem.TryCancelDistrictCampaign(districtEntity, custom.m_ActiveSpace, out _);
+                    UpdateDistrictCampaignsBinding();
+                }));
 
             // OUTIL DEBUG TEMPORAIRE POUR COMPTAGE DES ADHERENTS ET COTISATION
             AddBinding(new TriggerBinding(kGroup, "debugForceCycleCheck",
@@ -250,6 +321,59 @@ namespace CityCouncil.Systems
             AddBinding(new TriggerBinding(kGroup, "requestDeleteCustomParty",
                 () => { m_CustomPartySystem.RequestDeletion(); PushCustomPartyState(); }));
 
+            AddBinding(new TriggerBinding(kGroup, "activateBlackFund",
+    () =>
+    {
+        var custom = m_CustomPartySystem.GetData();
+        if (custom.m_Exists && custom.m_SubstitutionActive)
+            m_BlackFundSystem.Activate(custom.m_ActiveSpace);
+        UpdateBlackFundBindingIfChanged();
+    }));
+
+            AddBinding(new TriggerBinding(kGroup, "closeBlackFund",
+                () =>
+                {
+                    var custom = m_CustomPartySystem.GetData();
+                    if (custom.m_Exists && custom.m_SubstitutionActive)
+                        m_BlackFundSystem.Close(custom.m_ActiveSpace);
+                    UpdateBlackFundBindingIfChanged();
+                }));
+
+            AddBinding(new TriggerBinding<string, string>(kGroup, "transferBlackFund",
+                (amountStr, directionStr) =>
+                {
+                    var custom = m_CustomPartySystem.GetData();
+                    if (!custom.m_Exists || !custom.m_SubstitutionActive) return;
+                    if (!int.TryParse(amountStr, out int amount)) return;
+                    bool toBlackFund = directionStr == "toBlackFund";
+
+                    if (m_BlackFundSystem.TryTransfer(custom.m_ActiveSpace, amount, toBlackFund, out var invoiceKey, out _))
+                        m_LastInvoiceLocaleKeyBinding.Update(invoiceKey ?? "");
+
+                    UpdateBlackFundBindingIfChanged();
+                    UpdateMembershipBindingIfChanged();
+                }));
+
+            AddBinding(new TriggerBinding<string, string>(kGroup, "launchIllegalCampaign",
+                (districtIdStr, targetStr) =>
+                {
+                    if (!int.TryParse(districtIdStr, out int districtId)) return;
+                    var districtEntity = FindDistrictByIndex(districtId);
+                    if (districtEntity == Entity.Null) return;
+
+                    var custom = m_CustomPartySystem.GetData();
+                    if (!custom.m_Exists || !custom.m_SubstitutionActive) return;
+
+                    System.Enum.TryParse<PoliticalParty>(targetStr, out var target);
+                    m_PropagandaSystem.TryLaunchIllegalDistrictCampaign(districtEntity, custom.m_ActiveSpace, target, fromBlackFund: true, out _);
+
+                    UpdateIllegalCampaignsBindingIfChanged();
+                    UpdateBlackFundBindingIfChanged();
+                }));
+
+            AddBinding(new TriggerBinding(kGroup, "debugForceCommissionCheck",
+                () => m_CommissionSystem.DebugForceDetectionCheck()));
+
             AddBinding(new TriggerBinding(kGroup, "cancelDeleteCustomParty",
                 () => { m_CustomPartySystem.CancelPendingDeletion(); PushCustomPartyState(); }));
 
@@ -269,6 +393,8 @@ namespace CityCouncil.Systems
                 () => { m_FundingSystem.ValidateFixedAmount(); PushFundingState(); }));
         }
 
+
+
         protected override void OnUpdate()
         {
             base.OnUpdate();
@@ -279,6 +405,12 @@ namespace CityCouncil.Systems
             UpdateBonusBindingIfChanged();
             UpdateCustomPartyBindingIfChanged();
             UpdatePropagandaBindingIfChanged();
+            UpdateDistrictListBinding();       // peu coûteux : uniquement au changement de nombre de districts, ou throttle
+            UpdateDistrictCampaignsBinding();  // basé sur le parti joueur actif
+            UpdateBlackFundBindingIfChanged();
+            UpdateIllegalCampaignsBindingIfChanged();
+            UpdateCommissionReportBindingIfChanged();
+
 
 
             Entity selected = m_ToolSystem.selected;
@@ -319,6 +451,194 @@ namespace CityCouncil.Systems
             PushAdminData(data);
             m_LastPushedData = data;
             m_HasLastPushedData = true;
+
+        }
+
+        private void UpdateBlackFundBindingIfChanged()
+        {
+            var custom = m_CustomPartySystem.GetData();
+            if (!custom.m_Exists || !custom.m_SubstitutionActive)
+            {
+                if (!m_HasLastPushedBlackFund || m_LastPushedBlackFundJson != "{}")
+                {
+                    m_BlackFundJsonBinding.Update("{}");
+                    m_LastPushedBlackFundJson = "{}";
+                    m_HasLastPushedBlackFund = true;
+                }
+                return;
+            }
+
+            var party = custom.m_ActiveSpace;
+            var dto = new BlackFundDto
+            {
+                active = m_BlackFundSystem.IsActive(party),
+                balance = m_BlackFundSystem.GetBalance(party)
+            };
+            string json = dto.ToJson();
+
+            if (!m_HasLastPushedBlackFund || json != m_LastPushedBlackFundJson)
+            {
+                m_BlackFundJsonBinding.Update(json);
+                m_LastPushedBlackFundJson = json;
+                m_HasLastPushedBlackFund = true;
+            }
+        }
+
+        private void UpdateIllegalCampaignsBindingIfChanged()
+        {
+            var custom = m_CustomPartySystem.GetData();
+            var dtos = new System.Collections.Generic.List<IllegalCampaignDto>();
+
+            if (custom.m_Exists && custom.m_SubstitutionActive)
+            {
+                var party = custom.m_ActiveSpace;
+                var districts = m_DistrictQuery.ToEntityArray(Unity.Collections.Allocator.Temp);
+                try
+                {
+                    foreach (var d in districts)
+                    {
+                        if (!m_EntityManager.HasComponent<CouncilDistrictData>(d)) continue;
+                        var data = m_EntityManager.GetComponentData<CouncilDistrictData>(d);
+                        foreach (var c in data.m_IllegalCampaigns)
+                        {
+                            if (c.m_Party != party) continue;
+                            dtos.Add(new IllegalCampaignDto
+                            {
+                                districtId = d.Index,
+                                districtName = GetDistrictDisplayName(d),
+                                targetParty = c.m_TargetParty.ToString(),
+                                malusPercent = c.m_MalusPercent
+                            });
+                        }
+                    }
+                }
+                finally { districts.Dispose(); }
+            }
+
+            string json = IllegalCampaignDto.ToJsonArray(dtos);
+            if (!m_HasLastPushedIllegalCampaigns || json != m_LastPushedIllegalCampaignsJson)
+            {
+                m_IllegalCampaignsJsonBinding.Update(json);
+                m_LastPushedIllegalCampaignsJson = json;
+                m_HasLastPushedIllegalCampaigns = true;
+            }
+        }
+
+        private void UpdateCommissionReportBindingIfChanged()
+        {
+            var custom = m_CustomPartySystem.GetData();
+            var playerParty = (custom.m_Exists && custom.m_SubstitutionActive) ? custom.m_ActiveSpace : (PoliticalParty?)null;
+            double currentDay = GetApproxCurrentDay();
+
+            var dtos = new System.Collections.Generic.List<CommissionReportDto>();
+            foreach (PoliticalParty p in System.Enum.GetValues(typeof(PoliticalParty)))
+            {
+                bool isPlayer = playerParty.HasValue && playerParty.Value == p;
+                var sanctions = m_CommissionSystem.GetActiveSanctionsForParty(p, currentDay);
+                bool hasSanction = sanctions.Count > 0;
+                double expiry = hasSanction ? sanctions[0].m_ExpiryDay : 0;
+
+                dtos.Add(new CommissionReportDto
+                {
+                    party = p.ToString(),
+                    vigilanceLevel = m_CommissionSystem.GetVigilance(p).ToString(),
+                    isPlayer = isPlayer,
+                    activeIllegalCount = isPlayer ? m_PropagandaSystem.CountActiveIllegalCampaignsForParty(p) : 0,
+                    hasSanction = hasSanction,
+                    sanctionExpiryDay = expiry
+                });
+            }
+
+            string json = CommissionReportDto.ToJsonArray(dtos);
+            if (!m_HasLastPushedCommissionReport || json != m_LastPushedCommissionReportJson)
+            {
+                m_CommissionReportJsonBinding.Update(json);
+                m_LastPushedCommissionReportJson = json;
+                m_HasLastPushedCommissionReport = true;
+            }
+        }
+
+        /// <summary>Même calcul que GetCurrentSimulationDay() de CouncilElectionSystem, dupliqué ici pour ne pas coupler les deux systèmes UI/simulation (cf. remarque déjà présente ailleurs dans le mod).</summary>
+        private double GetApproxCurrentDay()
+        {
+            // NOTE : UISystemBase n'a pas de SimulationSystem par défaut ; si vous en avez déjà un
+            // accessible ailleurs dans CouncilUISystem, réutilisez-le. Sinon, ce calcul basé sur
+            // Time.frameCount ou un World.GetExistingSystemManaged<SimulationSystem>() est nécessaire.
+            var sim = World.GetExistingSystemManaged<Game.Simulation.SimulationSystem>();
+            return sim != null ? (double)sim.frameIndex / 262144.0 : 0.0;
+        }
+
+        private Entity FindDistrictByIndex(int index)
+        {
+            var districts = m_DistrictQuery.ToEntityArray(Unity.Collections.Allocator.Temp);
+            try
+            {
+                foreach (var d in districts)
+                    if (d.Index == index) return d;
+            }
+            finally { districts.Dispose(); }
+            return Entity.Null;
+        }
+
+        private void UpdateDistrictListBinding()
+        {
+            // Ne recalcule que si le nombre de districts a changé (création/destruction de district,
+            // rare en cours de partie) — évite de re-sérialiser une liste identique à chaque frame UI.
+            int currentCount = m_DistrictQuery.CalculateEntityCount();
+            if (currentCount == m_LastPushedDistrictCount) return;
+
+            var dtos = new List<DistrictDto>();
+            var districts = m_DistrictQuery.ToEntityArray(Unity.Collections.Allocator.Temp);
+            try
+            {
+                foreach (var d in districts)
+                    dtos.Add(new DistrictDto { id = d.Index, name = GetDistrictDisplayName(d) });
+            }
+            finally { districts.Dispose(); }
+
+            m_DistrictListJsonBinding.Update(DistrictDto.ToJsonArray(dtos));
+            m_LastPushedDistrictCount = currentCount;
+        }
+
+        private void UpdateDistrictCampaignsBinding()
+        {
+            var custom = m_CustomPartySystem.GetData();
+            if (!custom.m_Exists || !custom.m_SubstitutionActive) { return; }
+            var playerParty = custom.m_ActiveSpace;
+
+            var dtos = new List<DistrictCampaignDto>();
+            var districts = m_DistrictQuery.ToEntityArray(Unity.Collections.Allocator.Temp);
+            try
+            {
+                foreach (var d in districts)
+                {
+                    if (!m_EntityManager.HasComponent<CouncilDistrictData>(d)) continue;
+                    var data = m_EntityManager.GetComponentData<CouncilDistrictData>(d);
+                    foreach (var c in data.m_DistrictCampaigns)
+                    {
+                        if (c.m_Party != playerParty) continue;
+                        dtos.Add(new DistrictCampaignDto
+                        {
+                            districtId = d.Index,
+                            districtName = GetDistrictDisplayName(d),
+                            party = c.m_Party.ToString(),
+                            type = c.m_Type.ToString(),
+                            targetParty = c.m_Type == DistrictCampaignType.Boost ? "" : c.m_TargetParty.ToString(),
+                            bonusPercent = c.m_BonusPercent,
+                            selfMalusPercent = c.m_SelfMalusPercent
+                        });
+                    }
+                }
+            }
+            finally { districts.Dispose(); }
+
+            string json = DistrictCampaignDto.ToJsonArray(dtos);
+            if (!m_HasLastPushedDistrictCampaigns || json != m_LastPushedDistrictCampaignsJson)
+            {
+                m_DistrictCampaignsJsonBinding.Update(json);
+                m_LastPushedDistrictCampaignsJson = json;
+                m_HasLastPushedDistrictCampaigns = true;
+            }
         }
 
         private void UpdateCustomPartyBindingIfChanged()
@@ -354,7 +674,10 @@ namespace CityCouncil.Systems
             {
                 party = e.m_Party.ToString(),
                 members = (int)MathF.Round(e.m_Members),
-                treasury = e.m_Treasury
+                treasury = e.m_Treasury,
+                fromCityFunding = e.m_TotalFromCityFunding,   // AJOUT
+                fromDues = e.m_TotalFromDues,                 // AJOUT
+                spentPropaganda = e.m_TotalSpentPropaganda,   // AJOUT
             }).ToArray();
 
             m_PartyMembershipJsonBinding.Update(PartyMembershipDto.ToJsonArray(dto));
@@ -370,9 +693,14 @@ namespace CityCouncil.Systems
                 if (a.m_Entries[i].m_Party != b.m_Entries[i].m_Party) return false;
                 if (a.m_Entries[i].m_Members != b.m_Entries[i].m_Members) return false;
                 if (a.m_Entries[i].m_Treasury != b.m_Entries[i].m_Treasury) return false;
+                if (a.m_Entries[i].m_TotalFromCityFunding != b.m_Entries[i].m_TotalFromCityFunding) return false; 
+                if (a.m_Entries[i].m_TotalFromDues != b.m_Entries[i].m_TotalFromDues) return false;                
+                if (a.m_Entries[i].m_TotalSpentPropaganda != b.m_Entries[i].m_TotalSpentPropaganda) return false;  
             }
             return true;
         }
+
+
 
         protected override void OnGameLoaded(Colossal.Serialization.Entities.Context serializationContext)
         {
@@ -658,7 +986,20 @@ namespace CityCouncil.Systems
                && a.m_StreakCount == b.m_StreakCount       
                && a.m_IsBastion == b.m_IsBastion;          
         }
+
+        /// <summary>
+        /// Nom affiché d'un district, résolu via NameSystem.GetRenderedLabelName (même mécanisme
+        /// que les panneaux vanilla) : renvoie le nom personnalisé du joueur si renommé, sinon le
+        /// nom généré/localisé par défaut du jeu. Repli sur "District #index" uniquement si
+        /// NameSystem ne renvoie rien d'exploitable (cas limite non attendu en usage normal).
+        /// </summary>
+        private string GetDistrictDisplayName(Entity districtEntity)
+        {
+            string name = m_NameSystem.GetRenderedLabelName(districtEntity);
+            return string.IsNullOrWhiteSpace(name) ? $"District #{districtEntity.Index}" : name;
+        }
     }
+
 
     /// <summary>
     /// DTO utilisé pour sérialiser un résultat de parti en JSON manuellement (utilisé pour
@@ -730,6 +1071,9 @@ namespace CityCouncil.Systems
         public string party;
         public int members;
         public int treasury;
+        public long fromCityFunding;   
+        public long fromDues;          
+        public long spentPropaganda;   
 
         public static string ToJsonArray(System.Collections.Generic.IEnumerable<PartyMembershipDto> items)
         {
@@ -743,14 +1087,147 @@ namespace CityCouncil.Systems
                 sb.Append('{');
                 sb.Append("\"party\":\"").Append(e.party).Append("\",");
                 sb.Append("\"members\":").Append(e.members).Append(',');
-                sb.Append("\"treasury\":").Append(e.treasury);
+                sb.Append("\"treasury\":").Append(e.treasury).Append(',');
+                sb.Append("\"fromCityFunding\":").Append(e.fromCityFunding).Append(',');   
+                sb.Append("\"fromDues\":").Append(e.fromDues).Append(',');                 
+                sb.Append("\"spentPropaganda\":").Append(e.spentPropaganda);               
+                sb.Append('}');
+            }
+            sb.Append(']');
+            return sb.ToString();
+        }
+    }
+
+    public struct DistrictDto
+    {
+        public int id;
+        public string name;
+
+        public static string ToJsonArray(System.Collections.Generic.IEnumerable<DistrictDto> items)
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.Append('[');
+            bool first = true;
+            foreach (var d in items)
+            {
+                if (!first) sb.Append(',');
+                first = false;
+                sb.Append('{').Append("\"id\":").Append(d.id).Append(',')
+                  .Append("\"name\":\"").Append(EscapeJson(d.name)).Append("\"}");
+            }
+            sb.Append(']');
+            return sb.ToString();
+        }
+        private static string EscapeJson(string s) => (s ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"");
+    }
+
+    public struct DistrictCampaignDto
+    {
+        public int districtId;
+        public string districtName;
+        public string party;
+        public string type;
+        public string targetParty;
+        public float bonusPercent;
+        public float selfMalusPercent;
+
+        public static string ToJsonArray(System.Collections.Generic.IEnumerable<DistrictCampaignDto> items)
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.Append('[');
+            bool first = true;
+            foreach (var c in items)
+            {
+                if (!first) sb.Append(',');
+                first = false;
+                sb.Append('{');
+                sb.Append("\"districtId\":").Append(c.districtId).Append(',');
+                sb.Append("\"districtName\":\"").Append(EscapeJson(c.districtName)).Append("\",");
+                sb.Append("\"party\":\"").Append(c.party).Append("\",");
+                sb.Append("\"type\":\"").Append(c.type).Append("\",");
+                sb.Append("\"targetParty\":\"").Append(c.targetParty ?? "").Append("\",");
+                sb.Append("\"bonusPercent\":").Append(c.bonusPercent.ToString(System.Globalization.CultureInfo.InvariantCulture)).Append(',');
+                sb.Append("\"selfMalusPercent\":").Append(c.selfMalusPercent.ToString(System.Globalization.CultureInfo.InvariantCulture));
                 sb.Append('}');
             }
             sb.Append(']');
             return sb.ToString();
         }
 
+        private static string EscapeJson(string s) =>
+            (s ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"");
+    }
 
+    public struct BlackFundDto
+    {
+        public bool active;
+        public int balance;
+
+        public string ToJson()
+        {
+            return "{\"active\":" + (active ? "true" : "false") + ",\"balance\":" + balance + "}";
+        }
+    }
+
+    public struct IllegalCampaignDto
+    {
+        public int districtId;
+        public string districtName;
+        public string targetParty;
+        public float malusPercent;
+
+        public static string ToJsonArray(System.Collections.Generic.IEnumerable<IllegalCampaignDto> items)
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.Append('[');
+            bool first = true;
+            foreach (var c in items)
+            {
+                if (!first) sb.Append(',');
+                first = false;
+                sb.Append('{');
+                sb.Append("\"districtId\":").Append(c.districtId).Append(',');
+                sb.Append("\"districtName\":\"").Append(EscapeJson(c.districtName)).Append("\",");
+                sb.Append("\"targetParty\":\"").Append(c.targetParty).Append("\",");
+                sb.Append("\"malusPercent\":").Append(c.malusPercent.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                sb.Append('}');
+            }
+            sb.Append(']');
+            return sb.ToString();
+        }
+        private static string EscapeJson(string s) => (s ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"");
+    }
+
+    public struct CommissionReportDto
+    {
+        public string party;
+        public string vigilanceLevel;      // "Low" | "Medium" | "High"
+        public bool isPlayer;
+        public int activeIllegalCount;     // 0 pour les IA côté affichage simplifié (point 9) sauf si vous voulez l'exposer aussi
+        public bool hasSanction;
+        public double sanctionExpiryDay;
+
+        public static string ToJsonArray(System.Collections.Generic.IEnumerable<CommissionReportDto> items)
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.Append('[');
+            bool first = true;
+            foreach (var r in items)
+            {
+                if (!first) sb.Append(',');
+                first = false;
+                sb.Append('{');
+                sb.Append("\"party\":\"").Append(r.party).Append("\",");
+                sb.Append("\"vigilanceLevel\":\"").Append(r.vigilanceLevel).Append("\",");
+                sb.Append("\"isPlayer\":").Append(r.isPlayer ? "true" : "false").Append(',');
+                sb.Append("\"activeIllegalCount\":").Append(r.activeIllegalCount).Append(',');
+                sb.Append("\"hasSanction\":").Append(r.hasSanction ? "true" : "false").Append(',');
+                sb.Append("\"sanctionExpiryDay\":").Append(r.sanctionExpiryDay.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                sb.Append('}');
+            }
+            sb.Append(']');
+            return sb.ToString();
+        }
     }
 
 

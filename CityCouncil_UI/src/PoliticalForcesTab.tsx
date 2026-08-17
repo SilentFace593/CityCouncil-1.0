@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { bindValue, useValue } from "cs2/api";
+import { bindValue, useValue, trigger } from "cs2/api";
 import { useLocalization } from "cs2/l10n";
 import {
   translatePartyName,
@@ -10,6 +10,7 @@ import {
   CUSTOM_PARTY_PALETTE_HEX,
   type PartyResultDto,
 } from "./PartyResultDto";
+import { TreasuryBreakdown, type PartyMembershipDto } from "./TreasuryBreakdown";
 
 const hemicycleSeatsJson$ = bindValue<string>("cityCouncil", "hemicycleSeatsJson");
 const partyMembershipJson$ = bindValue<string>("cityCouncil", "partyMembershipJson");
@@ -19,12 +20,10 @@ const customPartyColor$ = bindValue<string>("cityCouncil", "customPartyColor");
 const customPartySpace$ = bindValue<string>("cityCouncil", "customPartySpace");
 const customPartyPendingActivation$ = bindValue<boolean>("cityCouncil", "customPartyPendingActivation");
 const partyBonusesJson$ = bindValue<string>("cityCouncil", "partyBonusesJson"); 
+const blackFundJson$ = bindValue<string>("cityCouncil", "blackFundJson");
+const lastInvoiceLocaleKey$ = bindValue<string>("cityCouncil", "lastInvoiceLocaleKey");
 
-interface PartyMembershipDto {
-  party: string;
-  members: number;
-  treasury: number;
-}
+interface BlackFundDto { active: boolean; balance: number; }
 
 interface PartyBonusDto {
   party: string;
@@ -42,9 +41,108 @@ interface ForceEntry {
   description: string;
   members: number;
   seats: number;
-  treasury: number;
+  membershipEntry: PartyMembershipDto | null; 
   pendingReplacement: boolean;
   bonus: string;
+  isPlayerParty: boolean;
+}
+
+function ActionButton({ label, enabled, onClick }: { label: string; enabled: boolean; onClick: () => void }) {
+  return (
+    <button
+      disabled={!enabled}
+      onClick={onClick}
+      style={{
+        background: enabled ? "rgba(70,130,220,0.85)" : "rgba(255,255,255,0.08)",
+        color: "white",
+        border: "none",
+        borderRadius: "4rem",
+        padding: "6rem 10rem",
+        fontSize: "13rem",
+        fontWeight: "bold",
+        cursor: enabled ? "pointer" : "default",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
+function Dropdown({
+  value,
+  options,
+  labels,
+  onChange,
+}: {
+  value: string;
+  options: string[];
+  labels: Record<string, string>;
+  onChange: (v: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const safeOptions = Array.isArray(options) ? options : [];
+
+  return (
+    <div style={{ position: "relative" }}>
+      <div
+        onClick={() => setOpen((o) => !o)}
+        style={{
+          width: "100%",
+          boxSizing: "border-box",
+          background: "rgba(255,255,255,0.08)",
+          border: "1rem solid rgba(255,255,255,0.15)",
+          borderRadius: "4rem",
+          color: "white",
+          fontSize: "13rem",
+          padding: "6rem 8rem",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <span>{labels?.[value] ?? value}</span>
+        <span style={{ fontSize: "10rem", opacity: 0.7 }}>{open ? "▲" : "▼"}</span>
+      </div>
+
+      {open && (
+        <div
+          style={{
+            position: "absolute",
+            top: "100%",
+            left: 0,
+            right: 0,
+            marginTop: "2rem",
+            background: "rgba(30,30,40,0.98)",
+            border: "1rem solid rgba(255,255,255,0.15)",
+            borderRadius: "4rem",
+            zIndex: 10,
+            overflow: "hidden",
+          }}
+        >
+          {safeOptions.map((o) => (
+            <div
+              key={o}
+              onClick={() => {
+                onChange(o);
+                setOpen(false);
+              }}
+              style={{
+                padding: "6rem 8rem",
+                fontSize: "13rem",
+                color: "white",
+                cursor: "pointer",
+                background: o === value ? "rgba(70,130,220,0.5)" : "transparent",
+              }}
+            >
+              {labels?.[o] ?? o}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function PoliticalForcesTab() {
@@ -59,6 +157,22 @@ export function PoliticalForcesTab() {
   const customSpace = useValue(customPartySpace$);
   const customPendingActivation = useValue(customPartyPendingActivation$);
   const bonusesJson = useValue(partyBonusesJson$);
+  const blackFundJson = useValue(blackFundJson$);
+  const lastInvoiceKey = useValue(lastInvoiceLocaleKey$);
+
+const blackFund: BlackFundDto = useMemo(() => {
+  try {
+    const p = JSON.parse(blackFundJson ?? "{}");
+    return { active: !!p.active, balance: typeof p.balance === "number" ? p.balance : 0 };
+  } catch {
+    return { active: false, balance: 0 };
+  }
+}, [blackFundJson]);
+
+const [transferAmount, setTransferAmount] = useState<string>("");
+const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+
+const isPlayerSelected = (playerControlsAvailable: boolean) => false;
 
   const partyDescriptions: Record<string, string> = {
     Ecologiste: t("CityCouncil.Forces.DESC_ECOLOGISTE", "Défend une transition écologique ambitieuse et la préservation des espaces naturels."),
@@ -95,32 +209,31 @@ const bonuses: PartyBonusDto[] = useMemo(() => {
   }
 }, [bonusesJson]);
 
-  const entries: ForceEntry[] = useMemo(() => {
-    return PARTY_ORDER.map((partyKey) => {
-      const seatEntry = seatResults.find((r) => r.party === partyKey);
-      const memberEntry = membership.find((m) => m.party === partyKey);
-   // Décoré uniquement si la substitution est ACTIVE (le serveur ne remplit displayName/
-      // displayColor sur seatResults que dans ce cas, mais on garde une logique cohérente
-      // côté client pour label/couleur/description qui ne passent pas par le DTO).
-      const bonusEntry = bonuses.find((b) => b.party === partyKey); 
-      const isCustomHere = customExists && !customPendingActivation && customSpace === partyKey;
-      const isPendingReplacement = customExists && customPendingActivation && customSpace === partyKey; // AJOUT
+const entries: ForceEntry[] = useMemo(() => {
+  return PARTY_ORDER.map((partyKey) => {
+    const seatEntry = seatResults.find((r) => r.party === partyKey);
+    const memberEntry = membership.find((m) => m.party === partyKey);
+    const bonusEntry = bonuses.find((b) => b.party === partyKey);
+    const isCustomHere = customExists && !customPendingActivation && customSpace === partyKey;
+    const isPendingReplacement = customExists && customPendingActivation && customSpace === partyKey;
 
-      return {
-        key: partyKey,
-        label: isCustomHere ? customName : (translatePartyName(partyKey, translate)),
-        color: isCustomHere ? (CUSTOM_PARTY_PALETTE_HEX[customColor] ?? "#888") : (PARTY_COLORS[partyKey] ?? "#888"),
-        description: isCustomHere
-          ? t("CityCouncil.Forces.CUSTOM_PARTY_DESC", "Votre parti politique. La personnalisation de la description est prévue dans une prochaine étape.")
-          : (partyDescriptions[partyKey] ?? ""),
-        members: memberEntry?.members ?? 0,
-        seats: seatEntry?.seats ?? 0,
-        treasury: memberEntry?.treasury ?? 0,
-        pendingReplacement: isPendingReplacement, // AJOUT
-        bonus: bonusEntry?.bonus ?? "",
-      };
-    });
-  }, [seatResults, membership, customExists, customName, customColor, customSpace, customPendingActivation, partyDescriptions]);
+
+    return {
+      key: partyKey,
+      label: isCustomHere ? customName : (translatePartyName(partyKey, translate)),
+      color: isCustomHere ? (CUSTOM_PARTY_PALETTE_HEX[customColor] ?? "#888") : (PARTY_COLORS[partyKey] ?? "#888"),
+      description: isCustomHere
+        ? t("CityCouncil.Forces.CUSTOM_PARTY_DESC", "Votre parti politique. La personnalisation de la description est prévue dans une prochaine étape.")
+        : (partyDescriptions[partyKey] ?? ""),
+      members: memberEntry?.members ?? 0,
+      seats: seatEntry?.seats ?? 0,
+      membershipEntry: memberEntry ?? null, // AJOUT
+      pendingReplacement: isPendingReplacement,
+      bonus: bonusEntry?.bonus ?? "",
+      isPlayerParty: isCustomHere,
+    };
+  });
+}, [seatResults, membership, customExists, customName, customColor, customSpace, customPendingActivation, partyDescriptions]);
 
   const [selectedKey, setSelectedKey] = useState<string>(PARTY_ORDER[0]);
   const selected = entries.find((e) => e.key === selectedKey) ?? entries[0];
@@ -135,8 +248,7 @@ const bonuses: PartyBonusDto[] = useMemo(() => {
     : t("CityCouncil.Forces.SEATS_SINGULAR", "siège au total");
   const seatsLine = selected ? `${selected.seats} ${seatsWord}` : "";
 
-  const treasurySuffix = t("CityCouncil.Forces.TREASURY", "crédits en caisse");
-  const treasuryLine = selected ? `${selected.treasury.toLocaleString()} ${treasurySuffix}` : "";
+  
   const pendingReplacementLabel = t("CityCouncil.Forces.PENDING_REPLACEMENT", "Parti remplacé à la prochaine élection !");
    const bonusLabel = selected && selected.bonus !== "None"
     ? (selected.bonus === "Defensif"
@@ -237,7 +349,97 @@ const bonuses: PartyBonusDto[] = useMemo(() => {
             <div style={{ display: "flex", flexDirection: "column", gap: "6rem" }}>
               <div style={{ color: "rgba(255,255,255,0.9)", fontSize: "13rem", whiteSpace: "nowrap" }}>{membersLine}</div>
               <div style={{ color: "rgba(255,255,255,0.9)", fontSize: "13rem", whiteSpace: "nowrap" }}>{seatsLine}</div>
-              <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "12rem", whiteSpace: "nowrap" }}>{treasuryLine}</div>
+              {selected.membershipEntry && <TreasuryBreakdown entry={selected.membershipEntry} t={t} />}
+              {selected.isPlayerParty && (
+  <div style={{ marginTop: "14rem" }}>
+    <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "11rem", marginBottom: "6rem", textTransform: "uppercase" }}>
+      {t("CityCouncil.BlackFund.HEADER", "Caisse noire")}
+    </div>
+
+    {!blackFund.active ? (
+      <ActionButton
+        label={t("CityCouncil.BlackFund.ACTIVATE_BUTTON", "Ouvrir une caisse noire")}
+        enabled={true}
+        onClick={() => trigger("cityCouncil", "activateBlackFund")}
+      />
+    ) : (
+      <div style={{ background: "rgba(255,255,255,0.06)", borderRadius: "6rem", padding: "10rem" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "10rem" }}>
+          <span style={{ color: "rgba(255,255,255,0.75)", fontSize: "12rem" }}>
+            {t("CityCouncil.BlackFund.BALANCE_LABEL", "Solde de la caisse noire")}
+          </span>
+          <span style={{ color: "white", fontSize: "13rem", fontWeight: 700 }}>
+            {blackFund.balance.toLocaleString()}
+          </span>
+        </div>
+
+        <input
+          type="number"
+          min={0}
+          value={transferAmount}
+          onChange={(e) => setTransferAmount(e.target.value)}
+          placeholder={t("CityCouncil.BlackFund.AMOUNT_PLACEHOLDER", "Montant")}
+          style={{
+            width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.08)",
+            border: "1rem solid rgba(255,255,255,0.15)", borderRadius: "4rem", color: "white",
+            fontSize: "13rem", padding: "6rem 8rem", marginBottom: "8rem",
+          }}
+        />
+
+        <div style={{ display: "flex", gap: "8rem", marginBottom: "10rem" }}>
+          <ActionButton
+            label={t("CityCouncil.BlackFund.TRANSFER_TO_LABEL", "Vers la caisse noire")}
+            enabled={!!transferAmount && Number(transferAmount) > 0}
+            onClick={() => {
+              trigger("cityCouncil", "transferBlackFund", transferAmount, "toBlackFund");
+              setTransferAmount("");
+            }}
+          />
+          <ActionButton
+            label={t("CityCouncil.BlackFund.TRANSFER_FROM_LABEL", "Vers le compte principal")}
+            enabled={!!transferAmount && Number(transferAmount) > 0}
+            onClick={() => {
+              trigger("cityCouncil", "transferBlackFund", transferAmount, "fromBlackFund");
+              setTransferAmount("");
+            }}
+          />
+        </div>
+
+        {lastInvoiceKey && (
+          <div style={{ color: "rgba(255,220,150,0.85)", fontSize: "11rem", fontStyle: "italic", marginBottom: "10rem" }}>
+            {t(lastInvoiceKey, lastInvoiceKey)}
+          </div>
+        )}
+
+        {!showCloseConfirm ? (
+          <ActionButton
+            label={t("CityCouncil.BlackFund.CLOSE_BUTTON", "Fermer la caisse noire")}
+            enabled={true}
+            onClick={() => setShowCloseConfirm(true)}
+          />
+        ) : (
+          <div>
+            <div style={{ color: "rgba(255,140,140,0.9)", fontSize: "11rem", marginBottom: "8rem" }}>
+              {t("CityCouncil.BlackFund.CLOSE_WARNING", "Fermer la caisse noire fera perdre tout l'argent qu'elle contient.")}
+            </div>
+            <div style={{ display: "flex", gap: "8rem" }}>
+              <ActionButton
+                label={t("CityCouncil.BlackFund.CLOSE_CONFIRM", "Confirmer la fermeture")}
+                enabled={true}
+                onClick={() => { trigger("cityCouncil", "closeBlackFund"); setShowCloseConfirm(false); }}
+              />
+              <ActionButton
+                label={t("CityCouncil.YourPartyTab.CANCEL_BUTTON", "Annuler")}
+                enabled={true}
+                onClick={() => setShowCloseConfirm(false)}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+    )}
+  </div>
+)}
             </div>
           </>
         )}

@@ -61,6 +61,11 @@ namespace CityCouncil
                 { LocaleKeys.Forces_DescRepublicain, "Défend l'ordre, la sécurité et une gestion rigoureuse des finances municipales." },
                 { LocaleKeys.Forces_DescGaucheRadicale, "Milite pour une redistribution radicale des richesses et des services publics renforcés." },
                 { LocaleKeys.Forces_PendingReplacement, "Parti remplacé à la prochaine élection !" },
+                { LocaleKeys.Treasury_Header, "Détail de la trésorerie" },
+                { LocaleKeys.Treasury_CityFunding, "Financement municipal" },
+                { LocaleKeys.Treasury_Dues, "Cotisations des adhérents" },
+                { LocaleKeys.Treasury_PropagandaSpent, "Dépenses de propagande" },
+                { LocaleKeys.Treasury_CurrentTotal, "Solde actuel" },
 
 
                 // City Events
@@ -119,6 +124,67 @@ namespace CityCouncil
                 { LocaleKeys.Propaganda_AutoRenewLabel, "Reconduire automatiquement" },
                 { LocaleKeys.Propaganda_AlreadyActive, "Une campagne est déjà en cours pour votre parti. Annulez-la ou attendez son terme pour en lancer une nouvelle." },
                 { LocaleKeys.Propaganda_CancelButton, "Annuler la campagne" },
+
+                // Campagnes de district
+                { LocaleKeys.DistrictCampaign_Header, "Campagnes de district" },
+                { LocaleKeys.DistrictCampaign_SlotsUsed, "campagnes de district actives" },
+                { LocaleKeys.DistrictCampaign_SelectDistrict, "District ciblé" },
+                { LocaleKeys.DistrictCampaign_TypeLabel, "Type de campagne" },
+                { LocaleKeys.DistrictCampaign_TypeBoost, "Campagne classique" },
+                { LocaleKeys.DistrictCampaign_TypeAttack, "Campagne ciblée" },
+                { LocaleKeys.DistrictCampaign_TargetLabel, "Parti visé" },
+                { LocaleKeys.DistrictCampaign_AttackCleanLabel, "Campagne propre" },
+                { LocaleKeys.DistrictCampaign_AttackCleanDesc, "-2% pour le parti visé dans ce district. Aucun risque pour vous." },
+                { LocaleKeys.DistrictCampaign_AttackDirtyLabel, "Campagne sale" },
+                { LocaleKeys.DistrictCampaign_AttackDirtyDesc, "-4% pour le parti visé, mais un malus aléatoire (0 à -5%) frappe aussi votre propre parti dans ce district." },
+                { LocaleKeys.DistrictCampaign_MaxReached, "Nombre maximum de campagnes de district atteint (3)." },
+                { LocaleKeys.DistrictCampaign_LaunchButton, "Lancer la campagne" },
+                { LocaleKeys.DistrictCampaign_CancelButton, "Annuler" },
+                { LocaleKeys.DistrictCampaign_ActiveListHeader, "Campagnes de district en cours" },
+                { LocaleKeys.DistrictCampaign_NoActiveCampaigns, "Aucune campagne de district active." },
+                { LocaleKeys.DistrictCampaign_BoostSummary, "Boost" },
+                { LocaleKeys.DistrictCampaign_AttackDirtyRiskSuffix, " (risque : -{0}% pour vous)" },
+
+                // Caisse noire
+                { LocaleKeys.BlackFund_Header, "Caisse noire" },
+                { LocaleKeys.BlackFund_ActivateButton, "Ouvrir une caisse noire" },
+                { LocaleKeys.BlackFund_CloseButton, "Fermer la caisse noire" },
+                { LocaleKeys.BlackFund_CloseWarning, "Fermer la caisse noire fera perdre tout l'argent qu'elle contient." },
+                { LocaleKeys.BlackFund_CloseConfirm, "Confirmer la fermeture" },
+                { LocaleKeys.BlackFund_BalanceLabel, "Solde de la caisse noire" },
+                { LocaleKeys.BlackFund_TransferToLabel, "Transférer vers la caisse noire" },
+                { LocaleKeys.BlackFund_TransferFromLabel, "Transférer vers le compte principal" },
+                { LocaleKeys.BlackFund_AmountPlaceholder, "Montant" },
+                { LocaleKeys.BlackFund_TransferButton, "Transférer" },
+                { LocaleKeys.BlackFund_InsufficientMainFunds, "Fonds insuffisants sur le compte principal." },
+                { LocaleKeys.BlackFund_InsufficientBlackFunds, "Fonds insuffisants dans la caisse noire." },
+                { LocaleKeys.BlackFund_MovementsHeader, "Mouvements récents" },
+                { LocaleKeys.BlackFund_NoMovements, "Aucun mouvement pour le moment." },
+
+                { LocaleKeys.BlackFund_Invoice1, "Achat de 25 kg de maquillage" },
+                { LocaleKeys.BlackFund_Invoice2, "3 oignons, 2 carottes, fromage, papier toilette..." },
+                { LocaleKeys.BlackFund_Invoice3, "Prestation d'éclairage de scène pour discours électoral" },
+                { LocaleKeys.BlackFund_Invoice4, "Nettoyage de la façade du siège du parti" },
+
+                // Commission Électorale
+                { LocaleKeys.Commission_TabLabel, "Commission Électorale" },
+                { LocaleKeys.Commission_ReportTitle, "Rapport d'Activités" },
+                { LocaleKeys.Commission_LevelLow, "Peu vigilant" },
+                { LocaleKeys.Commission_LevelMedium, "Sous surveillance" },
+                { LocaleKeys.Commission_LevelHigh, "En Alerte !" },
+                { LocaleKeys.Commission_ActiveIllegalCount, "Campagnes illégales actives" },
+                { LocaleKeys.Commission_ActiveSanction, "Sanction active" },
+                { LocaleKeys.Commission_NoSanction, "Aucune sanction active." },
+
+                // Campagne illégale de district
+                { LocaleKeys.Illegal_SectionHeader, "Campagne illégale" },
+                { LocaleKeys.Illegal_Description, "Cible un parti dans ce district avec un malus aléatoire de 0 à 6%, financé par la caisse noire. En cas de détection par la Commission Électorale, votre parti encourt une sanction à l'échelle de la ville, une amende, et la perte de la caisse noire." },
+                { LocaleKeys.Illegal_MalusLabel, "Malus infligé : aléatoire, 0 à 6%" },
+                { LocaleKeys.Illegal_CostLabel, "Coût : " },
+                { LocaleKeys.Illegal_LaunchButton, "Lancer la campagne illégale" },
+                { LocaleKeys.Illegal_RequiresBlackFund, "Nécessite une caisse noire active." },
+                { LocaleKeys.Illegal_InsufficientBlackFund, "Solde de la caisse noire insuffisant." },
+                { LocaleKeys.Illegal_MaxReached, "Nombre maximum de campagnes illégales atteint (3)." },
 
             };
         }

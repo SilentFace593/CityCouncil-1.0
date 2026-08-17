@@ -296,7 +296,10 @@ namespace CityCouncil
     bool isBastion = false,
     PoliticalParty bastionParty = default,
     IEnumerable<PoliticalParty> offensiveBonusHolders = null,
-    IEnumerable<(PoliticalParty party, CampaignTarget target, float percent)> activeCampaigns = null) // AJOUT
+    IEnumerable<(PoliticalParty party, CampaignTarget target, float percent)> activeCampaigns = null,
+    IEnumerable<DistrictCampaignEntry> districtCampaigns = null,
+    IEnumerable<IllegalCampaignEntry> illegalCampaigns = null,     
+    IEnumerable<SanctionEntry> citySanctions = null)                
         {
             var rng = new Random(seed);
             var seniorBaseWithMargin = ApplyMarginOfError(SeniorBase, rng, MarginOfErrorPct);
@@ -334,6 +337,58 @@ namespace CityCouncil
                         Boost(adultShares, party, percent);
                     else
                         Boost(seniorShares, party, percent);
+                }
+            }
+
+            // AJOUT — campagnes de district, appliquées APRÈS la campagne ville (point 7), sur les
+            // deux tranches d'âge symétriquement (pas de ciblage d'âge pour ce mécanisme, contrairement
+            // à la campagne ville).
+            if (districtCampaigns != null)
+            {
+                foreach (var c in districtCampaigns)
+                {
+                    switch (c.m_Type)
+                    {
+                        case DistrictCampaignType.Boost:
+                            Boost(seniorShares, c.m_Party, c.m_BonusPercent);
+                            Boost(adultShares, c.m_Party, c.m_BonusPercent);
+                            break;
+
+                        case DistrictCampaignType.AttackClean:
+                        case DistrictCampaignType.AttackDirty:
+                            Boost(seniorShares, c.m_TargetParty, -c.m_BonusPercent);
+                            Boost(adultShares, c.m_TargetParty, -c.m_BonusPercent);
+                            if (c.m_Type == DistrictCampaignType.AttackDirty && c.m_SelfMalusPercent > 0f)
+                            {
+                                Boost(seniorShares, c.m_Party, -c.m_SelfMalusPercent);
+                                Boost(adultShares, c.m_Party, -c.m_SelfMalusPercent);
+                            }
+                            break;
+                    }
+                }
+            }
+
+            // AJOUT — campagnes illégales : malus pur sur le parti visé, aucun effet sur le lanceur
+            // (contrairement à AttackDirty qui a un m_SelfMalusPercent). Le risque encouru par le
+            // lanceur passe uniquement par la détection/sanction gérée par CouncilElectoralCommissionSystem,
+            // pas par un malus immédiat ici.
+            if (illegalCampaigns != null)
+            {
+                foreach (var c in illegalCampaigns)
+                {
+                    Boost(seniorShares, c.m_TargetParty, -c.m_MalusPercent);
+                    Boost(adultShares, c.m_TargetParty, -c.m_MalusPercent);
+                }
+            }
+
+            // AJOUT — sanctions city-wide de la Commission Électorale, appliquées en dernier
+            // (après tout le reste), symétriquement sur les deux tranches d'âge.
+            if (citySanctions != null)
+            {
+                foreach (var s in citySanctions)
+                {
+                    Boost(seniorShares, s.m_Party, -s.m_MalusPercent);
+                    Boost(adultShares, s.m_Party, -s.m_MalusPercent);
                 }
             }
 

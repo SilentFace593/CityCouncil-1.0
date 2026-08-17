@@ -53,7 +53,12 @@
         public const string Forces_DescRepublicain = "CityCouncil.Forces.DESC_REPUBLICAIN";
         public const string Forces_DescGaucheRadicale = "CityCouncil.Forces.DESC_GAUCHERADICALE";
         public const string Forces_PendingReplacement = "CityCouncil.Forces.PENDING_REPLACEMENT";
-        
+        public const string Treasury_Header = "CityCouncil.Treasury.HEADER";
+        public const string Treasury_CityFunding = "CityCouncil.Treasury.CITY_FUNDING";
+        public const string Treasury_Dues = "CityCouncil.Treasury.DUES";
+        public const string Treasury_PropagandaSpent = "CityCouncil.Treasury.PROPAGANDA_SPENT";
+        public const string Treasury_CurrentTotal = "CityCouncil.Treasury.CURRENT_TOTAL";
+
 
         // --- City Events ---
         public const string Event_ScandalePolitique = "CityCouncil.Event.SCANDALE_POLITIQUE";
@@ -113,6 +118,67 @@
         public const string Propaganda_AutoRenewLabel = "CityCouncil.Propaganda.AUTO_RENEW_LABEL";
         public const string Propaganda_AlreadyActive = "CityCouncil.Propaganda.ALREADY_ACTIVE";
         public const string Propaganda_CancelButton = "CityCouncil.Propaganda.CANCEL_BUTTON";
+
+        // --- DistrictCampaign ---
+        public const string DistrictCampaign_Header = "CityCouncil.DistrictCampaign.HEADER";
+        public const string DistrictCampaign_SlotsUsed = "CityCouncil.DistrictCampaign.SLOTS_USED";
+        public const string DistrictCampaign_SelectDistrict = "CityCouncil.DistrictCampaign.SELECT_DISTRICT";
+        public const string DistrictCampaign_TypeLabel = "CityCouncil.DistrictCampaign.TYPE_LABEL";
+        public const string DistrictCampaign_TypeBoost = "CityCouncil.DistrictCampaign.TYPE_BOOST";
+        public const string DistrictCampaign_TypeAttack = "CityCouncil.DistrictCampaign.TYPE_ATTACK";
+        public const string DistrictCampaign_TargetLabel = "CityCouncil.DistrictCampaign.TARGET_LABEL";
+        public const string DistrictCampaign_AttackCleanLabel = "CityCouncil.DistrictCampaign.ATTACK_CLEAN_LABEL";
+        public const string DistrictCampaign_AttackCleanDesc = "CityCouncil.DistrictCampaign.ATTACK_CLEAN_DESC";
+        public const string DistrictCampaign_AttackDirtyLabel = "CityCouncil.DistrictCampaign.ATTACK_DIRTY_LABEL";
+        public const string DistrictCampaign_AttackDirtyDesc = "CityCouncil.DistrictCampaign.ATTACK_DIRTY_DESC";
+        public const string DistrictCampaign_MaxReached = "CityCouncil.DistrictCampaign.MAX_REACHED";
+        public const string DistrictCampaign_LaunchButton = "CityCouncil.DistrictCampaign.LAUNCH_BUTTON";
+        public const string DistrictCampaign_CancelButton = "CityCouncil.DistrictCampaign.CANCEL_BUTTON";
+        public const string DistrictCampaign_ActiveListHeader = "CityCouncil.DistrictCampaign.ACTIVE_LIST_HEADER";
+        public const string DistrictCampaign_NoActiveCampaigns = "CityCouncil.DistrictCampaign.NO_ACTIVE_CAMPAIGNS";
+        public const string DistrictCampaign_BoostSummary = "CityCouncil.DistrictCampaign.BOOST_SUMMARY";
+        public const string DistrictCampaign_AttackDirtyRiskSuffix = "CityCouncil.DistrictCampaign.ATTACK_DIRTY_RISK_SUFFIX";
+
+        // --- BlackFund (caisse noire) ---
+        public const string BlackFund_Header = "CityCouncil.BlackFund.HEADER";
+        public const string BlackFund_ActivateButton = "CityCouncil.BlackFund.ACTIVATE_BUTTON";
+        public const string BlackFund_CloseButton = "CityCouncil.BlackFund.CLOSE_BUTTON";
+        public const string BlackFund_CloseWarning = "CityCouncil.BlackFund.CLOSE_WARNING";
+        public const string BlackFund_CloseConfirm = "CityCouncil.BlackFund.CLOSE_CONFIRM";
+        public const string BlackFund_BalanceLabel = "CityCouncil.BlackFund.BALANCE_LABEL";
+        public const string BlackFund_TransferToLabel = "CityCouncil.BlackFund.TRANSFER_TO_LABEL";
+        public const string BlackFund_TransferFromLabel = "CityCouncil.BlackFund.TRANSFER_FROM_LABEL";
+        public const string BlackFund_AmountPlaceholder = "CityCouncil.BlackFund.AMOUNT_PLACEHOLDER";
+        public const string BlackFund_TransferButton = "CityCouncil.BlackFund.TRANSFER_BUTTON";
+        public const string BlackFund_InsufficientMainFunds = "CityCouncil.BlackFund.INSUFFICIENT_MAIN_FUNDS";
+        public const string BlackFund_InsufficientBlackFunds = "CityCouncil.BlackFund.INSUFFICIENT_BLACK_FUNDS";
+        public const string BlackFund_MovementsHeader = "CityCouncil.BlackFund.MOVEMENTS_HEADER";
+        public const string BlackFund_NoMovements = "CityCouncil.BlackFund.NO_MOVEMENTS";
+
+        public const string BlackFund_Invoice1 = "CityCouncil.BlackFund.INVOICE_1";
+        public const string BlackFund_Invoice2 = "CityCouncil.BlackFund.INVOICE_2";
+        public const string BlackFund_Invoice3 = "CityCouncil.BlackFund.INVOICE_3";
+        public const string BlackFund_Invoice4 = "CityCouncil.BlackFund.INVOICE_4";
+
+        // --- ElectoralCommission ---
+        public const string Commission_TabLabel = "CityCouncil.Commission.TAB_LABEL";
+        public const string Commission_ReportTitle = "CityCouncil.Commission.REPORT_TITLE";
+        public const string Commission_LevelLow = "CityCouncil.Commission.LEVEL_LOW";
+        public const string Commission_LevelMedium = "CityCouncil.Commission.LEVEL_MEDIUM";
+        public const string Commission_LevelHigh = "CityCouncil.Commission.LEVEL_HIGH";
+        public const string Commission_ActiveIllegalCount = "CityCouncil.Commission.ACTIVE_ILLEGAL_COUNT";
+        public const string Commission_ActiveSanction = "CityCouncil.Commission.ACTIVE_SANCTION";
+        public const string Commission_NoSanction = "CityCouncil.Commission.NO_SANCTION";
+
+        // --- Illegal district campaign (PropagandaTab) ---
+        public const string Illegal_SectionHeader = "CityCouncil.Illegal.SECTION_HEADER";
+        public const string Illegal_Description = "CityCouncil.Illegal.DESCRIPTION";
+        public const string Illegal_MalusLabel = "CityCouncil.Illegal.MALUS_LABEL";
+        public const string Illegal_CostLabel = "CityCouncil.Illegal.COST_LABEL";
+        public const string Illegal_LaunchButton = "CityCouncil.Illegal.LAUNCH_BUTTON";
+        public const string Illegal_RequiresBlackFund = "CityCouncil.Illegal.REQUIRES_BLACK_FUND";
+        public const string Illegal_InsufficientBlackFund = "CityCouncil.Illegal.INSUFFICIENT_BLACK_FUND";
+        public const string Illegal_MaxReached = "CityCouncil.Illegal.MAX_REACHED";
 
     }
 }

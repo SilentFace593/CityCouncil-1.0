@@ -2,17 +2,35 @@ import { Component, useMemo, useState } from "react";
 import { bindValue, trigger, useValue } from "cs2/api";
 import { Button, Panel } from "cs2/ui";
 import { useLocalization } from "cs2/l10n";
+import { Scrollable } from "cs2/ui";
 import { translatePartyName, PARTY_LABELS, PARTY_ORDER, resolvePartyColor, resolvePartyLabel, type PartyResultDto } from "./PartyResultDto";
 import { YourPartyTab } from "./YourPartyTab";
 import { PoliticalForcesTab } from "./PoliticalForcesTab";
 import { FundingTab } from "./FundingTab";
 import { PropagandaTab } from "./PropagandaTab"; 
+import { ElectoralCommissionTab } from "./ElectoralCommissionTab";
 
 // --- Bindings exposés par CouncilUISystem.cs (group "cityCouncil") ---
 const hemicycleSeatsJson$ = bindValue<string>("cityCouncil", "hemicycleSeatsJson");
 const hemicycleLeader$ = bindValue<string>("cityCouncil", "hemicycleLeader");
 const playerBonusChoicePending$ = bindValue<boolean>("cityCouncil", "playerBonusChoicePending"); // AJOUT
 const playerBonusChoiceSpace$ = bindValue<string>("cityCouncil", "playerBonusChoiceSpace"); // AJOUT
+
+const scrollbarStyle = `
+  .cc-scrollable::-webkit-scrollbar {
+    width: 8rem;
+  }
+  .cc-scrollable::-webkit-scrollbar-track {
+    background: rgba(255,255,255,0.05);
+  }
+  .cc-scrollable::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.25);
+    border-radius: 4rem;
+  }
+  .cc-scrollable::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.4);
+  }
+`;
 
 
 // Error Boundary
@@ -331,7 +349,7 @@ function HemicycleResultsContent() {
   );
 }
 
-type TabKey = "results" | "yourParty" | "forces" | "funding" | "propaganda";
+type TabKey = "results" | "yourParty" | "forces" | "funding" | "propaganda" | "commission";
 
 const PANEL_WIDTH = "520rem";
 const PANEL_CONTENT_HEIGHT = "560rem";
@@ -369,15 +387,18 @@ function HemicycleTabs() {
         <div style={tabStyle("propaganda")} onClick={() => setTab("propaganda")}>
   {t("CityCouncil.Propaganda.TAB_LABEL", "Propagande")}
 </div>
+<div style={tabStyle("commission")} onClick={() => setTab("commission")}>
+  {t("CityCouncil.Commission.TAB_LABEL", "Commission Électorale")}
+</div>
       </div>
 
-      <div style={{ height: PANEL_CONTENT_HEIGHT, overflowY: "auto", boxSizing: "border-box" }}>
+    <Scrollable style={{ height: PANEL_CONTENT_HEIGHT }}>
   {tab === "results" && <SafeBoundary><HemicycleResultsContent /></SafeBoundary>}
   {tab === "yourParty" && <SafeBoundary><YourPartyTab /></SafeBoundary>}
   {tab === "forces" && <SafeBoundary><PoliticalForcesTab /></SafeBoundary>}
   {tab === "funding" && <SafeBoundary><FundingTab /></SafeBoundary>}
   {tab === "propaganda" && <SafeBoundary><PropagandaTab /></SafeBoundary>}
-</div>
+</Scrollable>
     </div>
   );
 }

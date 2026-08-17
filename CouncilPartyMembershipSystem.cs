@@ -215,15 +215,19 @@ namespace CityCouncil
             SetData(data);
         }
 
+        public enum TreasurySource
+        {
+            CityFunding,
+            Dues,
+            Propaganda // non utilisé par AddTreasury (débit géré dans TrySpendTreasury), gardé pour clarté
+        }
 
         /// <summary>
-        /// Crédite (ou débite, si amount négatif) la trésorerie d'un seul parti. Utilisé par
-        /// CouncilFundingSystem pour verser la part fixe et la part variable du financement
-        /// politique. La trésorerie reste possédée par ce système (source de vérité unique,
-        /// même principe que les adhérents) — CouncilFundingSystem ne fait qu'appeler cette
-        /// méthode plutôt que manipuler CouncilPartyMembershipData directement.
+        /// Crédite (ou débite, si amount négatif) la trésorerie d'un seul parti, en traçant la
+        /// provenance dans les compteurs cumulatifs correspondants (uniquement pour un crédit positif
+        /// depuis une source suivie — cf. TreasuryBreakdown.tsx côté UI).
         /// </summary>
-        public void AddTreasury(PoliticalParty party, int amount)
+        public void AddTreasury(PoliticalParty party, int amount, TreasurySource source = TreasurySource.CityFunding)
         {
             if (amount == 0) return;
 
@@ -235,6 +239,16 @@ namespace CityCouncil
                 if (entries[i].m_Party != party) continue;
                 var entry = entries[i];
                 entry.m_Treasury += amount;
+
+                if (amount > 0)
+                {
+                    switch (source)
+                    {
+                        case TreasurySource.CityFunding: entry.m_TotalFromCityFunding += amount; break;
+                        case TreasurySource.Dues: entry.m_TotalFromDues += amount; break;
+                    }
+                }
+
                 entries[i] = entry;
                 break;
             }
@@ -287,7 +301,9 @@ namespace CityCouncil
             {
                 var entry = entries[i];
 
-                entry.m_Treasury += (int)MathF.Floor(entry.m_Members * CreditsPerMemberPerCycle);
+                int duesAmount = (int)MathF.Floor(entry.m_Members * CreditsPerMemberPerCycle);
+                entry.m_Treasury += duesAmount;
+                entry.m_TotalFromDues += duesAmount; // AJOUT — traçage cotisations
 
                 bool wonAtLeastOneDistrict = partiesWithAtLeastOneDistrict.Contains(entry.m_Party);
                 bool isCityMajority = entry.m_Party == cityMajority;
@@ -320,6 +336,9 @@ namespace CityCouncil
                 var entry = entries[i];
                 entry.m_Members = 0f;
                 entry.m_Treasury = 0;
+                entry.m_TotalFromCityFunding = 0;   // AJOUT
+                entry.m_TotalFromDues = 0;          // AJOUT
+                entry.m_TotalSpentPropaganda = 0;   // AJOUT
                 entries[i] = entry;
                 break;
             }
@@ -343,8 +362,8 @@ namespace CityCouncil
 
         /// <summary>
         /// Débite la trésorerie d'un parti si les fonds sont suffisants. Utilisé par
-        /// CouncilPropagandaSystem pour financer les campagnes. Retourne false (sans rien débiter)
-        /// si la trésorerie est insuffisante.
+        /// CouncilPropagandaSystem pour financer les campagnes — trace donc systématiquement dans
+        /// m_TotalSpentPropaganda (seul appelant actuel de cette méthode).
         /// </summary>
         public bool TrySpendTreasury(PoliticalParty party, int amount)
         {
@@ -360,6 +379,7 @@ namespace CityCouncil
 
                 var entry = entries[i];
                 entry.m_Treasury -= amount;
+                entry.m_TotalSpentPropaganda += amount; // AJOUT
                 entries[i] = entry;
 
                 data.m_Entries = entries;
@@ -367,7 +387,7 @@ namespace CityCouncil
                 return true;
             }
 
-            return false; // parti introuvable (ne devrait pas arriver, les 5 entrées sont toujours présentes)
+            return false;
         }
 
     }

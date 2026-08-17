@@ -121,6 +121,47 @@ namespace CityCouncil
         }
     }
 
+    public enum DistrictCampaignType : byte
+    {
+        Boost = 0,        // classique : boost général du parti dans ce district
+        AttackClean = 1,  // ciblée propre : malus sur le parti visé, aucun risque
+        AttackDirty = 2   // ciblée sale : malus plus fort sur le parti visé + risque de retour de bâton
+    }
+
+    /// <summary>Catalogue coût/effet pour les campagnes de district, indépendant du catalogue ville.</summary>
+    public static class DistrictCampaignCatalog
+    {
+        // Palier "classique" (Boost) : coût -> bonus pour le parti lançant la campagne.
+        public static readonly System.Collections.Generic.Dictionary<CampaignIntensity, (int cost, float bonusPct)> BoostTiers = new()
+    {
+        { CampaignIntensity.Petite, (5000, 0.02f) },
+        { CampaignIntensity.Moyenne, (10000, 0.03f) },
+        { CampaignIntensity.Forte, (20000, 0.04f) },
+    };
+
+        // Attaque propre : coût fixe, malus fixe sur la cible, aucun risque.
+        public const int AttackCleanCost = 10000;
+        public const float AttackCleanMalus = 0.02f;
+
+        // Attaque sale : coût fixe, malus fixe sur la cible + malus aléatoire [0;5%] sur le lanceur.
+        public const int AttackDirtyCost = 15000;
+        public const float AttackDirtyMalus = 0.04f;
+        public const float AttackDirtySelfMalusMax = 0.05f;
+
+        public const double DistrictCampaignDurationDays = 7.0; // même rythme que le cycle électoral
+        public const int MaxActiveCampaignsPerParty = 3;        // point 4 : jusqu'à 3 districts simultanés
+    }
+
+    public struct DistrictCampaignEntry
+    {
+        public PoliticalParty m_Party;          // parti qui a lancé la campagne
+        public DistrictCampaignType m_Type;
+        public PoliticalParty m_TargetParty;    // valide seulement si AttackClean/AttackDirty
+        public float m_BonusPercent;            // Boost : bonus au lanceur. Attack* : malus à la cible (positif, appliqué en négatif)
+        public float m_SelfMalusPercent;        // AttackDirty seulement : malus tiré une fois au lancement (0 si Clean/Boost)
+        public double m_ExpiryDay;
+    }
+
     /// <summary>
     /// Palette prédéfinie et fermée pour le parti du joueur (pas de color picker libre) :
     /// simple à sérialiser/valider, et évite les couleurs illisibles ou trop proches des
@@ -276,9 +317,11 @@ namespace CityCouncil
         public int m_StreakCount;             // 0..3, remis à 1 dès qu'un autre parti gagne
         public bool m_IsBastion;              // true dès que m_StreakCount atteint 3
         public PoliticalParty m_BastionParty; // parti détenteur (valide seulement si m_IsBastion)
+        public FixedList64Bytes<DistrictCampaignEntry> m_DistrictCampaigns;
+        public FixedList64Bytes<IllegalCampaignEntry> m_IllegalCampaigns;
 
 
-        private const int kCurrentDataVersion = 2;
+        private const int kCurrentDataVersion = 4; // bump version
 
         public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
         {
@@ -304,6 +347,28 @@ namespace CityCouncil
             writer.Write(m_StreakCount);
             writer.Write(m_IsBastion);
             writer.Write((byte)m_BastionParty);
+
+            writer.Write(m_DistrictCampaigns.Length);
+            for (int i = 0; i < m_DistrictCampaigns.Length; i++)
+            {
+                var c = m_DistrictCampaigns[i];
+                writer.Write((byte)c.m_Party);
+                writer.Write((byte)c.m_Type);
+                writer.Write((byte)c.m_TargetParty);
+                writer.Write(c.m_BonusPercent);
+                writer.Write(c.m_SelfMalusPercent);
+                writer.Write(c.m_ExpiryDay);
+            }
+
+            writer.Write(m_IllegalCampaigns.Length);
+            for (int i = 0; i < m_IllegalCampaigns.Length; i++)
+            {
+                var c = m_IllegalCampaigns[i];
+                writer.Write((byte)c.m_Party);
+                writer.Write((byte)c.m_TargetParty);
+                writer.Write(c.m_MalusPercent);
+                writer.Write(c.m_ExpiryDay);
+            }
         }
 
         public void Deserialize<TReader>(TReader reader) where TReader : IReader
@@ -335,14 +400,56 @@ namespace CityCouncil
             }
             else
             {
-                // Compat sauvegardes v1 : aucune série connue avant ce système, on repart à zéro
-                // plutôt que de deviner un historique — cohérent avec un ajout de fonctionnalité,
-                // pas une régression pour les parties déjà en cours.
                 m_StreakParty = default;
                 m_StreakCount = 0;
                 m_IsBastion = false;
                 m_BastionParty = default;
             }
+
+            m_DistrictCampaigns = new FixedList64Bytes<DistrictCampaignEntry>();
+            if (dataVersion >= 3)
+            {
+                reader.Read(out int campaignCount);
+                for (int i = 0; i < campaignCount; i++)
+                {
+                    reader.Read(out byte party);
+                    reader.Read(out byte type);
+                    reader.Read(out byte target);
+                    reader.Read(out float bonus);
+                    reader.Read(out float selfMalus);
+                    reader.Read(out double expiry);
+                    m_DistrictCampaigns.Add(new DistrictCampaignEntry
+                    {
+                        m_Party = (PoliticalParty)party,
+                        m_Type = (DistrictCampaignType)type,
+                        m_TargetParty = (PoliticalParty)target,
+                        m_BonusPercent = bonus,
+                        m_SelfMalusPercent = selfMalus,
+                        m_ExpiryDay = expiry
+                    });
+                }
+            }
+
+            m_IllegalCampaigns = new FixedList64Bytes<IllegalCampaignEntry>();
+            if (dataVersion >= 4)
+            {
+                reader.Read(out int illegalCount);
+                for (int i = 0; i < illegalCount; i++)
+                {
+                    reader.Read(out byte party);
+                    reader.Read(out byte target);
+                    reader.Read(out float malus);
+                    reader.Read(out double expiry);
+                    m_IllegalCampaigns.Add(new IllegalCampaignEntry
+                    {
+                        m_Party = (PoliticalParty)party,
+                        m_TargetParty = (PoliticalParty)target,
+                        m_MalusPercent = malus,
+                        m_ExpiryDay = expiry
+                    });
+                }
+            }
+            // Compat v1/v2/v3 : aucune campagne illégale connue avant ce système, liste vide par défaut.
         }
 
         /// <summary>
@@ -354,8 +461,15 @@ namespace CityCouncil
         public struct PartyMembershipEntry
         {
             public PoliticalParty m_Party;
-            public float m_Members;  // flottant : permet aux pourcentages successifs (+3%/-2%) de s'accumuler proprement sans arrondi prématuré
-            public int m_Treasury;   // crédits accumulés
+            public float m_Members;
+            public int m_Treasury;
+
+            // AJOUT — compteurs cumulatifs par source, jamais décrémentés (sauf reset complet du
+            // parti via ResetPartyTreasuryAndMembers). Ne représentent PAS le solde courant : servent
+            // uniquement à l'affichage détaillé côté "Forces Politiques" (cf. TreasuryBreakdown.tsx).
+            public long m_TotalFromCityFunding;   // versé par CouncilFundingSystem (part fixe + variable)
+            public long m_TotalFromDues;          // cotisations, cf. CouncilPartyMembershipSystem.RunCycleCheck
+            public long m_TotalSpentPropaganda;   // débité par CouncilPropagandaSystem.TryLaunchCampaign
         }
 
         /// <summary>
@@ -366,7 +480,7 @@ namespace CityCouncil
         {
             public FixedList512Bytes<PartyMembershipEntry> m_Entries;
 
-            private const int kVersion = 1;
+            private const int kVersion = 2; // AJOUT des 3 compteurs -> bump version
 
             public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
             {
@@ -377,12 +491,15 @@ namespace CityCouncil
                     writer.Write((byte)m_Entries[i].m_Party);
                     writer.Write(m_Entries[i].m_Members);
                     writer.Write(m_Entries[i].m_Treasury);
+                    writer.Write(m_Entries[i].m_TotalFromCityFunding);   // AJOUT
+                    writer.Write(m_Entries[i].m_TotalFromDues);          // AJOUT
+                    writer.Write(m_Entries[i].m_TotalSpentPropaganda);   // AJOUT
                 }
             }
 
             public void Deserialize<TReader>(TReader reader) where TReader : IReader
             {
-                reader.Read(out int _);
+                reader.Read(out int version);
                 reader.Read(out int count);
                 m_Entries = new FixedList512Bytes<PartyMembershipEntry>();
                 for (int i = 0; i < count; i++)
@@ -390,11 +507,25 @@ namespace CityCouncil
                     reader.Read(out byte party);
                     reader.Read(out float members);
                     reader.Read(out int treasury);
+
+                    long fromCity = 0, fromDues = 0, spentPropaganda = 0;
+                    if (version >= 2)
+                    {
+                        reader.Read(out fromCity);
+                        reader.Read(out fromDues);
+                        reader.Read(out spentPropaganda);
+                    }
+                    // Compat sauvegardes v1 : aucun historique connu avant ce système, on repart à 0
+                    // plutôt que de deviner une provenance rétroactive au solde déjà accumulé.
+
                     m_Entries.Add(new PartyMembershipEntry
                     {
                         m_Party = (PoliticalParty)party,
                         m_Members = members,
-                        m_Treasury = treasury
+                        m_Treasury = treasury,
+                        m_TotalFromCityFunding = fromCity,
+                        m_TotalFromDues = fromDues,
+                        m_TotalSpentPropaganda = spentPropaganda
                     });
                 }
             }
@@ -541,6 +672,184 @@ namespace CityCouncil
             return pending;
         }
 
+    }
+
+    /// <summary>
+    /// Catalogue des libellés de "fausses factures" affichés sur les mouvements de caisse noire.
+    /// Tiré aléatoirement à chaque transfert (point 10), sans lien avec le sens du mouvement.
+    /// Les clés de localisation vivent dans LocaleKeys (BlackFund_Invoice1..4).
+    /// </summary>
+    public static class BlackFundInvoiceCatalog
+    {
+        public static readonly string[] InvoiceLocaleKeys =
+        {
+        LocaleKeys.BlackFund_Invoice1,
+        LocaleKeys.BlackFund_Invoice2,
+        LocaleKeys.BlackFund_Invoice3,
+        LocaleKeys.BlackFund_Invoice4,
+    };
+    }
+
+    /// <summary>Entrée caisse noire d'un parti (5 entrées fixes, une par PoliticalParty).</summary>
+    public struct BlackFundEntry
+    {
+        public PoliticalParty m_Party;
+        public bool m_Active;
+        public int m_Balance;
+    }
+
+    /// <summary>
+    /// Composant SINGLETON (même pattern que CouncilPartyMembershipData) portant la caisse noire
+    /// des 5 partis, géré par CouncilBlackFundSystem. Volontairement séparé de
+    /// CouncilPartyMembershipData : la caisse noire est un compte "hors livre" distinct de la
+    /// trésorerie officielle, avec ses propres règles (fermeture = perte totale, pas de cotisation
+    /// automatique dessus, etc.) — mélanger les deux complexifierait inutilement la structure
+    /// existante pour un concept fondamentalement différent.
+    /// </summary>
+    public struct CouncilBlackFundData : IComponentData, ISerializable
+    {
+        public FixedList512Bytes<BlackFundEntry> m_Entries;
+
+        private const int kVersion = 1;
+
+        public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
+        {
+            writer.Write(kVersion);
+            writer.Write(m_Entries.Length);
+            for (int i = 0; i < m_Entries.Length; i++)
+            {
+                writer.Write((byte)m_Entries[i].m_Party);
+                writer.Write(m_Entries[i].m_Active);
+                writer.Write(m_Entries[i].m_Balance);
+            }
+        }
+
+        public void Deserialize<TReader>(TReader reader) where TReader : IReader
+        {
+            reader.Read(out int _);
+            reader.Read(out int count);
+            m_Entries = new FixedList512Bytes<BlackFundEntry>();
+            for (int i = 0; i < count; i++)
+            {
+                reader.Read(out byte party);
+                reader.Read(out bool active);
+                reader.Read(out int balance);
+                m_Entries.Add(new BlackFundEntry
+                {
+                    m_Party = (PoliticalParty)party,
+                    m_Active = active,
+                    m_Balance = balance
+                });
+            }
+        }
+    }
+
+    public enum VigilanceLevel : byte
+    {
+        Low = 0,     // "Peu vigilant"
+        Medium = 1,  // "Sous surveillance"
+        High = 2     // "En Alerte !"
+    }
+
+    public struct VigilanceEntry
+    {
+        public PoliticalParty m_Party;
+        public VigilanceLevel m_Level;
+    }
+
+    /// <summary>Sanction city-wide temporaire infligée à un parti détecté (malus -10%, 7 jours).</summary>
+    public struct SanctionEntry
+    {
+        public PoliticalParty m_Party;
+        public float m_MalusPercent; // positif, appliqué en négatif par VoteCalculator
+        public double m_ExpiryDay;
+    }
+
+    /// <summary>
+    /// Composant SINGLETON (même pattern que CouncilBonusData) portant la vigilance des 5 partis
+    /// et les sanctions city-wide actives, géré par CouncilElectoralCommissionSystem.
+    /// </summary>
+    public struct CouncilElectoralCommissionData : IComponentData, ISerializable
+    {
+        public FixedList512Bytes<VigilanceEntry> m_VigilanceEntries; // 5 entrées, une par PoliticalParty
+        public FixedList512Bytes<SanctionEntry> m_Sanctions;         // sanctions actives (rarement plus d'une ou deux à la fois)
+
+        private const int kVersion = 1;
+
+        public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
+        {
+            writer.Write(kVersion);
+
+            writer.Write(m_VigilanceEntries.Length);
+            for (int i = 0; i < m_VigilanceEntries.Length; i++)
+            {
+                writer.Write((byte)m_VigilanceEntries[i].m_Party);
+                writer.Write((byte)m_VigilanceEntries[i].m_Level);
+            }
+
+            writer.Write(m_Sanctions.Length);
+            for (int i = 0; i < m_Sanctions.Length; i++)
+            {
+                writer.Write((byte)m_Sanctions[i].m_Party);
+                writer.Write(m_Sanctions[i].m_MalusPercent);
+                writer.Write(m_Sanctions[i].m_ExpiryDay);
+            }
+        }
+
+        public void Deserialize<TReader>(TReader reader) where TReader : IReader
+        {
+            reader.Read(out int _);
+
+            reader.Read(out int vigilanceCount);
+            m_VigilanceEntries = new FixedList512Bytes<VigilanceEntry>();
+            for (int i = 0; i < vigilanceCount; i++)
+            {
+                reader.Read(out byte party);
+                reader.Read(out byte level);
+                m_VigilanceEntries.Add(new VigilanceEntry { m_Party = (PoliticalParty)party, m_Level = (VigilanceLevel)level });
+            }
+
+            reader.Read(out int sanctionCount);
+            m_Sanctions = new FixedList512Bytes<SanctionEntry>();
+            for (int i = 0; i < sanctionCount; i++)
+            {
+                reader.Read(out byte party);
+                reader.Read(out float malus);
+                reader.Read(out double expiry);
+                m_Sanctions.Add(new SanctionEntry { m_Party = (PoliticalParty)party, m_MalusPercent = malus, m_ExpiryDay = expiry });
+            }
+        }
+    }
+
+    /// <summary>Catalogue de la campagne illégale de district (coût fixe, malus aléatoire).</summary>
+    public static class IllegalCampaignCatalog
+    {
+        public const int Cost = 10000;
+        public const float MaxMalus = 0.06f; // malus tiré aléatoirement entre 0 et 6%
+        public const int MaxActiveCampaignsPerParty = 3; // compteur SÉPARÉ des campagnes classiques (point 4)
+        public const double CampaignDurationDays = 7.0;
+
+        /// <summary>
+        /// Probabilité de détection et probabilité/plafond d'escalade de vigilance en fonction du
+        /// nombre de campagnes illégales actives par le parti au moment du contrôle (1, 2 ou 3+).
+        /// </summary>
+        public static (float detectionChance, float escalateChance, VigilanceLevel maxLevelThisCheck) GetRisk(int activeCount)
+        {
+            return activeCount switch
+            {
+                1 => (0.33f, 0.50f, VigilanceLevel.Medium), // point : "reste en niveau 1 ou 2"
+                2 => (0.70f, 0.85f, VigilanceLevel.High),
+                _ => (0.90f, 1.00f, VigilanceLevel.High),   // 3 campagnes ou plus : escalade quasi garantie
+            };
+        }
+    }
+
+    public struct IllegalCampaignEntry
+    {
+        public PoliticalParty m_Party;
+        public PoliticalParty m_TargetParty;
+        public float m_MalusPercent; // tiré une fois au lancement (0 à 6%), fixe pour la durée de la campagne
+        public double m_ExpiryDay;
     }
 
 }

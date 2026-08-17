@@ -206,7 +206,7 @@ namespace CityCouncil
                 if (fixedPerParty > 0 && TrySpendCityMoney(fixedPerParty * 5))
                 {
                     foreach (PoliticalParty p in Enum.GetValues(typeof(PoliticalParty)))
-                        m_MembershipSystem.AddTreasury(p, fixedPerParty);
+                        m_MembershipSystem.AddTreasury(p, fixedPerParty, CouncilPartyMembershipSystem.TreasurySource.CityFunding);
 
                     s_Log.Info($"[CouncilFundingSystem] Part fixe distribuée : {fixedPerParty * 5} crédits ({fixedPerParty}/parti).");
                 }
@@ -235,7 +235,7 @@ namespace CityCouncil
             if (variableCost > 0 && TrySpendCityMoney(variableCost))
             {
                 foreach (var kv in seatsByParty)
-                    m_MembershipSystem.AddTreasury(kv.Key, kv.Value * CreditsPerSeat);
+                    m_MembershipSystem.AddTreasury(kv.Key, kv.Value * CreditsPerSeat, CouncilPartyMembershipSystem.TreasurySource.CityFunding);
             }
             else if (variableCost > 0)
             {

@@ -41,6 +41,7 @@ namespace CityCouncil
         private CouncilFundingSystem m_FundingSystem;
         private CouncilBonusSystem m_BonusSystem;
         private CouncilPropagandaSystem m_PropagandaSystem;
+        private CouncilElectoralCommissionSystem m_CommissionSystem;
 
         protected override void OnCreate()
         {
@@ -54,6 +55,7 @@ namespace CityCouncil
             m_FundingSystem = World.GetOrCreateSystemManaged<CouncilFundingSystem>();
             m_BonusSystem = World.GetOrCreateSystemManaged<CouncilBonusSystem>();
             m_PropagandaSystem = World.GetOrCreateSystemManaged<CouncilPropagandaSystem>();
+            m_CommissionSystem = World.GetOrCreateSystemManaged<CouncilElectoralCommissionSystem>();
 
 
             m_DistrictQuery = GetEntityQuery(new EntityQueryDesc
@@ -226,16 +228,28 @@ namespace CityCouncil
 
             var offensiveHolders = GetOffensiveBonusHolders(data);
             var activeCampaigns = m_PropagandaSystem.GetActiveCampaigns();
+            var districtCampaigns = m_PropagandaSystem.GetActiveDistrictCampaigns(districtEntity);
+            var illegalCampaigns = m_PropagandaSystem.GetActiveIllegalCampaigns(districtEntity);
+
+            // AJOUT — sanctions city-wide : combine celles de tous les partis (rarement plusieurs à la
+            // fois), la fonction GetActiveSanctionsForParty filtrant déjà par expiry.
+            var citySanctions = new List<SanctionEntry>();
+            foreach (PoliticalParty p in Enum.GetValues(typeof(PoliticalParty)))
+                citySanctions.AddRange(m_CommissionSystem.GetActiveSanctionsForParty(p, GetCurrentSimulationDay()));
+
 
             // AJOUT — l'état Bastion utilisé ici est celui d'AVANT cette élection (m_IsBastion/
             // m_BastionParty ne sont mis à jour qu'après, dans FinalizeResults), donc le bonus profite
             // bien au détenteur actuel pour DÉFENDRE son district, pas à un futur vainqueur.
             var result = VoteCalculator.ComputeRound1(
-                seniors, adults, wealth, seed, activePolicies,
-                activeEvent?.Effects, cityLeadingParty,
-                data.m_IsBastion, data.m_BastionParty, // AJOUT
+            seniors, adults, wealth, seed, activePolicies,
+            activeEvent?.Effects, cityLeadingParty,
+            data.m_IsBastion, data.m_BastionParty,
             offensiveHolders,
-            activeCampaigns);
+            activeCampaigns,
+            districtCampaigns,
+            illegalCampaigns,
+            citySanctions);
 
             data.m_VotersRound1 = result.m_Voters;
             data.m_AbstentionRound1 = result.m_Abstention;

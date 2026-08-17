@@ -26,6 +26,8 @@ namespace CityCouncil
         private double m_LastAiCycleDay = -1;
         private readonly System.Random m_AiRng = new System.Random();
         private CouncilCustomPartySystem m_CustomPartySystem;
+        private EntityQuery m_DistrictQueryForCampaigns;
+        private CouncilBlackFundSystem m_BlackFundSystem;
 
         protected override void OnCreate()
         {
@@ -34,6 +36,8 @@ namespace CityCouncil
             m_SimulationSystem = World.GetOrCreateSystemManaged<SimulationSystem>();
             m_MembershipSystem = World.GetOrCreateSystemManaged<CouncilPartyMembershipSystem>();
             m_CustomPartySystem = World.GetOrCreateSystemManaged<CouncilCustomPartySystem>();
+            m_DistrictQueryForCampaigns = GetEntityQuery(ComponentType.ReadWrite<CouncilDistrictData>());
+            m_BlackFundSystem = World.GetOrCreateSystemManaged<CouncilBlackFundSystem>();
         }
 
         protected override void OnGamePreload(Purpose purpose, Game.GameMode mode)
@@ -54,6 +58,8 @@ namespace CityCouncil
         {
             if (m_SingletonEntity == Entity.Null) EnsureSingleton();
             ExpireCampaignsIfNeeded();
+            ExpireDistrictCampaignsIfNeeded();
+            ExpireIllegalCampaignsIfNeeded(); // AJOUT
             RunAiCycleIfNeeded();
         }
 
@@ -88,24 +94,112 @@ namespace CityCouncil
 
             foreach (PoliticalParty party in System.Enum.GetValues(typeof(PoliticalParty)))
             {
-                if (playerSpace.HasValue && party == playerSpace.Value) continue; // le joueur garde la main sur son parti
+                if (playerSpace.HasValue && party == playerSpace.Value) continue;
 
                 bool alreadyActive = false;
                 foreach (var e in propagandaData.m_Entries)
-                {
                     if (e.m_Party == party && e.m_Active) { alreadyActive = true; break; }
-                }
-                if (alreadyActive) continue;
 
                 int treasury = 0;
                 foreach (var m in membershipData.m_Entries)
-                {
                     if (m.m_Party == party) { treasury = m.m_Treasury; break; }
-                }
 
-                TryAiLaunchCampaign(party, treasury);
+                if (!alreadyActive)
+                    TryAiLaunchCampaign(party, treasury);
+
+                // AJOUT — tentative indépendante de campagne de district (point 6).
+                TryAiLaunchDistrictCampaign(party, treasury);
+                TryAiLaunchIllegalCampaign(party, treasury);
             }
         }
+
+        /// <summary>
+        /// Heuristique IA pour les campagnes de district : chance fixe par cycle, plafonnée par le
+        /// budget et par le plafond de 3 campagnes actives. 50% renforce un district déjà détenu
+        /// (Boost), 50% attaque le leader d'un district où l'IA n'est pas en tête (70% propre / 30% sale).
+        /// </summary>
+        private void TryAiLaunchDistrictCampaign(PoliticalParty party, int treasury)
+        {
+            const float LaunchChance = 0.25f;
+            if (m_AiRng.NextDouble() >= LaunchChance) return;
+            if (CountActiveDistrictCampaignsForParty(party) >= DistrictCampaignCatalog.MaxActiveCampaignsPerParty) return;
+
+            var districts = m_DistrictQueryForCampaigns.ToEntityArray(Allocator.Temp);
+            try
+            {
+                var ownedDistricts = new List<Entity>();
+                var contestedDistricts = new List<(Entity district, PoliticalParty leader)>();
+
+                foreach (var d in districts)
+                {
+                    var data = EntityManager.GetComponentData<CouncilDistrictData>(d);
+                    if (data.m_Phase != ElectionPhase.Completed) continue;
+
+                    if (data.m_LeadingParty == party) ownedDistricts.Add(d);
+                    else contestedDistricts.Add((d, data.m_LeadingParty));
+                }
+
+                bool wantsBoost = m_AiRng.NextDouble() < 0.5;
+
+                if (wantsBoost && ownedDistricts.Count > 0)
+                {
+                    var target = ownedDistricts[m_AiRng.Next(ownedDistricts.Count)];
+                    var affordableTier = CheapestAffordableBoostTier(treasury);
+                    if (affordableTier.HasValue)
+                        TryLaunchDistrictCampaign(target, party, DistrictCampaignType.Boost, default, affordableTier.Value, out _);
+                }
+                else if (contestedDistricts.Count > 0)
+                {
+                    var (target, leader) = contestedDistricts[m_AiRng.Next(contestedDistricts.Count)];
+                    bool dirty = m_AiRng.NextDouble() < 0.30;
+                    int cost = dirty ? DistrictCampaignCatalog.AttackDirtyCost : DistrictCampaignCatalog.AttackCleanCost;
+                    if (treasury / 2 >= cost)
+                        TryLaunchDistrictCampaign(target, party,
+                            dirty ? DistrictCampaignType.AttackDirty : DistrictCampaignType.AttackClean,
+                            leader, CampaignIntensity.Petite, out _);
+                }
+            }
+            finally { districts.Dispose(); }
+        }
+
+        /// <summary>
+        /// Heuristique IA simplifiée pour la campagne illégale (point 9) : chance fixe, plafonnée par
+        /// budget et par le plafond de 3, cible le leader d'un district contesté. Pas de caisse noire
+        /// pour l'IA : financement direct depuis la trésorerie officielle (fromBlackFund=false).
+        /// </summary>
+        private void TryAiLaunchIllegalCampaign(PoliticalParty party, int treasury)
+        {
+            const float LaunchChance = 0.15f; // plus rare que les campagnes légales : risque plus élevé
+            if (m_AiRng.NextDouble() >= LaunchChance) return;
+            if (treasury < IllegalCampaignCatalog.Cost) return;
+            if (CountActiveIllegalCampaignsForParty(party) >= IllegalCampaignCatalog.MaxActiveCampaignsPerParty) return;
+
+            var districts = m_DistrictQueryForCampaigns.ToEntityArray(Allocator.Temp);
+            try
+            {
+                var contestedDistricts = new List<(Entity district, PoliticalParty leader)>();
+                foreach (var d in districts)
+                {
+                    var data = EntityManager.GetComponentData<CouncilDistrictData>(d);
+                    if (data.m_Phase != ElectionPhase.Completed) continue;
+                    if (data.m_LeadingParty != party) contestedDistricts.Add((d, data.m_LeadingParty));
+                }
+                if (contestedDistricts.Count == 0) return;
+
+                var (target, leader) = contestedDistricts[m_AiRng.Next(contestedDistricts.Count)];
+                TryLaunchIllegalDistrictCampaign(target, party, leader, fromBlackFund: false, out _);
+            }
+            finally { districts.Dispose(); }
+        }
+
+        private CampaignIntensity? CheapestAffordableBoostTier(int treasury)
+        {
+            int budget = treasury / 2;
+            foreach (var tier in new[] { CampaignIntensity.Forte, CampaignIntensity.Moyenne, CampaignIntensity.Petite })
+                if (DistrictCampaignCatalog.BoostTiers[tier].cost <= budget) return tier;
+            return null;
+        }
+
 
         /// <summary>
         /// Décide si et comment un parti IA lance une campagne. Probabilité de déclenchement fixe
@@ -339,6 +433,179 @@ namespace CityCouncil
             }
         }
 
+        /// <summary>
+        /// Lance une campagne de district. Refuse si le parti a déjà atteint le plafond de 3
+        /// campagnes de district actives simultanément (tous districts confondus), ou si les
+        /// réserves sont insuffisantes. Pour une attaque sale, le malus auto-infligé est tiré
+        /// UNE SEULE FOIS ici et reste fixe pour toute la durée de la campagne (cf. remarque design).
+        /// </summary>
+        public bool TryLaunchDistrictCampaign(
+            Entity districtEntity, PoliticalParty party, DistrictCampaignType type,
+            PoliticalParty targetParty, CampaignIntensity boostTier, out string error)
+        {
+            error = null;
+
+            if (!EntityManager.HasComponent<CouncilDistrictData>(districtEntity))
+            {
+                error = "District invalide.";
+                return false;
+            }
+
+            int activeCount = CountActiveDistrictCampaignsForParty(party);
+            if (activeCount >= DistrictCampaignCatalog.MaxActiveCampaignsPerParty)
+            {
+                error = "Nombre maximum de campagnes de district atteint (3).";
+                return false;
+            }
+
+            var data = EntityManager.GetComponentData<CouncilDistrictData>(districtEntity);
+            double currentDay = CurrentDay();
+
+            // Un seul type de campagne de district actif par parti PAR district (pas de cumul de
+            // deux campagnes du même parti sur le même district).
+            foreach (var c in data.m_DistrictCampaigns)
+            {
+                if (c.m_Party == party && currentDay < c.m_ExpiryDay)
+                {
+                    error = "Une campagne de ce parti est déjà active dans ce district.";
+                    return false;
+                }
+            }
+
+            int cost;
+            float bonusOrMalus;
+            float selfMalus = 0f;
+
+            switch (type)
+            {
+                case DistrictCampaignType.Boost:
+                    (cost, bonusOrMalus) = DistrictCampaignCatalog.BoostTiers[boostTier];
+                    break;
+                case DistrictCampaignType.AttackClean:
+                    cost = DistrictCampaignCatalog.AttackCleanCost;
+                    bonusOrMalus = DistrictCampaignCatalog.AttackCleanMalus;
+                    break;
+                case DistrictCampaignType.AttackDirty:
+                    cost = DistrictCampaignCatalog.AttackDirtyCost;
+                    bonusOrMalus = DistrictCampaignCatalog.AttackDirtyMalus;
+                    selfMalus = (float)m_AiRng.NextDouble() * DistrictCampaignCatalog.AttackDirtySelfMalusMax; // tiré une fois
+                    break;
+                default:
+                    error = "Type de campagne invalide.";
+                    return false;
+            }
+
+            if (!m_MembershipSystem.TrySpendTreasury(party, cost))
+            {
+                error = "Réserves insuffisantes.";
+                return false;
+            }
+
+            data = EntityManager.GetComponentData<CouncilDistrictData>(districtEntity); // relu après débit
+            data.m_DistrictCampaigns.Add(new DistrictCampaignEntry
+            {
+                m_Party = party,
+                m_Type = type,
+                m_TargetParty = (type == DistrictCampaignType.Boost) ? default : targetParty,
+                m_BonusPercent = bonusOrMalus,
+                m_SelfMalusPercent = selfMalus,
+                m_ExpiryDay = currentDay + DistrictCampaignCatalog.DistrictCampaignDurationDays
+            });
+            EntityManager.SetComponentData(districtEntity, data);
+
+            s_Log.Info($"[CouncilPropagandaSystem] Campagne de district lancée : {party} ({type}) sur district {districtEntity.Index}" +
+                       (type != DistrictCampaignType.Boost ? $", cible {targetParty}" : "") + $", coût {cost}.");
+            return true;
+        }
+
+        private int CountActiveDistrictCampaignsForParty(PoliticalParty party)
+        {
+            int count = 0;
+            double currentDay = CurrentDay();
+            var districts = m_DistrictQueryForCampaigns.ToEntityArray(Allocator.Temp);
+            try
+            {
+                foreach (var d in districts)
+                {
+                    var data = EntityManager.GetComponentData<CouncilDistrictData>(d);
+                    foreach (var c in data.m_DistrictCampaigns)
+                        if (c.m_Party == party && currentDay < c.m_ExpiryDay) count++;
+                }
+            }
+            finally { districts.Dispose(); }
+            return count;
+        }
+
+        /// <summary>Purge les campagnes de district expirées, tous districts confondus.</summary>
+        private void ExpireDistrictCampaignsIfNeeded()
+        {
+            double currentDay = CurrentDay();
+            var districts = m_DistrictQueryForCampaigns.ToEntityArray(Allocator.Temp);
+            try
+            {
+                foreach (var d in districts)
+                {
+                    var data = EntityManager.GetComponentData<CouncilDistrictData>(d);
+                    bool changed = false;
+                    var kept = new FixedList64Bytes<DistrictCampaignEntry>();
+                    foreach (var c in data.m_DistrictCampaigns)
+                    {
+                        if (currentDay < c.m_ExpiryDay) kept.Add(c);
+                        else changed = true;
+                    }
+                    if (changed)
+                    {
+                        data.m_DistrictCampaigns = kept;
+                        EntityManager.SetComponentData(d, data);
+                    }
+                }
+            }
+            finally { districts.Dispose(); }
+        }
+
+        /// <summary>Campagnes de district actives pour UN district donné (utilisé par VoteCalculator via CouncilElectionSystem).</summary>
+        public List<DistrictCampaignEntry> GetActiveDistrictCampaigns(Entity districtEntity)
+        {
+            var result = new List<DistrictCampaignEntry>();
+            if (!EntityManager.HasComponent<CouncilDistrictData>(districtEntity)) return result;
+
+            double currentDay = CurrentDay();
+            var data = EntityManager.GetComponentData<CouncilDistrictData>(districtEntity);
+            foreach (var c in data.m_DistrictCampaigns)
+                if (currentDay < c.m_ExpiryDay) result.Add(c);
+            return result;
+        }
+
+        /// <summary>Annule une campagne de district (sans remboursement), même pattern que TryCancelCampaign.</summary>
+        public bool TryCancelDistrictCampaign(Entity districtEntity, PoliticalParty party, out string error)
+        {
+            error = null;
+            if (!EntityManager.HasComponent<CouncilDistrictData>(districtEntity))
+            {
+                error = "District invalide.";
+                return false;
+            }
+
+            var data = EntityManager.GetComponentData<CouncilDistrictData>(districtEntity);
+            var kept = new FixedList64Bytes<DistrictCampaignEntry>();
+            bool found = false;
+            foreach (var c in data.m_DistrictCampaigns)
+            {
+                if (!found && c.m_Party == party) { found = true; continue; }
+                kept.Add(c);
+            }
+
+            if (!found)
+            {
+                error = "Aucune campagne active de ce parti dans ce district.";
+                return false;
+            }
+
+            data.m_DistrictCampaigns = kept;
+            EntityManager.SetComponentData(districtEntity, data);
+            return true;
+        }
+
         /// <summary>Campagnes actives (non expirées), utilisées par CouncilElectionSystem pour chaque 1er tour.</summary>
         public List<(PoliticalParty party, CampaignTarget target, float percent)> GetActiveCampaigns()
         {
@@ -350,6 +617,156 @@ namespace CityCouncil
                     result.Add((e.m_Party, e.m_Target, e.m_BonusPercent));
             }
             return result;
+        }
+
+        /// <summary>
+        /// Lance une campagne illégale de district contre un parti visé. Financée par la caisse noire
+        /// (fromBlackFund=true, cas joueur) ou directement par la trésorerie officielle (fromBlackFund=false,
+        /// cas IA simplifié, cf. point 9). Le malus est tiré UNE SEULE FOIS ici (0 à 6%) et reste fixe.
+        /// </summary>
+        public bool TryLaunchIllegalDistrictCampaign(
+            Entity districtEntity, PoliticalParty party, PoliticalParty targetParty, bool fromBlackFund, out string error)
+        {
+            error = null;
+
+            if (!EntityManager.HasComponent<CouncilDistrictData>(districtEntity))
+            {
+                error = "District invalide.";
+                return false;
+            }
+
+            if (fromBlackFund && !m_BlackFundSystem.IsActive(party))
+            {
+                error = "Caisse noire inactive.";
+                return false;
+            }
+
+            if (CountActiveIllegalCampaignsForParty(party) >= IllegalCampaignCatalog.MaxActiveCampaignsPerParty)
+            {
+                error = "Nombre maximum de campagnes illégales atteint (3).";
+                return false;
+            }
+
+            var data = EntityManager.GetComponentData<CouncilDistrictData>(districtEntity);
+            double currentDay = CurrentDay();
+
+            foreach (var c in data.m_IllegalCampaigns)
+            {
+                if (c.m_Party == party && currentDay < c.m_ExpiryDay)
+                {
+                    error = "Une campagne illégale de ce parti est déjà active dans ce district.";
+                    return false;
+                }
+            }
+
+            bool spent = fromBlackFund
+                ? m_BlackFundSystem.TrySpendFromBlackFund(party, IllegalCampaignCatalog.Cost)
+                : m_MembershipSystem.TrySpendTreasury(party, IllegalCampaignCatalog.Cost);
+
+            if (!spent)
+            {
+                error = fromBlackFund ? "Solde de la caisse noire insuffisant." : "Réserves insuffisantes.";
+                return false;
+            }
+
+            data = EntityManager.GetComponentData<CouncilDistrictData>(districtEntity); // relu après débit
+            float malus = (float)m_AiRng.NextDouble() * IllegalCampaignCatalog.MaxMalus; // tiré une fois
+
+            data.m_IllegalCampaigns.Add(new IllegalCampaignEntry
+            {
+                m_Party = party,
+                m_TargetParty = targetParty,
+                m_MalusPercent = malus,
+                m_ExpiryDay = currentDay + IllegalCampaignCatalog.CampaignDurationDays
+            });
+            EntityManager.SetComponentData(districtEntity, data);
+
+            s_Log.Info($"[CouncilPropagandaSystem] Campagne ILLÉGALE lancée : {party} contre {targetParty} " +
+                       $"sur district {districtEntity.Index}, malus {malus:P1}, financement {(fromBlackFund ? "caisse noire" : "trésorerie")}.");
+            return true;
+        }
+
+        public int CountActiveIllegalCampaignsForParty(PoliticalParty party)
+        {
+            int count = 0;
+            double currentDay = CurrentDay();
+            var districts = m_DistrictQueryForCampaigns.ToEntityArray(Allocator.Temp);
+            try
+            {
+                foreach (var d in districts)
+                {
+                    var data = EntityManager.GetComponentData<CouncilDistrictData>(d);
+                    foreach (var c in data.m_IllegalCampaigns)
+                        if (c.m_Party == party && currentDay < c.m_ExpiryDay) count++;
+                }
+            }
+            finally { districts.Dispose(); }
+            return count;
+        }
+
+        private void ExpireIllegalCampaignsIfNeeded()
+        {
+            double currentDay = CurrentDay();
+            var districts = m_DistrictQueryForCampaigns.ToEntityArray(Allocator.Temp);
+            try
+            {
+                foreach (var d in districts)
+                {
+                    var data = EntityManager.GetComponentData<CouncilDistrictData>(d);
+                    bool changed = false;
+                    var kept = new FixedList64Bytes<IllegalCampaignEntry>();
+                    foreach (var c in data.m_IllegalCampaigns)
+                    {
+                        if (currentDay < c.m_ExpiryDay) kept.Add(c);
+                        else changed = true;
+                    }
+                    if (changed)
+                    {
+                        data.m_IllegalCampaigns = kept;
+                        EntityManager.SetComponentData(d, data);
+                    }
+                }
+            }
+            finally { districts.Dispose(); }
+        }
+
+        /// <summary>Campagnes illégales actives pour UN district (utilisé par VoteCalculator).</summary>
+        public List<IllegalCampaignEntry> GetActiveIllegalCampaigns(Entity districtEntity)
+        {
+            var result = new List<IllegalCampaignEntry>();
+            if (!EntityManager.HasComponent<CouncilDistrictData>(districtEntity)) return result;
+
+            double currentDay = CurrentDay();
+            var data = EntityManager.GetComponentData<CouncilDistrictData>(districtEntity);
+            foreach (var c in data.m_IllegalCampaigns)
+                if (currentDay < c.m_ExpiryDay) result.Add(c);
+            return result;
+        }
+
+        /// <summary>Force l'expiration immédiate de TOUTES les campagnes illégales d'un parti (utilisé par la Commission lors d'une fermeture forcée, si besoin).</summary>
+        public void ForceExpireIllegalCampaignsForParty(PoliticalParty party)
+        {
+            var districts = m_DistrictQueryForCampaigns.ToEntityArray(Allocator.Temp);
+            try
+            {
+                foreach (var d in districts)
+                {
+                    var data = EntityManager.GetComponentData<CouncilDistrictData>(d);
+                    bool changed = false;
+                    var kept = new FixedList64Bytes<IllegalCampaignEntry>();
+                    foreach (var c in data.m_IllegalCampaigns)
+                    {
+                        if (c.m_Party == party) changed = true;
+                        else kept.Add(c);
+                    }
+                    if (changed)
+                    {
+                        data.m_IllegalCampaigns = kept;
+                        EntityManager.SetComponentData(d, data);
+                    }
+                }
+            }
+            finally { districts.Dispose(); }
         }
 
         /// <summary>

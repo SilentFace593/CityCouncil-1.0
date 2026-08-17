@@ -61,6 +61,11 @@ namespace CityCouncil
                 { LocaleKeys.Forces_DescRepublicain, "Defends order, security, and rigorous management of municipal finances." },
                 { LocaleKeys.Forces_DescGaucheRadicale, "Campaigns for radical wealth redistribution and strengthened public services." },
                 { LocaleKeys.Forces_PendingReplacement, "Party replaced at the next election!" },
+                { LocaleKeys.Treasury_Header, "Treasury breakdown" },
+                { LocaleKeys.Treasury_CityFunding, "City funding" },
+                { LocaleKeys.Treasury_Dues, "Membership dues" },
+                { LocaleKeys.Treasury_PropagandaSpent, "Propaganda spending" },
+                { LocaleKeys.Treasury_CurrentTotal, "Current balance" },
 
 
                 // City Events
@@ -120,6 +125,67 @@ namespace CityCouncil
                 { LocaleKeys.Propaganda_AutoRenewLabel, "Automatically renew" },
                 { LocaleKeys.Propaganda_AlreadyActive, "A campaign is already running for your party. Cancel it or wait for it to end before launching a new one." },
                 { LocaleKeys.Propaganda_CancelButton, "Cancel campaign" },
+
+                // District Campaigns
+                { LocaleKeys.DistrictCampaign_Header, "District campaigns" },
+                { LocaleKeys.DistrictCampaign_SlotsUsed, "District campaigns active" },
+                { LocaleKeys.DistrictCampaign_SelectDistrict, "Target district" },
+                { LocaleKeys.DistrictCampaign_TypeLabel, "Campaign type" },
+                { LocaleKeys.DistrictCampaign_TypeBoost, "Classic campaign" },
+                { LocaleKeys.DistrictCampaign_TypeAttack, "Targeted campaign" },
+                { LocaleKeys.DistrictCampaign_TargetLabel, "Target party" },
+                { LocaleKeys.DistrictCampaign_AttackCleanLabel, "Clean campaign" },
+                { LocaleKeys.DistrictCampaign_AttackCleanDesc, "-2% for the targeted party in this district. No risk to you." },
+                { LocaleKeys.DistrictCampaign_AttackDirtyLabel, "Dirty campaign" },
+                { LocaleKeys.DistrictCampaign_AttackDirtyDesc, "-4% for the targeted party, but a random penalty (0 to -5%) also hits your own party in this district." },
+                { LocaleKeys.DistrictCampaign_MaxReached, "Maximum number of district campaigns reached (3)." },
+                { LocaleKeys.DistrictCampaign_LaunchButton, "Launch campaign" },
+                { LocaleKeys.DistrictCampaign_CancelButton, "Cancel" },
+                { LocaleKeys.DistrictCampaign_ActiveListHeader, "Active district campaigns" },
+                { LocaleKeys.DistrictCampaign_NoActiveCampaigns, "No active district campaign." },
+                { LocaleKeys.DistrictCampaign_BoostSummary, "Boost" },
+                { LocaleKeys.DistrictCampaign_AttackDirtyRiskSuffix, " (risk: -{0}% for you)" },
+
+                // BlackFund
+                { LocaleKeys.BlackFund_Header, "Black fund" },
+                { LocaleKeys.BlackFund_ActivateButton, "Open a black fund" },
+                { LocaleKeys.BlackFund_CloseButton, "Close black fund" },
+                { LocaleKeys.BlackFund_CloseWarning, "Closing the black fund will forfeit all the money it holds." },
+                { LocaleKeys.BlackFund_CloseConfirm, "Confirm closure" },
+                { LocaleKeys.BlackFund_BalanceLabel, "Black fund balance" },
+                { LocaleKeys.BlackFund_TransferToLabel, "Move to black fund" },
+                { LocaleKeys.BlackFund_TransferFromLabel, "Move to main account" },
+                { LocaleKeys.BlackFund_AmountPlaceholder, "Amount" },
+                { LocaleKeys.BlackFund_TransferButton, "Transfer" },
+                { LocaleKeys.BlackFund_InsufficientMainFunds, "Insufficient funds in the main account." },
+                { LocaleKeys.BlackFund_InsufficientBlackFunds, "Insufficient funds in the black fund." },
+                { LocaleKeys.BlackFund_MovementsHeader, "Recent movements" },
+                { LocaleKeys.BlackFund_NoMovements, "No movements yet." },
+
+                { LocaleKeys.BlackFund_Invoice1, "Purchase of 25 kg of stage makeup" },
+                { LocaleKeys.BlackFund_Invoice2, "3 onions, 2 carrots, cheese, toilet paper..." },
+                { LocaleKeys.BlackFund_Invoice3, "Stage lighting service for campaign speech" },
+                { LocaleKeys.BlackFund_Invoice4, "Cleaning of the party headquarters facade" },
+
+                // Electoral Commission
+                { LocaleKeys.Commission_TabLabel, "Electoral Commission" },
+                { LocaleKeys.Commission_ReportTitle, "Activity report" },
+                { LocaleKeys.Commission_LevelLow, "Low vigilance" },
+                { LocaleKeys.Commission_LevelMedium, "Under surveillance" },
+                { LocaleKeys.Commission_LevelHigh, "On alert!" },
+                { LocaleKeys.Commission_ActiveIllegalCount, "Active illegal campaigns" },
+                { LocaleKeys.Commission_ActiveSanction, "Active sanction" },
+                { LocaleKeys.Commission_NoSanction, "No active sanction." },
+
+                // Illegal district campaign
+                { LocaleKeys.Illegal_SectionHeader, "Illegal campaign" },
+                { LocaleKeys.Illegal_Description, "Targets a party in this district with a random penalty of 0 to 6%, funded by the black fund. If detected by the Electoral Commission, your party faces a city-wide penalty, a fine, and the loss of the black fund." },
+                { LocaleKeys.Illegal_MalusLabel, "Penalty inflicted: random, 0 to 6%" },
+                { LocaleKeys.Illegal_CostLabel, "Cost: " },
+                { LocaleKeys.Illegal_LaunchButton, "Launch illegal campaign" },
+                { LocaleKeys.Illegal_RequiresBlackFund, "Requires an active black fund." },
+                { LocaleKeys.Illegal_InsufficientBlackFund, "Insufficient black fund balance." },
+                { LocaleKeys.Illegal_MaxReached, "Maximum number of illegal campaigns reached (3)." },
             };
         }
         public void Unload() { }

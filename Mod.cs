@@ -28,6 +28,10 @@ namespace CityCouncil
             updateSystem.UpdateAt<CouncilBonusSystem>(SystemUpdatePhase.GameSimulation);
             updateSystem.UpdateAt<CouncilPropagandaSystem>(SystemUpdatePhase.GameSimulation);
             updateSystem.UpdateAt<CouncilFundingSystem>(SystemUpdatePhase.GameSimulation);
+            updateSystem.UpdateAt<CouncilFundingSystem>(SystemUpdatePhase.GameSimulation);
+            updateSystem.UpdateAt<CouncilBlackFundSystem>(SystemUpdatePhase.GameSimulation);
+            updateSystem.UpdateAt<CouncilBlackFundSystem>(SystemUpdatePhase.GameSimulation);
+            updateSystem.UpdateAt<CouncilElectoralCommissionSystem>(SystemUpdatePhase.GameSimulation);
 
             updateSystem.UpdateAt<CityCouncil.Systems.CouncilUISystem>(SystemUpdatePhase.UIUpdate);
         }
