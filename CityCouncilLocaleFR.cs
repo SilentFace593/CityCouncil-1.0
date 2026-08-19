@@ -72,6 +72,17 @@ namespace CityCouncil
                 { LocaleKeys.Event_ScandalePolitique, "Un scandale politique éclate dans la ville, les citoyens sont désabusés !" },
                 { LocaleKeys.Event_IncendiesForets, "D'importants incendies ravagent des milliers d'hectares de forêts." },
                 { LocaleKeys.Event_ReformePensions, "Il se murmure dans les couloirs de la mairie un projet de réforme des pensions de retraite. Les séniors sont vent debout !" },
+                { LocaleKeys.Event_PoliceBavure, "La police locale est accusée de bavure suite à l'arrestation musclée d'un individu. Le commissaire du district concerné défend ses agents, la procédure ayant été respectée selon lui." },
+                { LocaleKeys.Event_RegionEconomieSante, "La région cherche encore de économies dans le système de santé, les directeurs d'hôpitaux sonnent l'alerte face au manque de moyens."},
+                { LocaleKeys.Event_CacophonieGaucheRadicale, "Cacophonie dans les rangs de la Gauche Radicale, les leaders ont du mal à s'accorder pour les prochaines échéances électorales, notamment pour les district nord."},
+                { LocaleKeys.Event_InvestissementSecurite, "On annonce des investissements massifs dans le système sécuritaire de la ville, des idées portées de longue date par les Républicains, qui ne manquent pas de rappeler leur doctrine à ce sujet va bien plus loin. "},
+                { LocaleKeys.Event_EvolutionClimatImpact, "L'évolution du climat nous obligera tôt ou tard à des choix radicaux et éclairés, désormais la question n'est plus comment limiter l'impact mais comment s'adapter..."},
+                { LocaleKeys.Event_DeploiementWifi, "Le déploiement de la nouvelle génération de sans fil à enfin une date officielle. Les démocrates, ayant par le passé oeuvré à une politique active d'aménagement du territoire dans le domaine, se félicitent des nouvelles possibilités économiques."},
+                { LocaleKeys.Event_RelanceNucleaire, "Les Ecologistes mettent en avant leur programme, il se veut non punitif avec une relance massive du nucléaire"},
+                { LocaleKeys.Event_DurcissementNorme, "La Commission Régionale aux Transports annonce un nouveau durcissement des normes antipollutionpour les véhicules thermiques. Les associations d'automobilistes prévoient des manifestations à la rentrée, et les constructeurs automobiles alertent sur une trajectoire intenable."},
+                { LocaleKeys.Event_ScandaleDemocrate, "Scandale au Parti Démocrate : des documents financiers font état d'irrégularités dans les comptes de campagnes de certaines élections passées. Une enquête est ouverte."},
+                { LocaleKeys.Event_ZIDeveloppement, "La Zone industrielle se développe à grande vitesse, au point que la municipalité va devoir réfléchir à la délimitation de nouvelles parcelles. Si les Républicains promettent de faciliter les négociations, les écologistes eux s'inquiètent de l'impact environemental à venir."},
+                { LocaleKeys.Event_PopulisteAnimalMagazine, "la leader du Parti Populiste fait la Une du site internet Animal Magazine, en compagnie de ses chats et de son mari. succès garanti sur le rééseaux, renforçant la normalisation du parti."},
 
                 // Party Labels
                 { LocaleKeys.Party_Ecologiste, "Écologiste" },
@@ -185,6 +196,23 @@ namespace CityCouncil
                 { LocaleKeys.Illegal_RequiresBlackFund, "Nécessite une caisse noire active." },
                 { LocaleKeys.Illegal_InsufficientBlackFund, "Solde de la caisse noire insuffisant." },
                 { LocaleKeys.Illegal_MaxReached, "Nombre maximum de campagnes illégales atteint (3)." },
+
+                { LocaleKeys.Poll_TabLabel, "Sondages" },
+                { LocaleKeys.Poll_CostLabel, "Coût : " },
+                { LocaleKeys.Poll_OrderButton, "Commander un sondage" },
+                { LocaleKeys.Poll_InsufficientFunds, "Réserves insuffisantes." },
+                { LocaleKeys.Poll_BlackoutMessage, "Sondages interdits de la veille du 1er tour jusqu'à l'issue du 2e tour." },
+                { LocaleKeys.Poll_ResultsHeader, "Derniers résultats" },
+                { LocaleKeys.Poll_NoResults, "Aucun sondage n'a encore été commandé." },
+                { LocaleKeys.Poll_NoPlayerParty, "Créez votre propre parti (onglet \"Votre Parti\") pour commander des sondages." },
+                { LocaleKeys.Treasury_PollsSpent, "Dépenses de sondages" },
+
+                // Score
+                { LocaleKeys.Score_TabLabel, "Score" },
+                { LocaleKeys.Score_Header, "Classement" },
+
+                // Règles
+                { LocaleKeys.Rules_TabLabel, "Règles" },
 
             };
         }

@@ -2,6 +2,7 @@ import { Component, useMemo } from "react";
 import { bindValue, useValue } from "cs2/api";
 import { useLocalization } from "cs2/l10n";
 import {
+  PartyLogo,
   translatePartyName,
   PARTY_LABELS,
   PARTY_ORDER,
@@ -52,6 +53,7 @@ function PartyBadge({ result, bonus }: { result: PartyResultDto; bonus?: string 
 
   const label = resolvePartyLabel(result, translate);
   const color = resolvePartyColor(result);
+  const isCustom = !!(result.displayName && result.displayName.length > 0);
   const seatsWord = result.seats > 1
     ? t("CityCouncil.Admin.SEATS_PLURAL", "sièges")
     : t("CityCouncil.Admin.SEATS_SINGULAR", "siège");
@@ -65,16 +67,9 @@ function PartyBadge({ result, bonus }: { result: PartyResultDto; bonus?: string 
 
   return (
     <div style={{ display: "flex", alignItems: "center" }}>
-      <div
-        style={{
-          width: "36rem",
-          height: "36rem",
-          borderRadius: "50%",
-          background: color,
-          flexShrink: 0,
-          marginRight: "8rem",
-        }}
-      />
+      <div style={{ marginRight: "8rem" }}>
+<PartyLogo party={result.party} color={color} isCustom={isCustom} sizeRem={36} />
+      </div>
       <div style={{ minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center" }}>
           <span style={{ color: "white", fontSize: "15rem", fontWeight: 600, whiteSpace: "nowrap", wordBreak: "keep-all", overflowWrap: "normal" }}>

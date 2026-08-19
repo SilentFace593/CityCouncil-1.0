@@ -9,12 +9,17 @@ import { PoliticalForcesTab } from "./PoliticalForcesTab";
 import { FundingTab } from "./FundingTab";
 import { PropagandaTab } from "./PropagandaTab"; 
 import { ElectoralCommissionTab } from "./ElectoralCommissionTab";
+import { PollTab } from "./PollTab";
+import { ScoreTab } from "./ScoreTab";
+import { RulesTab } from "./RulesTab";
+import { DebugTab } from "./DebugTab";
 
 // --- Bindings exposés par CouncilUISystem.cs (group "cityCouncil") ---
 const hemicycleSeatsJson$ = bindValue<string>("cityCouncil", "hemicycleSeatsJson");
 const hemicycleLeader$ = bindValue<string>("cityCouncil", "hemicycleLeader");
-const playerBonusChoicePending$ = bindValue<boolean>("cityCouncil", "playerBonusChoicePending"); // AJOUT
-const playerBonusChoiceSpace$ = bindValue<string>("cityCouncil", "playerBonusChoiceSpace"); // AJOUT
+const playerBonusChoicePending$ = bindValue<boolean>("cityCouncil", "playerBonusChoicePending");
+const playerBonusChoiceSpace$ = bindValue<string>("cityCouncil", "playerBonusChoiceSpace");
+const showDebugTab$ = bindValue<boolean>("cityCouncil", "showDebugTab");
 
 const scrollbarStyle = `
   .cc-scrollable::-webkit-scrollbar {
@@ -277,81 +282,15 @@ function HemicycleResultsContent() {
       </div>
 
        <BonusChoicePrompt />
-       //* OUTIL DE DEBUG TEMPORAIRE — force l'avancement de toutes les élections en cours.
-       //* À retirer avant release.
-      <button
-        onClick={() => trigger("cityCouncil", "debugForceNextElection")}
-        style={{
-          marginTop: "14rem",
-          width: "100%",
-          background: "rgba(220,80,80,0.85)",
-          color: "white",
-          border: "none",
-          borderRadius: "4rem",
-          padding: "8rem 10rem",
-          fontSize: "12rem",
-          fontWeight: "bold",
-          cursor: "pointer",
-        }}
-      >
-        [DEBUG] Forcer l'étape électorale suivante
-      </button>
-
-      {/* OUTIL DE DEBUG TEMPORAIRE — force le contrôle de majorité (bonus permanent) sans
-    attendre le cycle réel de 7 jours in-game, nécessaire quand on enchaîne les élections
-    via le bouton ci-dessus. À retirer avant release, comme l'autre bouton [DEBUG]. */}
-<button
-  onClick={() => trigger("cityCouncil", "debugForceMajorityCheck")}
-  style={{
-    marginTop: "8rem",
-    width: "100%",
-    background: "rgba(220,80,80,0.85)",
-    color: "white",
-    border: "none",
-    borderRadius: "4rem",
-    padding: "8rem 10rem",
-    fontSize: "12rem",
-    fontWeight: "bold",
-    cursor: "pointer",
-  }}
->
-  [DEBUG] Forcer le contrôle de majorité (bonus)
-</button>
-
-{/* OUTIL DE DEBUG TEMPORAIRE — force le cycle de cotisation des adhérents (trésorerie),
-    même remarque que les deux boutons précédents. À retirer avant release. */}
-<button
-  onClick={() => trigger("cityCouncil", "debugForceCycleCheck")}
-  style={{
-    marginTop: "8rem",
-    width: "100%",
-    background: "rgba(220,80,80,0.85)",
-    color: "white",
-    border: "none",
-    borderRadius: "4rem",
-    padding: "8rem 10rem",
-    fontSize: "12rem",
-    fontWeight: "bold",
-    cursor: "pointer",
-  }}
->
-  [DEBUG] Forcer le cycle de cotisation (trésorerie)
-</button>
-
-<button
-  onClick={() => trigger("cityCouncil", "debugExpireCampaigns")}
-  style={{ marginTop: "8rem", width: "100%", background: "rgba(220,80,80,0.85)", color: "white", border: "none", borderRadius: "4rem", padding: "8rem 10rem", fontSize: "12rem", fontWeight: "bold", cursor: "pointer" }}
->
-  [DEBUG] Forcer l'expiration des campagnes
-</button>
 
     </div>
   );
 }
 
-type TabKey = "results" | "yourParty" | "forces" | "funding" | "propaganda" | "commission";
 
-const PANEL_WIDTH = "650rem";
+type TabKey = "results" | "yourParty" | "forces" | "funding" | "propaganda" | "commission" | "poll" | "score" | "rules" | "debug";
+
+const PANEL_WIDTH = "950rem";
 const PANEL_CONTENT_HEIGHT = "560rem";
 
 function HemicycleTabs() {
@@ -359,15 +298,20 @@ function HemicycleTabs() {
   const t = (key: string, fallback: string): string => translate(key, fallback) ?? fallback;
 
   const [tab, setTab] = useState<TabKey>("results");
+  const showDebugTab = useValue(showDebugTab$); // AJOUT
 
   const tabStyle = (key: TabKey) => ({
-    padding: "8rem 14rem",
+    padding: "8rem 9rem",
     cursor: "pointer",
     color: tab === key ? "white" : "rgba(255,255,255,0.55)",
     borderBottom: tab === key ? "2rem solid white" : "2rem solid transparent",
     fontSize: "13rem",
     fontWeight: 600,
   });
+
+  // AJOUT — si l'onglet actif est "debug" mais que le réglage vient d'être désactivé en
+  // cours de session, on retombe sur "results" pour éviter un onglet sélectionné invisible.
+  const effectiveTab = tab === "debug" && !showDebugTab ? "results" : tab;
 
   return (
     <div style={{ width: PANEL_WIDTH }}>
@@ -385,21 +329,39 @@ function HemicycleTabs() {
           {t("CityCouncil.Hemicycle.TAB_FUNDING", "Financement")}
         </div>
         <div style={tabStyle("propaganda")} onClick={() => setTab("propaganda")}>
-  {t("CityCouncil.Propaganda.TAB_LABEL", "Propagande")}
-</div>
-<div style={tabStyle("commission")} onClick={() => setTab("commission")}>
-  {t("CityCouncil.Commission.TAB_LABEL", "Commission Électorale")}
-</div>
+          {t("CityCouncil.Propaganda.TAB_LABEL", "Propagande")}
+        </div>
+        <div style={tabStyle("commission")} onClick={() => setTab("commission")}>
+          {t("CityCouncil.Commission.TAB_LABEL", "Commission Électorale")}
+        </div>
+        <div style={tabStyle("poll")} onClick={() => setTab("poll")}>
+          {t("CityCouncil.Poll.TAB_LABEL", "Sondages")}
+        </div>
+        <div style={tabStyle("score")} onClick={() => setTab("score")}>
+          {t("CityCouncil.Score.TAB_LABEL", "Score")}
+        </div>
+        <div style={tabStyle("rules")} onClick={() => setTab("rules")}>
+          {t("CityCouncil.Rules.TAB_LABEL", "Règles")}
+        </div>
+        {showDebugTab && ( // AJOUT — onglet visible uniquement si activé dans les Options
+          <div style={tabStyle("debug")} onClick={() => setTab("debug")}>
+            [DEBUG]
+          </div>
+        )}
       </div>
 
-    <Scrollable style={{ height: PANEL_CONTENT_HEIGHT }}>
-  {tab === "results" && <SafeBoundary><HemicycleResultsContent /></SafeBoundary>}
-  {tab === "yourParty" && <SafeBoundary><YourPartyTab /></SafeBoundary>}
-  {tab === "forces" && <SafeBoundary><PoliticalForcesTab /></SafeBoundary>}
-  {tab === "funding" && <SafeBoundary><FundingTab /></SafeBoundary>}
-  {tab === "propaganda" && <SafeBoundary><PropagandaTab /></SafeBoundary>}
-  {tab === "commission" && <SafeBoundary><ElectoralCommissionTab /></SafeBoundary>}
-</Scrollable>
+      <Scrollable style={{ height: PANEL_CONTENT_HEIGHT }}>
+        {effectiveTab === "results" && <SafeBoundary><HemicycleResultsContent /></SafeBoundary>}
+        {effectiveTab === "yourParty" && <SafeBoundary><YourPartyTab /></SafeBoundary>}
+        {effectiveTab === "forces" && <SafeBoundary><PoliticalForcesTab /></SafeBoundary>}
+        {effectiveTab === "funding" && <SafeBoundary><FundingTab /></SafeBoundary>}
+        {effectiveTab === "propaganda" && <SafeBoundary><PropagandaTab /></SafeBoundary>}
+        {effectiveTab === "commission" && <SafeBoundary><ElectoralCommissionTab /></SafeBoundary>}
+        {effectiveTab === "poll" && <SafeBoundary><PollTab /></SafeBoundary>}
+        {effectiveTab === "score" && <SafeBoundary><ScoreTab /></SafeBoundary>}
+        {effectiveTab === "rules" && <SafeBoundary><RulesTab /></SafeBoundary>}
+        {effectiveTab === "debug" && showDebugTab && <SafeBoundary><DebugTab /></SafeBoundary>}
+      </Scrollable>
     </div>
   );
 }

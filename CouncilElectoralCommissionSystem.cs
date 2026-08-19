@@ -259,7 +259,8 @@ namespace CityCouncil
         {
             double currentDay = (double)m_SimulationSystem.frameIndex / 262144.0;
             m_LastCycleDay = currentDay - CycleIntervalDays - 0.001;
-            s_Log.Info("[CouncilElectoralCommissionSystem] DEBUG : contrôle de détection forcé au prochain update.");
+            RunDetectionCheck(currentDay); // AJOUT — exécution immédiate, pas seulement au prochain OnUpdate
+            s_Log.Info("[CouncilElectoralCommissionSystem] DEBUG : contrôle de détection forcé immédiatement.");
         }
     }
 }

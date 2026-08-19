@@ -67,7 +67,7 @@ namespace CityCouncil
             {
                 Id = "incendies_forets",
                 Headline = LocaleKeys.Event_IncendiesForets,
-                Category = EventCategory.FaitDivers,
+                Category = EventCategory.Evenement,
                 Effects = new[]
                 {
                     EventEffect.PartyBonus(PoliticalParty.Ecologiste, 0.10f, EventAgeScope.All),
@@ -84,6 +84,128 @@ namespace CityCouncil
                     EventEffect.LeadingPartyBonus(-0.50f, EventAgeScope.SeniorsOnly),
                 },
             },
+
+            new CouncilEventDefinition
+            {
+                Id = "region_economie_sante",
+                Headline = LocaleKeys.Event_RegionEconomieSante,
+                Category = EventCategory.FaitDivers,
+                Effects = new[]
+                {
+                    EventEffect.PartyBonus(PoliticalParty.GaucheRadicale, 0.10f, EventAgeScope.All),
+                },
+
+            },
+
+            new CouncilEventDefinition
+            {
+                Id = "cacophonie_gauche_radicale",
+                Headline = LocaleKeys.Event_CacophonieGaucheRadicale,
+                Category = EventCategory.FaitDivers,
+                Effects = new[]
+                {
+                    EventEffect.PartyBonus(PoliticalParty.GaucheRadicale, -0.05f, EventAgeScope.All),
+                },
+
+            },
+
+            new CouncilEventDefinition
+            {
+                Id = "evolution_climat_impact",
+                Headline = LocaleKeys.Event_EvolutionClimatImpact,
+                Category = EventCategory.FaitDivers,
+                Effects = new[]
+                {
+                    EventEffect.PartyBonus(PoliticalParty.Ecologiste, 0.05f, EventAgeScope.All),
+                },
+
+            },
+
+            new CouncilEventDefinition
+            {
+                Id = "deploiement_wifi",
+                Headline = LocaleKeys.Event_DeploiementWifi,
+                Category = EventCategory.FaitDivers,
+                Effects = new[]
+                {
+                    EventEffect.PartyBonus(PoliticalParty.Democrate, 0.02f, EventAgeScope.All),
+                },
+
+            },
+
+            new CouncilEventDefinition
+            {
+                Id = "relance_nucleaire",
+                Headline = LocaleKeys.Event_RelanceNucleaire,
+                Category = EventCategory.FaitDivers,
+                Effects = new[]
+                {
+                    EventEffect.PartyBonus(PoliticalParty.Ecologiste, 0.02f, EventAgeScope.All),
+                },
+
+            },
+
+            new CouncilEventDefinition
+            {
+                Id = "scandale_democrate",
+                Headline = LocaleKeys.Event_ScandaleDemocrate,
+                Category = EventCategory.Scandale,
+                Effects = new[]
+                {
+                    EventEffect.PartyBonus(PoliticalParty.Democrate, -0.06f, EventAgeScope.All),
+                },
+
+            },
+
+            new CouncilEventDefinition
+            {
+                Id = "zi_developpement",
+                Headline = LocaleKeys.Event_ZIDeveloppement,
+                Category = EventCategory.FaitDivers,
+                Effects = new[]
+                {
+                    EventEffect.PartyBonus(PoliticalParty.Republicain, 0.05f, EventAgeScope.All),
+                    EventEffect.PartyBonus(PoliticalParty.Ecologiste, 0.05f, EventAgeScope.All),
+                },
+
+            },
+
+            new CouncilEventDefinition
+            {
+                Id = "populiste_animal_magazine",
+                Headline = LocaleKeys.Event_PopulisteAnimalMagazine,
+                Category = EventCategory.FaitDivers,
+                Effects = new[]
+                {
+                    EventEffect.PartyBonus(PoliticalParty.Populiste, 0.02f, EventAgeScope.All),
+                },
+
+            },
+
+            new CouncilEventDefinition
+            {
+                Id = "investissement_securite",
+                Headline = LocaleKeys.Event_InvestissementSecurite,
+                Category = EventCategory.FaitDivers,
+                Effects = new[]
+                {
+                    EventEffect.PartyBonus(PoliticalParty.Republicain, 0.05f, EventAgeScope.All),
+                },
+
+            },
+
+            new CouncilEventDefinition
+            {
+                Id = "durcissement_norme",
+                Headline = LocaleKeys.Event_DurcissementNorme,
+                Category = EventCategory.Evenement,
+                Effects = new[]
+                {
+                    EventEffect.PartyBonus(PoliticalParty.Populiste, 0.10f, EventAgeScope.All),
+                },
+
+            },
+
         };
     }
 }

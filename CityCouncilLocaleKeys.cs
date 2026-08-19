@@ -40,7 +40,7 @@
         public const string Admin_SeatsPlural = "CityCouncil.Admin.SEATS_PLURAL";
         public const string Admin_SeatsSingular = "CityCouncil.Admin.SEATS_SINGULAR";
 
-        // --- PoliticalForcesTab ---
+        // --- PoliticalForcesTab et Treasury ---
         public const string Forces_CustomPartyDesc = "CityCouncil.Forces.CUSTOM_PARTY_DESC";
         public const string Forces_MembersPlural = "CityCouncil.Forces.MEMBERS_PLURAL";
         public const string Forces_MembersSingular = "CityCouncil.Forces.MEMBERS_SINGULAR";
@@ -58,12 +58,26 @@
         public const string Treasury_Dues = "CityCouncil.Treasury.DUES";
         public const string Treasury_PropagandaSpent = "CityCouncil.Treasury.PROPAGANDA_SPENT";
         public const string Treasury_CurrentTotal = "CityCouncil.Treasury.CURRENT_TOTAL";
+        public const string Treasury_PollsSpent = "CityCouncil.Treasury.POLLS_SPENT";
 
 
         // --- City Events ---
         public const string Event_ScandalePolitique = "CityCouncil.Event.SCANDALE_POLITIQUE";
         public const string Event_IncendiesForets = "CityCouncil.Event.INCENDIES_FORETS";
         public const string Event_ReformePensions = "CityCouncil.Event.REFORME_PENSIONS";
+        public const string Event_PoliceBavure = "CityCouncil.Event.POLICE_BAVURE";
+        public const string Event_RegionEconomieSante = "CityCouncil.Event.REGION_ECONOMIE_SANTE";
+        public const string Event_CacophonieGaucheRadicale = "CityCouncil.Event.CACOPHONIE_GAUCHE_RADICALE";
+        public const string Event_EvolutionClimatImpact = "CityCouncil.Event.EVOLUTION_CLIMAT_IMPACT";
+        public const string Event_DeploiementWifi = "CityCouncil.Event.DEPLOIEMENT_WIFI";
+        public const string Event_RelanceNucleaire = "CityCouncil.Event.RELANCE_NUCLEAIRE";
+        public const string Event_ScandaleDemocrate = "CityCouncil.Event.SCANDALE_DEMOCRATE";
+        public const string Event_ZIDeveloppement = "CityCouncil.Event.ZI_DEVELOPPEMENT";
+        public const string Event_PopulisteAnimalMagazine = "CityCouncil.Event.POPULISTE_ANIMAL_MAGAZINE";
+        public const string Event_InvestissemntSecurite = "CityCouncil.Event.INVESTISSEMENT_SECURITE";
+        public const string Event_DurcissementNorme = "CityCouncil.Event.DURCISSEMENT_NORME";
+        public const string Event_InvestissementSecurite = "CityCouncil.Event.INVESTISSEMENT_SECURITE";
+
 
         // Party Labels
         public const string Party_Ecologiste = "CityCouncil.Party.ECOLOGISTE";
@@ -180,5 +194,21 @@
         public const string Illegal_InsufficientBlackFund = "CityCouncil.Illegal.INSUFFICIENT_BLACK_FUND";
         public const string Illegal_MaxReached = "CityCouncil.Illegal.MAX_REACHED";
 
+        // --- Sondages ---
+        public const string Poll_TabLabel = "CityCouncil.Poll.TAB_LABEL";
+        public const string Poll_CostLabel = "CityCouncil.Poll.COST_LABEL";
+        public const string Poll_OrderButton = "CityCouncil.Poll.ORDER_BUTTON";
+        public const string Poll_InsufficientFunds = "CityCouncil.Poll.INSUFFICIENT_FUNDS";
+        public const string Poll_BlackoutMessage = "CityCouncil.Poll.BLACKOUT_MESSAGE";
+        public const string Poll_ResultsHeader = "CityCouncil.Poll.RESULTS_HEADER";
+        public const string Poll_NoResults = "CityCouncil.Poll.NO_RESULTS";
+        public const string Poll_NoPlayerParty = "CityCouncil.Poll.NO_PLAYER_PARTY";
+
+        //Score
+        public const string Score_TabLabel = "CityCouncil.Score.TAB_LABEL";
+        public const string Score_Header = "CityCouncil.Score.HEADER";
+
+        //Onglet Règles
+        public const string Rules_TabLabel = "CityCouncil.Rules.TAB_LABEL";
     }
 }

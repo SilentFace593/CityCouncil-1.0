@@ -1,7 +1,8 @@
-﻿using Colossal.Logging;
+﻿using Colossal.IO.AssetDatabase;
+using Colossal.Logging;
 using Game;
 using Game.Modding;
-using Game.SceneFlow; // AJOUT, pour GameManager
+using Game.SceneFlow;
 
 namespace CityCouncil
 {
@@ -10,15 +11,22 @@ namespace CityCouncil
         public static readonly ILog log = LogManager.GetLogger(nameof(CityCouncil))
             .SetShowsErrorsInUI(false);
 
+        /// <summary>Instance statique du Setting, accessible depuis CouncilUISystem pour lire ShowDebugTab.</summary>
+        public static Setting Instance { get; private set; }
+
         public void OnLoad(UpdateSystem updateSystem)
         {
             log.Info("CityCouncil : chargement.");
 
-            // Enregistrement de la source de localisation en-US : condition nécessaire pour
-            // qu'I18n EveryWhere détecte CityCouncil comme mod localisable (cf. panneau
-            // Options d'I18n EveryWhere, qui liste les mods ayant appelé AddSource).
-            GameManager.instance.localizationManager.AddSource("en-US", new CityCouncilLocaleEN()); // AJOUT
-            GameManager.instance.localizationManager.AddSource("fr-FR", new CityCouncilLocaleFR()); // AJOUT
+            GameManager.instance.localizationManager.AddSource("en-US", new CityCouncilLocaleEN());
+            GameManager.instance.localizationManager.AddSource("fr-FR", new CityCouncilLocaleFR());
+
+            // AJOUT — création et enregistrement du Setting dans le menu Options du jeu.
+            Instance = new Setting(this);
+            Instance.RegisterInOptionsUI();
+            GameManager.instance.localizationManager.AddSource("en-US", new LocaleEN(Instance));
+            GameManager.instance.localizationManager.AddSource("fr-FR", new LocaleFR(Instance));
+            AssetDatabase.global.LoadSettings(nameof(CityCouncil), Instance, new Setting(this));
 
             updateSystem.UpdateAt<CouncilElectionSystem>(SystemUpdatePhase.GameSimulation);
             updateSystem.UpdateAt<CouncilPolicyRegistry>(SystemUpdatePhase.GameSimulation);
@@ -28,10 +36,10 @@ namespace CityCouncil
             updateSystem.UpdateAt<CouncilBonusSystem>(SystemUpdatePhase.GameSimulation);
             updateSystem.UpdateAt<CouncilPropagandaSystem>(SystemUpdatePhase.GameSimulation);
             updateSystem.UpdateAt<CouncilFundingSystem>(SystemUpdatePhase.GameSimulation);
-            updateSystem.UpdateAt<CouncilFundingSystem>(SystemUpdatePhase.GameSimulation);
-            updateSystem.UpdateAt<CouncilBlackFundSystem>(SystemUpdatePhase.GameSimulation);
             updateSystem.UpdateAt<CouncilBlackFundSystem>(SystemUpdatePhase.GameSimulation);
             updateSystem.UpdateAt<CouncilElectoralCommissionSystem>(SystemUpdatePhase.GameSimulation);
+            updateSystem.UpdateAt<CouncilPollSystem>(SystemUpdatePhase.GameSimulation);
+            updateSystem.UpdateAt<CouncilScoreSystem>(SystemUpdatePhase.GameSimulation);
 
             updateSystem.UpdateAt<CityCouncil.Systems.CouncilUISystem>(SystemUpdatePhase.UIUpdate);
         }
@@ -39,6 +47,11 @@ namespace CityCouncil
         public void OnDispose()
         {
             log.Info("CityCouncil : déchargement.");
+            if (Instance != null)
+            {
+                Instance.UnregisterInOptionsUI();
+                Instance = null;
+            }
         }
     }
 }

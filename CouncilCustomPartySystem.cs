@@ -20,6 +20,7 @@ namespace CityCouncil
         private EntityQuery m_DistrictQuery;
         private Entity m_SingletonEntity = Entity.Null;
         private CouncilPartyMembershipSystem m_MembershipSystem;
+        private CouncilScoreSystem m_ScoreSystem;
 
         protected override void OnCreate()
         {
@@ -27,6 +28,7 @@ namespace CityCouncil
             m_SingletonQuery = GetEntityQuery(ComponentType.ReadOnly<CouncilCustomPartyData>());
             m_DistrictQuery = GetEntityQuery(ComponentType.ReadOnly<CouncilDistrictData>());
             m_MembershipSystem = World.GetOrCreateSystemManaged<CouncilPartyMembershipSystem>();
+            m_ScoreSystem = World.GetOrCreateSystemManaged<CouncilScoreSystem>();
         }
 
         protected override void OnGamePreload(Colossal.Serialization.Entities.Purpose purpose, Game.GameMode mode)
@@ -239,6 +241,7 @@ namespace CityCouncil
 
             m_MembershipSystem.ResetPartyTreasuryAndMembers(newSpace);
             ResetBastionProgressForParty(newSpace); // AJOUT
+            m_ScoreSystem.ResetScore(newSpace);
 
             s_Log.Info($"[CouncilCustomPartySystem] Substitution activée pour le bord {newSpace} (adhérents/trésorerie/Bastion remis à zéro).");
         }

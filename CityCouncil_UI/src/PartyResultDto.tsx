@@ -1,3 +1,9 @@
+import logoDemocrate from "./images/logo_democrate.png";
+import logoEcologiste from "./images/logo_ecologiste.png";
+import logoRepublicain from "./images/logo_republicain.png";
+import logoGauche from "./images/logo_gauche.png";
+import logoPopuliste from "./images/logo_populiste.png";
+
 export interface PartyResultDto {
   party: string;
   seats: number;
@@ -32,6 +38,14 @@ export const PARTY_COLORS: Record<string, string> = {
   Populiste: "#F9A825",
   Republicain: "#5C1A9C",
   GaucheRadicale: "#B71C1C",
+};
+
+export const PARTY_LOGOS: Record<string, string> = {
+  Democrate: logoDemocrate,
+  Ecologiste: logoEcologiste,
+  Republicain: logoRepublicain,
+  GaucheRadicale: logoGauche,
+  Populiste: logoPopuliste,
 };
 
 // Ordre idéologique gauche → droite, partagé entre AdministrationSection et HemicyclePanel.
@@ -90,4 +104,52 @@ export function resolvePartyColor(r: PartyResultDto): string {
 export const BONUS_BADGE: Record<string, string> = {
   Defensif: "🛡️",
   Offensif: "⚔️",
+
 };
+
+/**
+ * Logo de parti à taille fixée en rem. Toujours en rem (jamais px) : cohtml redimensionne
+ * automatiquement selon l'échelle UI du joueur, donc pas de gestion par résolution d'écran.
+ * `party` est la clé technique (Ecologiste, Democrate, ...) utilisée pour choisir le PNG ;
+ * si `isCustom` est vrai (parti du joueur), retombe sur une pastille de la couleur `color`
+ * fournie, puisqu'aucun logo dédié n'existe pour un parti custom.
+ */
+export function PartyLogo({
+  party,
+  color,
+  isCustom,
+  sizeRem,
+}: {
+  party: string;
+  color: string;
+  isCustom: boolean;
+  sizeRem: number;
+}) {
+  const logo = !isCustom ? PARTY_LOGOS[party] : null;
+
+  if (logo) {
+    return (
+      <img
+        src={logo}
+        style={{
+          width: `${sizeRem}rem`,
+          height: `${sizeRem}rem`,
+          flexShrink: 0,
+          objectFit: "contain",
+        }}
+      />
+    );
+  }
+
+  return (
+    <div
+      style={{
+        width: `${sizeRem}rem`,
+        height: `${sizeRem}rem`,
+        borderRadius: "50%",
+        background: color,
+        flexShrink: 0,
+      }}
+    />
+  );
+}

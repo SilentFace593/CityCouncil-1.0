@@ -219,7 +219,8 @@ namespace CityCouncil
         {
             CityFunding,
             Dues,
-            Propaganda // non utilisé par AddTreasury (débit géré dans TrySpendTreasury), gardé pour clarté
+            Propaganda, // non utilisé par AddTreasury (débit géré dans TrySpendTreasury), gardé pour clarté
+            Poll
         }
 
         /// <summary>
@@ -336,9 +337,10 @@ namespace CityCouncil
                 var entry = entries[i];
                 entry.m_Members = 0f;
                 entry.m_Treasury = 0;
-                entry.m_TotalFromCityFunding = 0;   // AJOUT
-                entry.m_TotalFromDues = 0;          // AJOUT
-                entry.m_TotalSpentPropaganda = 0;   // AJOUT
+                entry.m_TotalFromCityFunding = 0;
+                entry.m_TotalFromDues = 0;
+                entry.m_TotalSpentPropaganda = 0;
+                entry.m_TotalSpentPolls = 0; // AJOUT
                 entries[i] = entry;
                 break;
             }
@@ -361,11 +363,12 @@ namespace CityCouncil
         }
 
         /// <summary>
-        /// Débite la trésorerie d'un parti si les fonds sont suffisants. Utilisé par
-        /// CouncilPropagandaSystem pour financer les campagnes — trace donc systématiquement dans
-        /// m_TotalSpentPropaganda (seul appelant actuel de cette méthode).
+        /// Débite la trésorerie d'un parti si les fonds sont suffisants. `source` détermine dans quel
+        /// compteur cumulatif le débit est tracé pour TreasuryBreakdown.tsx — Propaganda reste le
+        /// défaut pour préserver le comportement de tous les appelants existants (campagnes classiques,
+        /// campagnes de district, campagnes illégales, transfert vers la caisse noire).
         /// </summary>
-        public bool TrySpendTreasury(PoliticalParty party, int amount)
+        public bool TrySpendTreasury(PoliticalParty party, int amount, TreasurySource source = TreasurySource.Propaganda)
         {
             if (amount <= 0) return true;
 
@@ -379,7 +382,17 @@ namespace CityCouncil
 
                 var entry = entries[i];
                 entry.m_Treasury -= amount;
-                entry.m_TotalSpentPropaganda += amount; // AJOUT
+
+                switch (source)
+                {
+                    case TreasurySource.Poll:
+                        entry.m_TotalSpentPolls += amount; // AJOUT
+                        break;
+                    default:
+                        entry.m_TotalSpentPropaganda += amount;
+                        break;
+                }
+
                 entries[i] = entry;
 
                 data.m_Entries = entries;

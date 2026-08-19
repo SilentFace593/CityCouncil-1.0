@@ -7,6 +7,7 @@ export interface PartyMembershipDto {
   fromCityFunding: number;
   fromDues: number;
   spentPropaganda: number;
+  spentPolls: number;
 }
 
 interface TreasuryRow {
@@ -34,6 +35,7 @@ export function TreasuryBreakdown({
     { label: t("CityCouncil.Treasury.CITY_FUNDING", "Financement municipal"), value: entry.fromCityFunding, sign: "+" },
     { label: t("CityCouncil.Treasury.DUES", "Cotisations des adhérents"), value: entry.fromDues, sign: "+" },
     { label: t("CityCouncil.Treasury.PROPAGANDA_SPENT", "Dépenses de propagande"), value: entry.spentPropaganda, sign: "-" },
+    { label: t("CityCouncil.Treasury.POLLS_SPENT", "Dépenses de sondages"), value: entry.spentPolls, sign: "-" },
   ];
 
   return (

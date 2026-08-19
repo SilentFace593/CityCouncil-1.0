@@ -470,6 +470,7 @@ namespace CityCouncil
             public long m_TotalFromCityFunding;   // versé par CouncilFundingSystem (part fixe + variable)
             public long m_TotalFromDues;          // cotisations, cf. CouncilPartyMembershipSystem.RunCycleCheck
             public long m_TotalSpentPropaganda;   // débité par CouncilPropagandaSystem.TryLaunchCampaign
+            public long m_TotalSpentPolls; // AJOUT — cumul débité par CouncilPollSystem.TryOrderPoll
         }
 
         /// <summary>
@@ -480,7 +481,7 @@ namespace CityCouncil
         {
             public FixedList512Bytes<PartyMembershipEntry> m_Entries;
 
-            private const int kVersion = 2; // AJOUT des 3 compteurs -> bump version
+            private const int kVersion = 3; // AJOUT m_TotalSpentPolls -> bump version
 
             public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
             {
@@ -491,9 +492,10 @@ namespace CityCouncil
                     writer.Write((byte)m_Entries[i].m_Party);
                     writer.Write(m_Entries[i].m_Members);
                     writer.Write(m_Entries[i].m_Treasury);
-                    writer.Write(m_Entries[i].m_TotalFromCityFunding);   // AJOUT
-                    writer.Write(m_Entries[i].m_TotalFromDues);          // AJOUT
-                    writer.Write(m_Entries[i].m_TotalSpentPropaganda);   // AJOUT
+                    writer.Write(m_Entries[i].m_TotalFromCityFunding);
+                    writer.Write(m_Entries[i].m_TotalFromDues);
+                    writer.Write(m_Entries[i].m_TotalSpentPropaganda);
+                    writer.Write(m_Entries[i].m_TotalSpentPolls); // AJOUT
                 }
             }
 
@@ -508,15 +510,18 @@ namespace CityCouncil
                     reader.Read(out float members);
                     reader.Read(out int treasury);
 
-                    long fromCity = 0, fromDues = 0, spentPropaganda = 0;
+                    long fromCity = 0, fromDues = 0, spentPropaganda = 0, spentPolls = 0;
                     if (version >= 2)
                     {
                         reader.Read(out fromCity);
                         reader.Read(out fromDues);
                         reader.Read(out spentPropaganda);
                     }
-                    // Compat sauvegardes v1 : aucun historique connu avant ce système, on repart à 0
-                    // plutôt que de deviner une provenance rétroactive au solde déjà accumulé.
+                    if (version >= 3)
+                    {
+                        reader.Read(out spentPolls);
+                    }
+                    // Compat v1/v2 : aucun sondage n'existait avant ce système, 0 par défaut.
 
                     m_Entries.Add(new PartyMembershipEntry
                     {
@@ -525,7 +530,8 @@ namespace CityCouncil
                         m_Treasury = treasury,
                         m_TotalFromCityFunding = fromCity,
                         m_TotalFromDues = fromDues,
-                        m_TotalSpentPropaganda = spentPropaganda
+                        m_TotalSpentPropaganda = spentPropaganda,
+                        m_TotalSpentPolls = spentPolls
                     });
                 }
             }
@@ -850,6 +856,124 @@ namespace CityCouncil
         public PoliticalParty m_TargetParty;
         public float m_MalusPercent; // tiré une fois au lancement (0 à 6%), fixe pour la durée de la campagne
         public double m_ExpiryDay;
+    }
+
+    // --- Sondages ---
+
+public struct PollResultEntry
+{
+    public PoliticalParty m_Party;
+    public float m_SharePercent; // 0..1, part parmi les exprimés (même normalisation que VoteCalculator)
+}
+
+/// <summary>
+/// Composant SINGLETON (même pattern que CouncilBonusData) portant le résultat du DERNIER
+/// sondage commandé, géré par CouncilPollSystem. Pas d'historique multi-sondages : un seul
+/// jeu de résultats, écrasé à chaque nouveau sondage — cohérent avec le reste du mod qui ne
+/// conserve aucune série temporelle (cf. remarque CouncilCityEventSystem).
+/// </summary>
+public struct CouncilPollData : IComponentData, ISerializable
+{
+    public bool m_HasResults;
+    public double m_LastPollDay; // -1 si aucun sondage n'a jamais été commandé
+    public FixedList512Bytes<PollResultEntry> m_LastResults;
+
+    private const int kVersion = 1;
+
+    public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
+    {
+        writer.Write(kVersion);
+        writer.Write(m_HasResults);
+        writer.Write(m_LastPollDay);
+        writer.Write(m_LastResults.Length);
+        for (int i = 0; i < m_LastResults.Length; i++)
+        {
+            writer.Write((byte)m_LastResults[i].m_Party);
+            writer.Write(m_LastResults[i].m_SharePercent);
+        }
+    }
+
+    public void Deserialize<TReader>(TReader reader) where TReader : IReader
+    {
+        reader.Read(out int _);
+        reader.Read(out m_HasResults);
+        reader.Read(out m_LastPollDay);
+        reader.Read(out int count);
+        m_LastResults = new FixedList512Bytes<PollResultEntry>();
+        for (int i = 0; i < count; i++)
+        {
+            reader.Read(out byte party);
+            reader.Read(out float share);
+            m_LastResults.Add(new PollResultEntry { m_Party = (PoliticalParty)party, m_SharePercent = share });
+        }
+    }
+}
+
+    // --- Score ---
+
+    public struct ScoreEntry
+    {
+        public PoliticalParty m_Party;
+        public long m_TrophyScore; // cumulatif, jamais décrémenté
+    }
+
+    /// <summary>
+    /// Composant SINGLETON portant les points de TROPHÉES des 5 partis (conquêtes de district,
+    /// conquêtes de majorité générale — jamais retirés), géré par CouncilScoreSystem. La partie
+    /// "possession" du score (sièges/bastions/districts actuellement détenus) N'EST PAS stockée
+    /// ici : elle est recalculée à la volée par scan des districts à chaque lecture, pour rester
+    /// toujours exacte même si le système est ajouté en cours de partie (pas de delta fragile à
+    /// faire dériver).
+    /// </summary>
+    public struct CouncilScoreData : IComponentData, ISerializable
+    {
+        public FixedList512Bytes<ScoreEntry> m_TrophyEntries;
+
+        // Dernier détenteur connu de la majorité générale — sert à ne déclencher le trophée
+        // "élection générale remportée" que sur un CHANGEMENT de majorité (même logique que la
+        // conquête de district), pas à chaque cycle de 7 jours où le même parti reste majoritaire.
+        public bool m_HasLastGeneralMajority;
+        public PoliticalParty m_LastGeneralMajorityParty;
+
+        private const int kVersion = 1;
+
+        public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
+        {
+            writer.Write(kVersion);
+            writer.Write(m_TrophyEntries.Length);
+            for (int i = 0; i < m_TrophyEntries.Length; i++)
+            {
+                writer.Write((byte)m_TrophyEntries[i].m_Party);
+                writer.Write(m_TrophyEntries[i].m_TrophyScore);
+            }
+            writer.Write(m_HasLastGeneralMajority);
+            writer.Write((byte)m_LastGeneralMajorityParty);
+        }
+
+        public void Deserialize<TReader>(TReader reader) where TReader : IReader
+        {
+            reader.Read(out int _);
+            reader.Read(out int count);
+            m_TrophyEntries = new FixedList512Bytes<ScoreEntry>();
+            for (int i = 0; i < count; i++)
+            {
+                reader.Read(out byte party);
+                reader.Read(out long trophy);
+                m_TrophyEntries.Add(new ScoreEntry { m_Party = (PoliticalParty)party, m_TrophyScore = trophy });
+            }
+            reader.Read(out m_HasLastGeneralMajority);
+            reader.Read(out byte lastMajority); m_LastGeneralMajorityParty = (PoliticalParty)lastMajority;
+        }
+    }
+
+    /// <summary>Curseurs de gameplay du système de score — ajustables librement.</summary>
+    public static class ScoreCatalog
+    {
+        public const long PointsPerSeatHeld = 10;
+        public const long PointsPerBastionHeld = 1000;
+        public const long PointsPerDistrictHeld = 300;
+        public const long PointsGeneralElectionWon = 500;  // trophée, sur changement de majorité générale
+        public const long PointsDistrictWon = 150;          // trophée, sur changement de leader d'un district
     }
 
 }

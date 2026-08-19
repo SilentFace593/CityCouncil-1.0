@@ -72,6 +72,15 @@ namespace CityCouncil
                 { LocaleKeys.Event_ScandalePolitique, "A political scandal breaks out in the city, citizens are disillusioned!" },
                 { LocaleKeys.Event_IncendiesForets, "Major forest fires ravage thousands of hectares." },
                 { LocaleKeys.Event_ReformePensions, "Rumors swirl in city hall about a pension reform proposal. Seniors are up in arms!" },
+                { LocaleKeys.Event_PoliceBavure, "Il se murmure dans les couloirs de la mairie un projet de réforme des pensions de retraite. Les séniors sont vent debout !" },
+                { LocaleKeys.Event_RegionEconomieSante, ""},
+                { LocaleKeys.Event_CacophonieGaucheRadicale, ""},
+                { LocaleKeys.Event_EvolutionClimatImpact, ""},
+                { LocaleKeys.Event_DeploiementWifi, ""},
+                { LocaleKeys.Event_RelanceNucleaire, ""},
+                { LocaleKeys.Event_ScandaleDemocrate, ""},
+                { LocaleKeys.Event_ZIDeveloppement, ""},
+                { LocaleKeys.Event_PopulisteAnimalMagazine, ""},
 
                 // Ajouts dans CityCouncilLocaleEN
                 { LocaleKeys.Party_Ecologiste, "Greens" },
@@ -186,6 +195,23 @@ namespace CityCouncil
                 { LocaleKeys.Illegal_RequiresBlackFund, "Requires an active black fund." },
                 { LocaleKeys.Illegal_InsufficientBlackFund, "Insufficient black fund balance." },
                 { LocaleKeys.Illegal_MaxReached, "Maximum number of illegal campaigns reached (3)." },
+
+                { LocaleKeys.Poll_TabLabel, "Polls" },
+                { LocaleKeys.Poll_CostLabel, "Cost: " },
+                { LocaleKeys.Poll_OrderButton, "Order a poll" },
+                { LocaleKeys.Poll_InsufficientFunds, "Insufficient reserves." },
+                { LocaleKeys.Poll_BlackoutMessage, "Polls are forbidden from the eve of the 1st round until the end of the 2nd round." },
+                { LocaleKeys.Poll_ResultsHeader, "Latest results" },
+                { LocaleKeys.Poll_NoResults, "No poll has been ordered yet." },
+                { LocaleKeys.Poll_NoPlayerParty, "Create your own party (\"Your Party\" tab) to order polls." },
+                { LocaleKeys.Treasury_PollsSpent, "Poll spending" },
+
+                //Score
+                { LocaleKeys.Score_TabLabel, "Score" },
+                { LocaleKeys.Score_Header, "Ranking" },
+
+                //Rules
+                { LocaleKeys.Rules_TabLabel, "Rules" },
             };
         }
         public void Unload() { }

@@ -42,6 +42,7 @@ namespace CityCouncil
         private CouncilBonusSystem m_BonusSystem;
         private CouncilPropagandaSystem m_PropagandaSystem;
         private CouncilElectoralCommissionSystem m_CommissionSystem;
+        private CouncilScoreSystem m_ScoreSystem;
 
         protected override void OnCreate()
         {
@@ -56,6 +57,7 @@ namespace CityCouncil
             m_BonusSystem = World.GetOrCreateSystemManaged<CouncilBonusSystem>();
             m_PropagandaSystem = World.GetOrCreateSystemManaged<CouncilPropagandaSystem>();
             m_CommissionSystem = World.GetOrCreateSystemManaged<CouncilElectoralCommissionSystem>();
+            m_ScoreSystem = World.GetOrCreateSystemManaged<CouncilScoreSystem>();
 
 
             m_DistrictQuery = GetEntityQuery(new EntityQueryDesc
@@ -271,9 +273,12 @@ namespace CityCouncil
 
             if (result.m_MajorityReached)
             {
+                var previousLeader = data.m_LeadingParty;
+                bool wasAlreadyLeading = data.m_Phase == ElectionPhase.Completed && previousLeader == result.m_Leader;
+
                 data.m_WonInRound1 = true;
                 data.m_LeadingParty = result.m_Leader;
-                FinalizeResults(ref data, result.m_VoteShares, seatCount);
+                FinalizeResults(ref data, result.m_VoteShares, seatCount, isNewConquest: !wasAlreadyLeading);
                 data.m_Phase = ElectionPhase.Completed;
                 data.m_NextRound1Day = data.m_Round1CompletedDay + ElectionCycleDays;
 
@@ -313,10 +318,10 @@ namespace CityCouncil
 
         private void RunRound2(Entity districtEntity, ref CouncilDistrictData data, int totalPopulation)
         {
-            var round1Shares = data.m_Round1Results
-                .ToArray()
-                .ToDictionary(r => r.m_Party, r => r.m_VoteShare);
+            var previousLeader = data.m_LeadingParty;
+            bool wasAlreadyLeading = previousLeader == data.m_LeadingParty; // sera comparé après recalcul ci-dessous
 
+            var round1Shares = data.m_Round1Results.ToArray().ToDictionary(r => r.m_Party, r => r.m_VoteShare);
             var ordered = round1Shares.OrderByDescending(kv => kv.Value).ToList();
             var finalist1 = ordered[0].Key;
             var finalist2 = ordered[1].Key;
@@ -334,7 +339,9 @@ namespace CityCouncil
             data.m_AbstentionRound2 = result.m_Abstention;
             data.m_LeadingParty = result.m_Leader;
 
-            FinalizeResults(ref data, result.m_VoteShares, data.m_TotalSeats);
+            bool isNewConquest = previousLeader != result.m_Leader; // AJOUT — comparaison avant/après le 2e tour
+
+            FinalizeResults(ref data, result.m_VoteShares, data.m_TotalSeats, isNewConquest);
 
             data.m_Phase = ElectionPhase.Completed;
             data.m_NextRound1Day = GetCurrentSimulationDay() + ElectionCycleDays;
@@ -342,14 +349,11 @@ namespace CityCouncil
             s_Log.Info($"District {districtEntity.Index}: 2e tour terminé, vainqueur {data.m_LeadingParty}.");
         }
 
-        private void FinalizeResults(ref CouncilDistrictData data, Dictionary<PoliticalParty, float> shares, int seatCount)
+        private void FinalizeResults(ref CouncilDistrictData data, Dictionary<PoliticalParty, float> shares, int seatCount, bool isNewConquest)
         {
-            // CORRECTIF — dédoublonnage défensif de l'état AVANT capture, au cas où m_FinalResults
-            // contiendrait déjà des doublons hérités d'un état incohérent antérieur (cause exacte non
-            // confirmée, mais ce garde-fou empêche la propagation vers ApplyDistrictSeatDelta).
             var oldResultsRaw = data.m_FinalResults.ToArray();
             var oldResults = new Dictionary<PoliticalParty, PartyResult>();
-            foreach (var r in oldResultsRaw) oldResults[r.m_Party] = r; // dernier gagne en cas de doublon
+            foreach (var r in oldResultsRaw) oldResults[r.m_Party] = r;
             var dedupedOldResults = oldResults.Values;
 
             var allocated = VoteCalculator.AllocateSeats(shares, seatCount);
@@ -358,9 +362,13 @@ namespace CityCouncil
                 data.m_FinalResults.Add(r);
 
             m_MembershipSystem.ApplyDistrictSeatDelta(dedupedOldResults, allocated);
+
+            if (isNewConquest)
+                m_ScoreSystem.ApplyDistrictConquest(data.m_LeadingParty); // seul hook de score restant ici
+
             m_FundingSystem.DistributeForFinalizedDistrict(allocated);
 
-            UpdateBastionStreak(ref data);
+            UpdateBastionStreak(ref data); // inchangé, plus aucun appel au score system dedans
         }
 
         /// <summary>
@@ -384,9 +392,11 @@ namespace CityCouncil
                 data.m_IsBastion = false;
                 data.m_StreakCount = System.Math.Max(0, data.m_StreakCount - 1);
 
+                if (wasBastion)
+
                 s_Log.Info($"[CouncilElectionSystem] Bonus défensif : {data.m_StreakParty} " +
                            $"{(wasBastion ? "perd le Bastion et " : "")}conserve {data.m_StreakCount} case(s) restante(s).");
-                return; // le vainqueur de cette élection ne prend PAS la main sur la série
+                return;
             }
 
             if (data.m_StreakCount > 0 && data.m_StreakParty == winner)
@@ -395,12 +405,15 @@ namespace CityCouncil
             }
             else
             {
+                // Le parti en série change : s'il détenait le Bastion, il le perd ici.
+                if (data.m_IsBastion && data.m_StreakParty != winner)
+
                 data.m_StreakParty = winner;
                 data.m_StreakCount = 1;
                 data.m_IsBastion = false;
             }
 
-            if (data.m_StreakCount >= 3)
+            if (data.m_StreakCount >= 3 && !data.m_IsBastion)
             {
                 data.m_IsBastion = true;
                 data.m_BastionParty = winner;
@@ -579,5 +592,18 @@ namespace CityCouncil
 
             s_Log.Info("[CouncilElectionSystem] DEBUG : toutes les échéances électorales forcées au jour courant.");
         }
+
+        /// <summary>
+        /// Wrapper public exposant GetDistrictDemographics à CouncilPollSystem. La méthode privée
+        /// reste inchangée (utilisée aussi par ProcessDistrict) — ce n'est qu'un point d'accès en
+        /// lecture seule pour un système externe, même esprit que PolicyPrefabs exposé en lecture
+        /// seule par CouncilPolicyRegistry.
+        /// </summary>
+        public (int seniors, int adults, WealthLevel wealth) GetDistrictDemographicsForPoll(Entity districtEntity)
+            => GetDistrictDemographics(districtEntity);
+
+        public List<string> GetActivePoliciesForPoll(Entity districtEntity)
+            => GetActivePolicies(districtEntity);
+
     }
 }

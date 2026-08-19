@@ -791,5 +791,19 @@ namespace CityCouncil
             s_Log.Info("[CouncilPropagandaSystem] DEBUG : toutes les campagnes forcées à expiration.");
         }
 
+        /// <summary>
+        /// OUTIL DE DEBUG TEMPORAIRE — force l'exécution immédiate du cycle IA de propagande
+        /// (campagnes classiques, de district, illégales), sans attendre les 7 jours in-game réels.
+        /// Même remarque que CouncilBonusSystem.DebugForceMajorityCheck et
+        /// CouncilPartyMembershipSystem.DebugForceCycleCheck : ce système dépend du temps de
+        /// simulation réel, jamais avancé par le bouton d'élection accélérée.
+        /// </summary>
+        public void DebugForceAiCycle()
+        {
+            m_LastAiCycleDay = CurrentDay() - AiCycleIntervalDays - 0.001;
+            RunAiCycleIfNeeded();
+            s_Log.Info("[CouncilPropagandaSystem] DEBUG : cycle IA de propagande forcé immédiatement.");
+        }
+
     }
 }
