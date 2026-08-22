@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { bindValue, trigger, useValue } from "cs2/api";
 import { useLocalization } from "cs2/l10n";
 import { translatePartyName } from "./PartyResultDto";
+import { centeredTabWrapperStyle, centeredTabContentStyle } from "./layoutConstants";
 
 const partyMembershipJson$ = bindValue<string>("cityCouncil", "partyMembershipJson");
 const propagandaStateJson$ = bindValue<string>("cityCouncil", "propagandaStateJson");
@@ -273,13 +274,16 @@ const handleCancelDistrict = (districtId: number) =>
   const activeList = campaigns.filter((c) => c && c.active); // GARDE (c non-null)
 
   return (
-    <div style={{ padding: "10rem", width: "100%", boxSizing: "border-box" }}>
+  <div style={centeredTabWrapperStyle}>
+   <div style={centeredTabContentStyle}>
       {playerControlsAvailable ? (
-  playerActiveCampaign ? (
+   playerActiveCampaign ? (
     <div style={{ padding: "10rem", background: "rgba(255,255,255,0.06)", borderRadius: "6rem", marginBottom: "12rem" }}>
       <div style={{ color: "rgba(255,180,120,0.9)", fontSize: "12rem", lineHeight: "16rem", marginBottom: "10rem" }}>
         {alreadyActiveLine}
       </div>
+
+
       <ActionButton label={cancelLabel} enabled={true} onClick={handleCancel} />
     </div>
   ) : (
@@ -394,11 +398,13 @@ const handleCancelDistrict = (districtId: number) =>
       </div>
 
       {/* Mode : classique ou attaque */}
-      <div style={{ display: "flex", gap: "8rem", marginBottom: "10rem" }}>
-        <ActionButton label={t("CityCouncil.DistrictCampaign.TYPE_BOOST", "Campagne classique")}
-          enabled={true} onClick={() => setCampaignMode("boost")} />
-        <ActionButton label={t("CityCouncil.DistrictCampaign.TYPE_ATTACK", "Campagne ciblée")}
-          enabled={true} onClick={() => setCampaignMode("attack")} />
+      <div style={{ display: "flex", marginBottom: "10rem" }}>
+          <div style={{ marginRight: "16rem" }}>
+            <ActionButton label={t("CityCouncil.DistrictCampaign.TYPE_BOOST", "Campagne classique")}
+              enabled={true} onClick={() => setCampaignMode("boost")} />
+          </div>
+          <ActionButton label={t("CityCouncil.DistrictCampaign.TYPE_ATTACK", "Campagne ciblée")}
+            enabled={true} onClick={() => setCampaignMode("attack")} />
       </div>
 
       {campaignMode === "boost" && (
@@ -520,6 +526,7 @@ const handleCancelDistrict = (districtId: number) =>
   </div>
 </div>
 
+    </div>
     </div>
   );
 }

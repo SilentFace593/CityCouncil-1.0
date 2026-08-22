@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { bindValue, trigger, useValue } from "cs2/api";
 import { useLocalization } from "cs2/l10n";
+import { centeredTabWrapperStyle, centeredTabContentStyle } from "./layoutConstants";
 
 const fundingFixedAmount$ = bindValue<number>("cityCouncil", "fundingFixedAmount");
 const fundingLocked$ = bindValue<boolean>("cityCouncil", "fundingLocked");
@@ -63,7 +64,8 @@ export function FundingTab() {
   const variableInfo = t("CityCouncil.Funding.VARIABLE_INFO", "Part variable : 1 000 crédits par siège obtenu, versée automatiquement.");
 
   return (
-    <div style={{ padding: "10rem", width: "100%", boxSizing: "border-box" }}>
+  <div style={centeredTabWrapperStyle}>
+   <div style={centeredTabContentStyle}>
       <div
         style={{
           marginBottom: "14rem",
@@ -76,7 +78,7 @@ export function FundingTab() {
           {fixedAmountLabel}
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "8rem", marginBottom: "8rem" }}>
+        <div style={{ display: "flex", alignItems: "center", marginBottom: "8rem" }}>
           <input
             type="number"
             min={0}
@@ -94,6 +96,7 @@ export function FundingTab() {
               color: "white",
               fontSize: "13rem",
               padding: "6rem 8rem",
+              marginRight: "16rem",
             }}
           />
           <ActionButton label={validateLabel} enabled={!locked} onClick={handleValidate} />
@@ -114,5 +117,6 @@ export function FundingTab() {
         {variableInfo}
       </div>
     </div>
+   </div>
   );
 }

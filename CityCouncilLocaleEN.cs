@@ -33,6 +33,8 @@ namespace CityCouncil
                 { LocaleKeys.Hemicycle_NoElection, "No completed election yet." },
                 { LocaleKeys.Hemicycle_LeaderPrefix, "Leading party: " },
                 { LocaleKeys.Hemicycle_SeatsSuffix, " total seats" },
+                { LocaleKeys.Hemicycle_LegendSeatsPlural, "seats" },
+                { LocaleKeys.Hemicycle_LegendSeatsSingular, "seat" },
 
                 // AdministrationSection
                 { LocaleKeys.Admin_Header, "Administration" },

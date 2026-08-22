@@ -25,6 +25,8 @@
         public const string Hemicycle_NoElection = "CityCouncil.Hemicycle.NO_ELECTION";
         public const string Hemicycle_LeaderPrefix = "CityCouncil.Hemicycle.LEADER_PREFIX";
         public const string Hemicycle_SeatsSuffix = "CityCouncil.Hemicycle.SEATS_SUFFIX";
+        public const string Hemicycle_LegendSeatsPlural = "CityCouncil.Hemicycle.LEGEND_SEATS_PLURAL";
+        public const string Hemicycle_LegendSeatsSingular = "CityCouncil.Hemicycle.LEGEND_SEATS_SINGULAR";
 
         // --- AdministrationSection ---
         public const string Admin_Header = "CityCouncil.Admin.HEADER";

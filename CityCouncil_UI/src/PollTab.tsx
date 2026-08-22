@@ -8,6 +8,7 @@ import {
   type PartyResultDto,
   type TranslateFn,
 } from "./PartyResultDto";
+import { centeredTabWrapperStyle, centeredTabContentStyle } from "./layoutConstants";
 
 const pollResultsJson$ = bindValue<string>("cityCouncil", "pollResultsJson");
 const pollAllowed$ = bindValue<boolean>("cityCouncil", "pollAllowed");
@@ -129,7 +130,8 @@ export function PollTab() {
   const costLine = `${t("CityCouncil.Poll.COST_LABEL", "Coût : ")}${POLL_COST.toLocaleString()}`;
 
   return (
-    <div style={{ padding: "10rem", width: "100%", boxSizing: "border-box" }}>
+  <div style={centeredTabWrapperStyle}>
+    <div style={centeredTabContentStyle}>
       {!playerControlsAvailable && (
         <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "12rem", lineHeight: "17rem", marginBottom: "12rem" }}>
           {t("CityCouncil.Poll.NO_PLAYER_PARTY", "Créez votre propre parti (onglet \"Votre Parti\") pour commander des sondages.")}
@@ -176,5 +178,6 @@ export function PollTab() {
         </div>
       )}
     </div>
+  </div>
   );
 }

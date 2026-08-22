@@ -1,4 +1,5 @@
 import { trigger } from "cs2/api";
+import { centeredTabWrapperStyle, centeredTabContentStyle } from "./layoutConstants";
 
 interface DebugButtonDef {
   label: string;
@@ -41,7 +42,8 @@ function DebugButton({ label, triggerName }: DebugButtonDef) {
 
 export function DebugTab() {
   return (
-    <div style={{ padding: "10rem", width: "100%", boxSizing: "border-box" }}>
+   <div style={centeredTabWrapperStyle}>
+    <div style={centeredTabContentStyle}>
       <div
         style={{
           color: "rgba(255,180,120,0.9)",
@@ -60,6 +62,7 @@ export function DebugTab() {
       {DEBUG_BUTTONS.map((b) => (
         <DebugButton key={b.triggerName} {...b} />
       ))}
+    </div>
     </div>
   );
 }

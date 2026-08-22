@@ -176,19 +176,20 @@ function BastionProgressBar({
       >
         {bastionLine}
       </div>
-      <div style={{ display: "flex", gap: "4rem" }}>
-        {[0, 1, 2].map((i) => (
-          <div
-            key={i}
-            style={{
-              flex: 1,
-              height: "8rem",
-              borderRadius: "3rem",
-              background: i < streakCount ? color : "rgba(255,255,255,0.10)",
-              border: "1rem solid rgba(120,170,255,0.4)",
-            }}
-          />
-        ))}
+      <div style={{ display: "flex" }}>
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              style={{
+                flex: 1,
+                height: "8rem",
+                borderRadius: "3rem",
+                background: i < streakCount ? color : "rgba(255,255,255,0.10)",
+                border: "1rem solid rgba(120,170,255,0.4)",
+                marginRight: i < 2 ? "4rem" : 0,
+              }}
+            />
+          ))}
       </div>
     </div>
   );

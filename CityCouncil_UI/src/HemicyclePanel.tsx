@@ -3,7 +3,7 @@ import { bindValue, trigger, useValue } from "cs2/api";
 import { Button, Panel } from "cs2/ui";
 import { useLocalization } from "cs2/l10n";
 import { Scrollable } from "cs2/ui";
-import { translatePartyName, PARTY_LABELS, PARTY_ORDER, resolvePartyColor, resolvePartyLabel, type PartyResultDto } from "./PartyResultDto";
+import { translatePartyName, PARTY_LABELS, PARTY_ORDER, resolvePartyColor, resolvePartyLabel, PartyLogo, type PartyResultDto } from "./PartyResultDto";
 import { YourPartyTab } from "./YourPartyTab";
 import { PoliticalForcesTab } from "./PoliticalForcesTab";
 import { FundingTab } from "./FundingTab";
@@ -13,6 +13,7 @@ import { PollTab } from "./PollTab";
 import { ScoreTab } from "./ScoreTab";
 import { RulesTab } from "./RulesTab";
 import { DebugTab } from "./DebugTab";
+import { centeredTabWrapperStyle, centeredTabContentStyle } from "./layoutConstants";
 
 // --- Bindings exposés par CouncilUISystem.cs (group "cityCouncil") ---
 const hemicycleSeatsJson$ = bindValue<string>("cityCouncil", "hemicycleSeatsJson");
@@ -244,45 +245,64 @@ function HemicycleResultsContent() {
   }
 
   return (
-    <div style={{ padding: "10rem", width: "100%", boxSizing: "border-box" }}>
-      <div style={{ color: "rgba(255,255,255,0.8)", fontSize: "14rem", marginBottom: "10rem" }}>
+  <div style={centeredTabWrapperStyle}>
+    <div style={centeredTabContentStyle}>
+      <div style={{ color: "rgba(255,255,255,0.8)", fontSize: "18rem", marginBottom: "10rem", textAlign: "center" }}>
         {statusLine}
       </div>
+
+      {leaderResult && (
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: "14rem" }}>
+          <PartyLogo
+            party={leaderResult.party}
+            color={resolvePartyColor(leaderResult)}
+            isCustom={!!(leaderResult.displayName && leaderResult.displayName.length > 0)}
+            sizeRem={60}
+          />
+        </div>
+      )}
 
       <HemicycleFan results={results} />
 
       <div style={{ display: "flex", flexDirection: "column", marginTop: "10rem" }}>
-        {results.map((r) => (
-          <div
-            key={r.party}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              fontSize: "13rem",
-              color: "rgba(255,255,255,0.9)",
-              marginBottom: "5rem",
-            }}
-          >
-            <div
-              style={{
-                width: "12rem",
-                height: "12rem",
-                borderRadius: "50%",
-                background: resolvePartyColor(r),
-                flexShrink: 0,
-                marginRight: "8rem",
-              }}
-            />
-            <span style={{ flex: 1, minWidth: 0, whiteSpace: "nowrap", wordBreak: "keep-all", overflowWrap: "normal" }}>
-              {resolvePartyLabel(r, translate)}
-            </span>
-            <span style={{ whiteSpace: "nowrap", wordBreak: "keep-all", overflowWrap: "normal" }}>{r.seats}</span>
-          </div>
-        ))}
+  {results.map((r) => {
+    const seatsWord = r.seats > 1
+      ? t("CityCouncil.Hemicycle.LEGEND_SEATS_PLURAL", "sièges")
+      : t("CityCouncil.Hemicycle.LEGEND_SEATS_SINGULAR", "siège");
+    const legendLine = `${resolvePartyLabel(r, translate)} : ${r.seats} ${seatsWord}`;
+
+    return (
+      <div
+        key={r.party}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          fontSize: "18rem",
+          color: "rgba(255,255,255,0.9)",
+          marginBottom: "5rem",
+        }}
+      >
+        <div
+          style={{
+            width: "18rem",
+            height: "18rem",
+            borderRadius: "50%",
+            background: resolvePartyColor(r),
+            flexShrink: 0,
+            marginRight: "8rem",
+          }}
+        />
+        <span style={{ whiteSpace: "nowrap", wordBreak: "keep-all", overflowWrap: "normal" }}>
+          {legendLine}
+        </span>
       </div>
+    );
+  })}
+</div>
 
        <BonusChoicePrompt />
 
+    </div>
     </div>
   );
 }
@@ -290,7 +310,7 @@ function HemicycleResultsContent() {
 
 type TabKey = "results" | "yourParty" | "forces" | "funding" | "propaganda" | "commission" | "poll" | "score" | "rules" | "debug";
 
-const PANEL_WIDTH = "950rem";
+const PANEL_WIDTH = "820rem";
 const PANEL_CONTENT_HEIGHT = "560rem";
 
 function HemicycleTabs() {

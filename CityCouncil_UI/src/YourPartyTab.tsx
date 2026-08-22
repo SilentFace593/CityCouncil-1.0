@@ -9,6 +9,7 @@ import {
   PARTY_ORDER,
 } from "./PartyResultDto";
 import type { TranslateFn } from "./PartyResultDto";
+import { centeredTabWrapperStyle, centeredTabContentStyle } from "./layoutConstants";
 
 
 const customPartyExists$ = bindValue<boolean>("cityCouncil", "customPartyExists");
@@ -41,7 +42,7 @@ function ActionButton({
         border: "none",
         borderRadius: "4rem",
         padding: "6rem 10rem",
-        fontSize: "13rem",
+        fontSize: "15rem",
         fontWeight: "bold",
         cursor: enabled ? "pointer" : "default",
         whiteSpace: "nowrap",
@@ -166,7 +167,8 @@ export function YourPartyTab() {
     : t("CityCouncil.YourPartyTab.CREATE_BUTTON", "Créer un parti politique");
 
   return (
-    <div style={{ padding: "10rem", width: "100%", boxSizing: "border-box" }}>
+   <div style={centeredTabWrapperStyle}>
+    <div style={centeredTabContentStyle}>
       {exists && (
         <div
           style={{
@@ -187,11 +189,11 @@ export function YourPartyTab() {
                 flexShrink: 0,
               }}
             />
-            <div style={{ color: "white", fontSize: "14rem", fontWeight: 600, whiteSpace: "nowrap" }}>
+            <div style={{ color: "white", fontSize: "16rem", fontWeight: 600, whiteSpace: "nowrap" }}>
               {currentName}
             </div>
           </div>
-          <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "12rem", whiteSpace: "nowrap" }}>
+          <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "15rem", whiteSpace: "nowrap" }}>
             {currentPartyLine}
           </div>
 
@@ -200,7 +202,7 @@ export function YourPartyTab() {
               style={{
                 marginTop: "8rem",
                 color: "rgba(255,180,120,0.9)",
-                fontSize: "12rem",
+                fontSize: "15rem",
                 whiteSpace: "nowrap",
               }}
             >
@@ -217,7 +219,7 @@ export function YourPartyTab() {
                 justifyContent: "space-between",
               }}
             >
-              <div style={{ color: "rgba(255,180,120,0.9)", fontSize: "12rem", whiteSpace: "nowrap" }}>
+              <div style={{ color: "rgba(255,180,120,0.9)", fontSize: "15rem", whiteSpace: "nowrap" }}>
                 {pendingDeletionLine}
               </div>
               <ActionButton label={cancelButtonLabel} enabled={true} onClick={handleCancelDelete} />
@@ -230,12 +232,12 @@ export function YourPartyTab() {
         </div>
       )}
 
-      <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "13rem", marginBottom: "10rem", whiteSpace: "nowrap" }}>
+      <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "16rem", marginBottom: "10rem", textAlign: "center", whiteSpace: "nowrap" }}>
         {sectionHeaderLabel}
       </div>
 
       <div style={{ marginBottom: "12rem" }}>
-        <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "11rem", marginBottom: "4rem", textTransform: "uppercase" }}>
+        <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "14rem", marginBottom: "4rem", textTransform: "uppercase" }}>
           {nameLabel}
         </div>
         <input
@@ -257,10 +259,10 @@ export function YourPartyTab() {
       </div>
 
       <div style={{ marginBottom: "12rem" }}>
-        <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "11rem", marginBottom: "6rem", textTransform: "uppercase" }}>
+        <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "14rem", marginBottom: "6rem", textTransform: "uppercase" }}>
           {colorLabel}
         </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "10rem" }}>
+        <div style={{ display: "flex", flexWrap: "wrap" }}>
           {CUSTOM_PARTY_PALETTE.map((c) => {
             const selected = color === c;
             return (
@@ -279,6 +281,8 @@ export function YourPartyTab() {
                   justifyContent: "center",
                   border: selected ? "2rem solid white" : "2rem solid transparent",
                   boxShadow: selected ? "0 0 0 2rem rgba(255,255,255,0.25)" : "none",
+                  marginRight: "16rem",
+                  marginBottom: "16rem",
                 }}
               >
                 {selected && (
@@ -291,7 +295,7 @@ export function YourPartyTab() {
       </div>
 
       <div style={{ marginBottom: "14rem" }}>
-        <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "11rem", marginBottom: "4rem", textTransform: "uppercase" }}>
+        <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "14rem", marginBottom: "4rem", textTransform: "uppercase" }}>
           {spaceLabel}
         </div>
         <div style={{ display: "flex", flexDirection: "column" }}>
@@ -306,6 +310,7 @@ export function YourPartyTab() {
         enabled={canSubmit}
         onClick={handleSubmit}
       />
+    </div>
     </div>
   );
 }

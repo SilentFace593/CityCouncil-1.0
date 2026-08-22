@@ -201,9 +201,9 @@ export function PoliticalForcesTab() {
                   marginRight: "8rem",
                 }}
               />
-              <div style={{ color: "white", fontSize: "12rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", display: "flex", alignItems: "center", gap: "4rem" }}>
+              <div style={{ color: "white", fontSize: "13rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", display: "flex", alignItems: "center", gap: "4rem" }}>
                 <span>{e.label}</span>
-                {e.bonus !== "None" && <span style={{ fontSize: "11rem" }}>{BONUS_BADGE[e.bonus] ?? ""}</span>}
+                {e.bonus !== "None" && <span style={{ fontSize: "12rem" }}>{BONUS_BADGE[e.bonus] ?? ""}</span>}
               </div>
             </div>
           );
@@ -217,7 +217,7 @@ export function PoliticalForcesTab() {
             <div style={{ marginRight: "10rem" }}>
               <PartyLogo party={selected.key} color={selected.color} isCustom={selected.isPlayerParty} sizeRem={90} />
             </div>
-            <div style={{ color: "white", fontSize: "16rem", fontWeight: 700, whiteSpace: "nowrap" }}>
+            <div style={{ color: "white", fontSize: "25rem", fontWeight: 700, whiteSpace: "nowrap" }}>
               {selected.label}
             </div>
           </div>
@@ -287,15 +287,17 @@ export function PoliticalForcesTab() {
                       }}
                     />
 
-                    <div style={{ display: "flex", gap: "8rem", marginBottom: "10rem" }}>
-                      <ActionButton
-                        label={t("CityCouncil.BlackFund.TRANSFER_TO_LABEL", "Vers la caisse noire")}
-                        enabled={!!transferAmount && Number(transferAmount) > 0}
-                        onClick={() => {
-                          trigger("cityCouncil", "transferBlackFund", transferAmount, "toBlackFund");
-                          setTransferAmount("");
-                        }}
-                      />
+                    <div style={{ display: "flex", marginBottom: "10rem" }}>
+                      <div style={{ marginRight: "16rem" }}>
+                        <ActionButton
+                          label={t("CityCouncil.BlackFund.TRANSFER_TO_LABEL", "Vers la caisse noire")}
+                          enabled={!!transferAmount && Number(transferAmount) > 0}
+                          onClick={() => {
+                            trigger("cityCouncil", "transferBlackFund", transferAmount, "toBlackFund");
+                            setTransferAmount("");
+                          }}
+                        />
+                      </div>
                       <ActionButton
                         label={t("CityCouncil.BlackFund.TRANSFER_FROM_LABEL", "Vers le compte principal")}
                         enabled={!!transferAmount && Number(transferAmount) > 0}
@@ -323,17 +325,19 @@ export function PoliticalForcesTab() {
                         <div style={{ color: "rgba(255,140,140,0.9)", fontSize: "11rem", marginBottom: "8rem" }}>
                           {t("CityCouncil.BlackFund.CLOSE_WARNING", "Fermer la caisse noire fera perdre tout l'argent qu'elle contient.")}
                         </div>
-                        <div style={{ display: "flex", gap: "8rem" }}>
-                          <ActionButton
-                            label={t("CityCouncil.BlackFund.CLOSE_CONFIRM", "Confirmer la fermeture")}
-                            enabled={true}
-                            onClick={() => { trigger("cityCouncil", "closeBlackFund"); setShowCloseConfirm(false); }}
-                          />
-                          <ActionButton
-                            label={t("CityCouncil.YourPartyTab.CANCEL_BUTTON", "Annuler")}
-                            enabled={true}
-                            onClick={() => setShowCloseConfirm(false)}
-                          />
+                        <div style={{ display: "flex" }}>
+                              <div style={{ marginRight: "16rem" }}>
+                                <ActionButton
+                                  label={t("CityCouncil.BlackFund.CLOSE_CONFIRM", "Confirmer la fermeture")}
+                                  enabled={true}
+                                  onClick={() => { trigger("cityCouncil", "closeBlackFund"); setShowCloseConfirm(false); }}
+                                />
+                              </div>
+                              <ActionButton
+                                label={t("CityCouncil.YourPartyTab.CANCEL_BUTTON", "Annuler")}
+                                enabled={true}
+                                onClick={() => setShowCloseConfirm(false)}
+                              />
                         </div>
                       </div>
                     )}

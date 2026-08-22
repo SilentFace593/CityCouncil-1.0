@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { bindValue, trigger, useValue } from "cs2/api";
 import { useLocalization } from "cs2/l10n";
 import { translatePartyName, PARTY_COLORS, CUSTOM_PARTY_PALETTE_HEX, PartyLogo } from "./PartyResultDto";
+import { centeredTabWrapperStyle, centeredTabContentStyle } from "./layoutConstants";
 
 const scoreJson$ = bindValue<string>("cityCouncil", "scoreJson");
 
@@ -42,7 +43,8 @@ export function ScoreTab() {
   const rankLabel = (index: number) => `#${index + 1}`;
 
   return (
-    <div style={{ padding: "10rem", width: "100%", boxSizing: "border-box" }}>
+    <div style={centeredTabWrapperStyle}>
+     <div style={centeredTabContentStyle}>
       <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "12rem", marginBottom: "12rem", textTransform: "uppercase" }}>
         {t("CityCouncil.Score.HEADER", "Classement")}
       </div>
@@ -86,6 +88,7 @@ export function ScoreTab() {
         })}
       </div>
 
+    </div>
     </div>
   );
 }
