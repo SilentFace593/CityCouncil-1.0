@@ -392,8 +392,6 @@ namespace CityCouncil
                 data.m_IsBastion = false;
                 data.m_StreakCount = System.Math.Max(0, data.m_StreakCount - 1);
 
-                if (wasBastion)
-
                 s_Log.Info($"[CouncilElectionSystem] Bonus défensif : {data.m_StreakParty} " +
                            $"{(wasBastion ? "perd le Bastion et " : "")}conserve {data.m_StreakCount} case(s) restante(s).");
                 return;
@@ -405,9 +403,9 @@ namespace CityCouncil
             }
             else
             {
-                // Le parti en série change : s'il détenait le Bastion, il le perd ici.
-                if (data.m_IsBastion && data.m_StreakParty != winner)
-
+                // Le parti en série change : s'il détenait le Bastion, il le perd ici (m_IsBastion
+                // repassé à false ci-dessous, inconditionnellement — toujours correct qu'il y ait eu
+                // Bastion ou non avant ce changement de vainqueur).
                 data.m_StreakParty = winner;
                 data.m_StreakCount = 1;
                 data.m_IsBastion = false;

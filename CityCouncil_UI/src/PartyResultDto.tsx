@@ -10,6 +10,7 @@ export interface PartyResultDto {
   voteShare: number;
   displayName?: string;
   displayColor?: string;
+  bastions?: number;
 }
 
 // Fallback français, utilisé si translate() ne trouve rien (comportement identique au reste

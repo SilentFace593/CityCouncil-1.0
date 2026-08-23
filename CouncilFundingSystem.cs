@@ -26,6 +26,7 @@ namespace CityCouncil
 
         public const int MaxFixedAmount = 100000;
         private const int CreditsPerSeat = 1000;
+        private const double AutoRenewCycleIntervalDays = 7.0;
 
         private EntityQuery m_SingletonQuery;
         private EntityQuery m_DistrictQuery;
@@ -34,6 +35,7 @@ namespace CityCouncil
         private CouncilPartyMembershipSystem m_MembershipSystem;
 
         private Entity m_SingletonEntity = Entity.Null;
+        private double m_LastAutoRenewCheckDay = -1;
 
         protected override void OnCreate()
         {
@@ -90,9 +92,37 @@ namespace CityCouncil
 
         public override int GetUpdateInterval(SystemUpdatePhase phase) => 4096;
 
-        protected override void OnUpdate() { }
+        protected override void OnUpdate()
+       {
+            CheckAutoRenewIfNeeded();
+        }
 
-        private void EnsureSingleton()
+        private void CheckAutoRenewIfNeeded()
+        {
+            double currentDay = (double)m_SimulationSystem.frameIndex / 262144.0;
+
+           if (m_LastAutoRenewCheckDay< 0)
+            {
+                m_LastAutoRenewCheckDay = currentDay;
+                return;
+           }
+
+           if (currentDay - m_LastAutoRenewCheckDay<AutoRenewCycleIntervalDays) return;
+           m_LastAutoRenewCheckDay = currentDay;
+
+           var data = GetData();
+            if (!data.m_AutoRenew) return;
+            if (data.m_FixedAmountLocked) return; // cycle précédent pas encore distribué, on n'insiste pas
+            if (data.m_FixedAmount <= 0) return;
+
+            data.m_FixedAmountLocked = true;
+            data.m_FixedAmountPendingDistribution = true;
+            SetData(data);
+
+            s_Log.Info($"[CouncilFundingSystem] Reconduction automatique de la part fixe ({data.m_FixedAmount} crédits).");
+        }
+
+private void EnsureSingleton()
         {
             var existing = m_SingletonQuery.ToEntityArray(Allocator.Temp);
             try
@@ -175,15 +205,25 @@ namespace CityCouncil
         }
 
         /// <summary>Verrouille le montant actuel jusqu'à la prochaine distribution.</summary>
-        public void ValidateFixedAmount()
+        public void ValidateFixedAmount(bool autoRenew)
         {
             var data = GetData();
             if (data.m_FixedAmountLocked) return;
 
             data.m_FixedAmountLocked = true;
-            data.m_FixedAmountPendingDistribution = true; // AJOUT
+            data.m_FixedAmountPendingDistribution = true;
+            data.m_AutoRenew = autoRenew;
             SetData(data);
-            s_Log.Info($"[CouncilFundingSystem] Part fixe verrouillée à {data.m_FixedAmount} crédits, distribution en attente.");
+            s_Log.Info($"[CouncilFundingSystem] Part fixe verrouillée à {data.m_FixedAmount} crédits, distribution en attente (autoRenew={autoRenew}).");
+        }
+
+        public void SetAutoRenew(bool autoRenew)
+        {
+            var data = GetData();
+            if (data.m_AutoRenew == autoRenew) return;
+            data.m_AutoRenew = autoRenew;
+            SetData(data);
+            s_Log.Info($"[CouncilFundingSystem] Reconduction automatique de la part fixe : {autoRenew}.");
         }
 
         /// <summary>

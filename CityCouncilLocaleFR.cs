@@ -35,6 +35,8 @@ namespace CityCouncil
                 { LocaleKeys.Hemicycle_SeatsSuffix, " sièges au total" },
                 { LocaleKeys.Hemicycle_LegendSeatsPlural, "sièges" },
                 { LocaleKeys.Hemicycle_LegendSeatsSingular, "siège" },
+                { LocaleKeys.Hemicycle_LegendBastionsPlural, "bastions" },
+                { LocaleKeys.Hemicycle_LegendBastionsSingular, "bastion" },
 
                 // AdministrationSection
                 { LocaleKeys.Admin_Header, "Administration" },
@@ -99,6 +101,7 @@ namespace CityCouncil
                 { LocaleKeys.Funding_FixedAmountHint, "Répartie à parts égales entre les 5 partis à la fin du cycle électoral." },
                 { LocaleKeys.Funding_LockedMessage, "Montant verrouillé jusqu'à la prochaine distribution." },
                 { LocaleKeys.Funding_VariableInfo, "Part variable : 1 000 crédits par siège obtenu, versée automatiquement." },
+                { LocaleKeys.Funding_AutoRenewLabel, "Reconduire automatiquement" },
 
                 // Bastion
                 { LocaleKeys.Admin_BastionLabel, "Bastion : " },            

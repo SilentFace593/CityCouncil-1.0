@@ -35,6 +35,8 @@ namespace CityCouncil
                 { LocaleKeys.Hemicycle_SeatsSuffix, " total seats" },
                 { LocaleKeys.Hemicycle_LegendSeatsPlural, "seats" },
                 { LocaleKeys.Hemicycle_LegendSeatsSingular, "seat" },
+                { LocaleKeys.Hemicycle_LegendBastionsPlural, "strongholds" },
+                { LocaleKeys.Hemicycle_LegendBastionsSingular, "stronghold" },
 
                 // AdministrationSection
                 { LocaleKeys.Admin_Header, "Administration" },
@@ -98,6 +100,7 @@ namespace CityCouncil
                 { LocaleKeys.Funding_ValidateButton, "Confirm amount" },
                 { LocaleKeys.Funding_LockedMessage, "Amount locked until the next distribution." },
                 { LocaleKeys.Funding_VariableInfo, "Variable share: 1,000 credits per seat won, paid automatically." },
+                { LocaleKeys.Funding_AutoRenewLabel, "Automatically renew" },
 
                 // Bastion
                 { LocaleKeys.Admin_BastionLabel, "Stronghold: " },

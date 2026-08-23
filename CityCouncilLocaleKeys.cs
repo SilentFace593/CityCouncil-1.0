@@ -27,6 +27,8 @@
         public const string Hemicycle_SeatsSuffix = "CityCouncil.Hemicycle.SEATS_SUFFIX";
         public const string Hemicycle_LegendSeatsPlural = "CityCouncil.Hemicycle.LEGEND_SEATS_PLURAL";
         public const string Hemicycle_LegendSeatsSingular = "CityCouncil.Hemicycle.LEGEND_SEATS_SINGULAR";
+        public const string Hemicycle_LegendBastionsPlural = "CityCouncil.Hemicycle.LEGEND_BASTIONS_PLURAL";
+        public const string Hemicycle_LegendBastionsSingular = "CityCouncil.Hemicycle.LEGEND_BASTIONS_SINGULAR";
 
         // --- AdministrationSection ---
         public const string Admin_Header = "CityCouncil.Admin.HEADER";
@@ -95,6 +97,7 @@
         public const string Funding_ValidateButton = "CityCouncil.Funding.VALIDATE_BUTTON";
         public const string Funding_LockedMessage = "CityCouncil.Funding.LOCKED_MESSAGE";
         public const string Funding_VariableInfo = "CityCouncil.Funding.VARIABLE_INFO";
+        public const string Funding_AutoRenewLabel = "CityCouncil.Funding.AUTO_RENEW_LABEL";
 
         // --- Bastion ---
         public const string Admin_BastionLabel = "CityCouncil.Admin.BASTION_LABEL";

@@ -14,7 +14,7 @@ namespace CityCouncil
     /// <summary>
     /// Gère les adhérents et la trésorerie des 5 partis. Deux mécanismes distincts :
     ///   - ApplyDistrictSeatDelta : appelé par CouncilElectionSystem à CHAQUE district qui
-    ///     obtient de nouveaux résultats finaux -> ±10 adhérents par siège gagné/perdu dans
+    ///     obtient de nouveaux résultats finaux -> +10 ou -4 adhérents par siège gagné/perdu dans
     ///     CE district précisément (signal local, immédiat).
     ///   - RunCycleCheck (interne, périodique) : une fois par cycle électoral complet (~7 jours
     ///     in-game), calcule la cotisation des adhérents (trésorerie) et applique le bonus de
@@ -27,11 +27,11 @@ namespace CityCouncil
         private static readonly ILog s_Log = LogManager.GetLogger("CityCouncil").SetShowsErrorsInUI(false);
 
         // --- Curseurs de gameplay, ajustables librement sans toucher au reste de la logique ---
-        private const float CreditsPerMemberPerCycle = 1f;
+        private const float CreditsPerMemberPerCycle = 200f;
         private const float WinBonusPct = 0.03f;
         private const float LoseMalusPct = 0.02f;
         private const float MembersPerSeatGained = 10f;
-        private const float MembersPerSeatLost = 10f;
+        private const float MembersPerSeatLost = 4f;
 
         // Même durée que le cycle électoral (CouncilElectionSystem.ElectionCycleDays) : le
         // contrôle "gagne au moins un district / est majoritaire" est réévalué au rythme d'un
@@ -179,14 +179,10 @@ namespace CityCouncil
         /// <summary>
         /// Appliqué à chaque district qui obtient de nouveaux résultats finaux (appelé par
         /// CouncilElectionSystem.FinalizeResults, AVANT écrasement de l'ancien résultat) :
-        /// ±10 adhérents par siège gagné/perdu dans ce district précisément.
+        /// +10 ou -4 adhérents par siège gagné/perdu dans ce district précisément.
         /// </summary>
         public void ApplyDistrictSeatDelta(IEnumerable<PartyResult> oldResults, IEnumerable<PartyResult> newResults)
         {
-            // CORRECTIF — remplace .ToDictionary() (qui plante en cas de clé dupliquée, ex. état
-            // corrompu hérité d'une manipulation antérieure) par une accumulation manuelle tolérante :
-            // si un parti apparaît plusieurs fois, on garde le dernier sièges rencontré plutôt que de
-            // planter. Ne change rien au comportement normal (jamais de doublon en usage standard).
             var oldSeats = new Dictionary<PoliticalParty, int>();
             foreach (var r in oldResults) oldSeats[r.m_Party] = r.m_Seats;
 

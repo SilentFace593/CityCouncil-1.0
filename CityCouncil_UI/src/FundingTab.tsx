@@ -5,6 +5,7 @@ import { centeredTabWrapperStyle, centeredTabContentStyle } from "./layoutConsta
 
 const fundingFixedAmount$ = bindValue<number>("cityCouncil", "fundingFixedAmount");
 const fundingLocked$ = bindValue<boolean>("cityCouncil", "fundingLocked");
+const fundingAutoRenew$ = bindValue<boolean>("cityCouncil", "fundingAutoRenew");
 
 const MAX_AMOUNT = 100000;
 
@@ -36,6 +37,7 @@ export function FundingTab() {
 
   const currentAmount = useValue(fundingFixedAmount$);
   const locked = useValue(fundingLocked$);
+  const autoRenew = useValue(fundingAutoRenew$);
 
   const [amount, setAmount] = useState<number>(0);
 
@@ -53,7 +55,14 @@ export function FundingTab() {
     trigger("cityCouncil", "setFundingFixedAmount", String(clamped));
   };
 
-  const handleValidate = () => trigger("cityCouncil", "validateFundingFixedAmount");
+  const handleValidate = () =>
+    trigger("cityCouncil", "validateFundingFixedAmount", autoRenew ? "true" : "false");
+
+  // Le toggle marche que le montant soit verrouillé ou non — on peut désactiver une
+  // reconduction déjà programmée sans attendre que le cycle en cours se termine (même
+  // esprit que "Annuler la campagne" en propagande).
+  const handleToggleAutoRenew = () =>
+    trigger("cityCouncil", "setFundingAutoRenew", autoRenew ? "false" : "true");
 
   // Toutes les phrases mêlant texte + variable sont construites en une seule chaîne
   // (même contrainte que sur YourPartyTab / AdministrationSection).
@@ -62,6 +71,7 @@ export function FundingTab() {
   const validateLabel = t("CityCouncil.Funding.VALIDATE_BUTTON", "Valider le montant");
   const lockedMessage = t("CityCouncil.Funding.LOCKED_MESSAGE", "Montant verrouillé jusqu'à la prochaine distribution.");
   const variableInfo = t("CityCouncil.Funding.VARIABLE_INFO", "Part variable : 1 000 crédits par siège obtenu, versée automatiquement.");
+  const autoRenewLabel = t("CityCouncil.Funding.AUTO_RENEW_LABEL", "Reconduire automatiquement");
 
   return (
   <div style={centeredTabWrapperStyle}>
@@ -100,6 +110,31 @@ export function FundingTab() {
             }}
           />
           <ActionButton label={validateLabel} enabled={!locked} onClick={handleValidate} />
+        </div>
+
+        <div
+          onClick={handleToggleAutoRenew}
+          style={{ display: "flex", alignItems: "center", cursor: "pointer", marginBottom: "8rem" }}
+        >
+          <div
+            style={{
+              width: "16rem",
+              height: "16rem",
+              borderRadius: "3rem",
+              border: autoRenew ? "1rem solid rgba(120,170,255,0.9)" : "1rem solid rgba(255,255,255,0.35)",
+              background: autoRenew ? "rgba(70,130,220,0.85)" : "rgba(255,255,255,0.06)",
+              marginRight: "8rem",
+              flexShrink: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            {autoRenew && <div style={{ color: "white", fontSize: "11rem", fontWeight: "bold" }}>✓</div>}
+          </div>
+          <div style={{ color: "rgba(255,255,255,0.9)", fontSize: "13rem", whiteSpace: "nowrap" }}>
+            {autoRenewLabel}
+          </div>
         </div>
 
         <div style={{ color: "rgba(255,255,255,0.5)", fontSize: "11rem", lineHeight: "15rem", marginBottom: locked ? "6rem" : 0 }}>

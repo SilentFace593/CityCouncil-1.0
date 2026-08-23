@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO.Ports;
 using System.Linq;
 using Colossal.UI.Binding;
 using Game.Areas;
@@ -7,6 +8,7 @@ using Game.Tools;
 using Game.UI;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Entities.UniversalDelegates;
 using static CityCouncil.CouncilDistrictData;
 
 namespace CityCouncil.Systems
@@ -50,6 +52,7 @@ namespace CityCouncil.Systems
         private ValueBinding<int> m_AdminVotersBinding;
         private ValueBinding<int> m_AdminAbstentionBinding;
         private ValueBinding<string> m_AdminResultsBinding; // répartition finale des sièges, sérialisée en JSON
+        private ValueBinding<string> m_AdminRound1ResultsBinding;
         private ValueBinding<string> m_AdminBastionStreakPartyBinding; // nom du parti en série, ou "" si aucune série
         private ValueBinding<int> m_AdminBastionStreakCountBinding;    // 0..3
         private ValueBinding<bool> m_AdminBastionActiveBinding;        // true si Bastion effectivement acquis
@@ -59,6 +62,7 @@ namespace CityCouncil.Systems
         private ValueBinding<string> m_HemicycleLeaderBinding;
         private ValueBinding<int> m_FundingFixedAmountBinding;
         private ValueBinding<bool> m_FundingLockedBinding;
+        private ValueBinding<bool> m_FundingAutoRenewBinding;
 
         // --- Onglet "Votre Parti" ---
         private ValueBinding<bool> m_CustomPartyExistsBinding;
@@ -169,6 +173,7 @@ namespace CityCouncil.Systems
             m_AdminVotersBinding = new ValueBinding<int>(kGroup, "adminVoters", 0);
             m_AdminAbstentionBinding = new ValueBinding<int>(kGroup, "adminAbstention", 0);
             m_AdminResultsBinding = new ValueBinding<string>(kGroup, "adminResultsJson", "[]");
+            m_AdminRound1ResultsBinding = new ValueBinding<string>(kGroup, "adminRound1ResultsJson", "[]");
             m_PartyMembershipJsonBinding = new ValueBinding<string>(kGroup, "partyMembershipJson", "[]");
 
             m_HemicycleSeatsBinding = new ValueBinding<string>(kGroup, "hemicycleSeatsJson", "[]");
@@ -201,6 +206,7 @@ namespace CityCouncil.Systems
             m_PollAllowedBinding = new ValueBinding<bool>(kGroup, "pollAllowed", true);
             m_ScoreJsonBinding = new ValueBinding<string>(kGroup, "scoreJson", "[]");
             m_ShowDebugTabBinding = new ValueBinding<bool>(kGroup, "showDebugTab", false);
+            m_FundingAutoRenewBinding = new ValueBinding<bool>(kGroup, "fundingAutoRenew", false);
 
 
 
@@ -214,6 +220,7 @@ namespace CityCouncil.Systems
             AddBinding(m_AdminVotersBinding);
             AddBinding(m_AdminAbstentionBinding);
             AddBinding(m_AdminResultsBinding);
+            AddBinding(m_AdminRound1ResultsBinding);
 
             AddBinding(m_HemicycleSeatsBinding);
             AddBinding(m_HemicycleLeaderBinding);
@@ -246,6 +253,7 @@ namespace CityCouncil.Systems
             AddBinding(m_PollAllowedBinding);
             AddBinding(m_ScoreJsonBinding);
             AddBinding(m_ShowDebugTabBinding);
+            AddBinding(m_FundingAutoRenewBinding);
 
             AddBinding(new TriggerBinding(kGroup, "debugForceGeneralElectionCheck",
     () => { m_ScoreSystem.DebugForceGeneralElectionCheck(); UpdateScoreBindingIfChanged(force: true); }));
@@ -426,8 +434,19 @@ namespace CityCouncil.Systems
         PushFundingState();
     }));
 
-            AddBinding(new TriggerBinding(kGroup, "validateFundingFixedAmount",
-                () => { m_FundingSystem.ValidateFixedAmount(); PushFundingState(); }));
+            AddBinding(new TriggerBinding<string>(kGroup, "validateFundingFixedAmount",
+            (autoRenewStr) =>
+                {
+                    m_FundingSystem.ValidateFixedAmount(autoRenewStr == "true");
+                    PushFundingState();
+                }));
+            
+            AddBinding(new TriggerBinding<string>(kGroup, "setFundingAutoRenew",
+            (valueStr) =>
+                {
+                                m_FundingSystem.SetAutoRenew(valueStr == "true");
+                    PushFundingState();
+                }));
 
             AddBinding(new TriggerBinding(kGroup, "orderPoll",
     () =>
@@ -868,7 +887,8 @@ namespace CityCouncil.Systems
             var data = m_FundingSystem.GetData();
             if (m_HasLastPushedFunding
                 && data.m_FixedAmount == m_LastPushedFundingAmount
-                && data.m_FixedAmountLocked == m_LastPushedFundingLocked)
+                && data.m_FixedAmountLocked == m_LastPushedFundingLocked
+                && data.m_AutoRenew == m_FundingAutoRenewBinding.value)
                 return;
 
             PushFundingState(data);
@@ -879,6 +899,7 @@ namespace CityCouncil.Systems
             var data = preloaded ?? m_FundingSystem.GetData();
             m_FundingFixedAmountBinding.Update(data.m_FixedAmount);
             m_FundingLockedBinding.Update(data.m_FixedAmountLocked);
+            m_FundingAutoRenewBinding.Update(data.m_AutoRenew);
             m_LastPushedFundingAmount = data.m_FixedAmount;
             m_LastPushedFundingLocked = data.m_FixedAmountLocked;
             m_HasLastPushedFunding = true;
@@ -947,6 +968,24 @@ namespace CityCouncil.Systems
      ? data.m_FinalResults.ToArray().Select(PartyResultDto.From).Select(DecorateWithCustomParty).ToArray()
      : System.Array.Empty<PartyResultDto>();
             m_AdminResultsBinding.Update(PartyResultDto.ToJsonArray(results));
+
+            // Détail complet du 1er tour (voix + %), utilisé pour l'histogramme affiché en cas de
+            // second tour en attente. Disponible dès que le 1er tour a été calculé, quelle que
+            // soit l'issue (majorité directe ou non) — le React ne l'affiche que sur Round1Done.
+            var round1Results = data.m_Round1Results.Length > 0
+                              ? data.m_Round1Results.ToArray()
+                                .Select(r => new Round1ResultDto
+                                {
+                party = r.m_Party.ToString(),
+                voteShare = r.m_VoteShare,
+                votes = (int)MathF.Round(r.m_VoteShare * data.m_VotersRound1),
+                displayName = "",
+                displayColor = ""
+                    })
+                    .Select(DecorateRound1WithCustomParty)
+                    .ToArray()
+                : System.Array.Empty<Round1ResultDto>();
+            m_AdminRound1ResultsBinding.Update(Round1ResultDto.ToJsonArray(round1Results));
 
             // Barre de progression Bastion.
             m_AdminBastionStreakPartyBinding.Update(data.m_StreakCount > 0 ? data.m_StreakParty.ToString() : "");
@@ -1040,6 +1079,7 @@ namespace CityCouncil.Systems
         private void RefreshHemicycle()
         {
             var totals = new System.Collections.Generic.Dictionary<CityCouncil.PoliticalParty, int>();
+            var bastionCounts = new System.Collections.Generic.Dictionary<CityCouncil.PoliticalParty, int>();
             CityCouncil.PoliticalParty leader = default;
             int leaderSeats = -1;
 
@@ -1063,6 +1103,14 @@ namespace CityCouncil.Systems
                             leader = result.m_Party;
                         }
                     }
+
+                    // AJOUT — comptage des Bastions, indépendant des sièges : un seul Bastion par
+                    // district (data.m_BastionParty), valide uniquement si data.m_IsBastion.
+                    if (data.m_IsBastion)
+                    {
+                       bastionCounts.TryGetValue(data.m_BastionParty, out int currentBastions);
+                       bastionCounts[data.m_BastionParty] = currentBastions + 1;
+                    }
                 }
             }
             finally
@@ -1071,7 +1119,13 @@ namespace CityCouncil.Systems
             }
 
             var seatsDto = totals
-                .Select(kv => new PartyResultDto { party = kv.Key.ToString(), seats = kv.Value, voteShare = 0f })
+               .Select(kv => new PartyResultDto
+                {
+                party = kv.Key.ToString(),
+                seats = kv.Value,
+                voteShare = 0f,
+                bastions = bastionCounts.TryGetValue(kv.Key, out int b) ? b : 0
+                })
                 .Select(DecorateWithCustomParty)
                 .OrderByDescending(r => r.seats)
                 .ToArray();
@@ -1099,7 +1153,18 @@ namespace CityCouncil.Systems
             return dto;
         }
 
-        private static bool DataEquals(in CouncilDistrictData a, in CouncilDistrictData b)
+        private Round1ResultDto DecorateRound1WithCustomParty(Round1ResultDto dto)
+        {
+            var custom = m_CustomPartySystem.GetData();
+            if (custom.m_Exists && custom.m_SubstitutionActive && custom.m_ActiveSpace.ToString() == dto.party)
+            {
+                dto.displayName = custom.m_Name.ToString();
+                dto.displayColor = custom.m_Color.ToString();
+            }
+            return dto;
+        }
+
+private static bool DataEquals(in CouncilDistrictData a, in CouncilDistrictData b)
         {
             return a.m_Phase == b.m_Phase
                && a.m_LeadingParty == b.m_LeadingParty
@@ -1147,6 +1212,7 @@ namespace CityCouncil.Systems
         public float voteShare;
         public string displayName;
         public string displayColor;
+        public int bastions;
 
         public static PartyResultDto From(PartyResult r) => new PartyResultDto
         {
@@ -1154,7 +1220,8 @@ namespace CityCouncil.Systems
             seats = r.m_Seats,
             voteShare = r.m_VoteShare,
             displayName = "",
-            displayColor = ""
+            displayColor = "",
+            bastions = 0
         };
 
         /// <summary>
@@ -1177,7 +1244,8 @@ namespace CityCouncil.Systems
                 sb.Append("\"seats\":").Append(r.seats.ToString(System.Globalization.CultureInfo.InvariantCulture)).Append(',');
                 sb.Append("\"voteShare\":").Append(r.voteShare.ToString(System.Globalization.CultureInfo.InvariantCulture)).Append(',');
                 sb.Append("\"displayName\":\"").Append(EscapeJson(r.displayName ?? "")).Append("\",");
-                sb.Append("\"displayColor\":\"").Append(r.displayColor ?? "").Append("\"");
+                sb.Append("\"displayColor\":\"").Append(r.displayColor ?? "").Append("\",");
+                sb.Append("\"bastions\":").Append(r.bastions.ToString(System.Globalization.CultureInfo.InvariantCulture));
                 sb.Append('}');
             }
             sb.Append(']');
@@ -1189,10 +1257,6 @@ namespace CityCouncil.Systems
         private static string EscapeJson(string s) =>
             s.Replace("\\", "\\\\").Replace("\"", "\\\"");
     }
-
-
-
-
 
     public struct PartyMembershipDto
     {
@@ -1388,6 +1452,44 @@ namespace CityCouncil.Systems
         }
 
         private static string EscapeJson(string s) => s.Replace("\\", "\\\\").Replace("\"", "\\\"");
+    }
+
+    /// <summary>
+    /// DTO du détail complet du 1er tour (toutes les voix, contrairement à adminResultsJson qui
+    /// ne porte que les sièges finaux). "votes" est arrondi côté C# (share * m_VotersRound1) pour
+    /// éviter toute divergence d'arrondi si le calcul était refait côté React.
+    /// </summary>
+    public struct Round1ResultDto
+    {
+        public string party;
+        public float voteShare;
+        public int votes;
+        public string displayName;
+        public string displayColor;
+
+        public static string ToJsonArray(System.Collections.Generic.IEnumerable<Round1ResultDto> items)
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.Append('[');
+            bool first = true;
+            foreach (var r in items)
+            {
+                if (!first) sb.Append(',');
+                first = false;
+                sb.Append('{');
+                sb.Append("\"party\":\"").Append(r.party).Append("\",");
+                sb.Append("\"voteShare\":").Append(r.voteShare.ToString(System.Globalization.CultureInfo.InvariantCulture)).Append(',');
+                sb.Append("\"votes\":").Append(r.votes.ToString(System.Globalization.CultureInfo.InvariantCulture)).Append(',');
+                sb.Append("\"displayName\":\"").Append(EscapeJson(r.displayName ?? "")).Append("\",");
+                sb.Append("\"displayColor\":\"").Append(r.displayColor ?? "").Append("\"");
+                sb.Append('}');
+            }
+            sb.Append(']');
+            return sb.ToString();
+        }
+
+        private static string EscapeJson(string s) =>
+            (s ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"");
     }
 
 

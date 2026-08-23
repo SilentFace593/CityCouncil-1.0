@@ -269,7 +269,13 @@ function HemicycleResultsContent() {
     const seatsWord = r.seats > 1
       ? t("CityCouncil.Hemicycle.LEGEND_SEATS_PLURAL", "sièges")
       : t("CityCouncil.Hemicycle.LEGEND_SEATS_SINGULAR", "siège");
-    const legendLine = `${resolvePartyLabel(r, translate)} : ${r.seats} ${seatsWord}`;
+    const bastionCount = r.bastions ?? 0;
+    const bastionWord = bastionCount > 1
+      ? t("CityCouncil.Hemicycle.LEGEND_BASTIONS_PLURAL", "bastions")
+      : t("CityCouncil.Hemicycle.LEGEND_BASTIONS_SINGULAR", "bastion");
+    const bastionSuffix = bastionCount > 0 ? ` — ${bastionCount} ${bastionWord}` : "";
+    const legendLine = `${resolvePartyLabel(r, translate)} : ${r.seats} ${seatsWord}${bastionSuffix}`;
+ 
 
     return (
       <div

@@ -651,9 +651,10 @@ namespace CityCouncil
     {
         public int m_FixedAmount;
         public bool m_FixedAmountLocked;
-        public bool m_FixedAmountPendingDistribution; // AJOUT — true entre validation et 1er FinalizeResults qui suit
+        public bool m_FixedAmountPendingDistribution; // true entre validation et 1er FinalizeResults qui suit
+       public bool m_AutoRenew; // AJOUT — true = la part fixe se re-verrouille automatiquement chaque cycle, même montant
 
-        private const int kVersion = 2; // AJOUT champ -> bump version
+        private const int kVersion = 3;
 
         public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
         {
@@ -661,6 +662,7 @@ namespace CityCouncil
             writer.Write(m_FixedAmount);
             writer.Write(m_FixedAmountLocked);
             writer.Write(m_FixedAmountPendingDistribution);
+            writer.Write(m_AutoRenew);
         }
 
         public void Deserialize<TReader>(TReader reader) where TReader : IReader
@@ -668,8 +670,8 @@ namespace CityCouncil
             reader.Read(out int version);
             reader.Read(out m_FixedAmount);
             reader.Read(out m_FixedAmountLocked);
-            // Compat sauvegardes v1 : le champ n'existait pas, donc rien en attente par défaut.
             m_FixedAmountPendingDistribution = version >= 2 && ReadPending(reader);
+            m_AutoRenew = version >= 3 && ReadPending(reader);
         }
 
         private static bool ReadPending<TReader>(TReader reader) where TReader : IReader

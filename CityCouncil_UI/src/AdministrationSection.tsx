@@ -7,9 +7,11 @@ import {
   PARTY_LABELS,
   PARTY_ORDER,
   PARTY_COLORS,
+  CUSTOM_PARTY_PALETTE_HEX,
   resolvePartyColor,
   resolvePartyLabel,
   type PartyResultDto,
+  type TranslateFn,
   BONUS_BADGE
 } from "./PartyResultDto";
 
@@ -23,6 +25,7 @@ const adminSeats$ = bindValue<number>("cityCouncil", "adminSeats");
 const adminVoters$ = bindValue<number>("cityCouncil", "adminVoters");
 const adminAbstention$ = bindValue<number>("cityCouncil", "adminAbstention");
 const adminResultsJson$ = bindValue<string>("cityCouncil", "adminResultsJson");
+const adminRound1ResultsJson$ = bindValue<string>("cityCouncil", "adminRound1ResultsJson");
 const cityEventHeadline$ = bindValue<string>("cityCouncil", "cityEventHeadline");
 const adminBastionStreakParty$ = bindValue<string>("cityCouncil", "adminBastionStreakParty");
 const adminBastionStreakCount$ = bindValue<number>("cityCouncil", "adminBastionStreakCount");
@@ -31,6 +34,61 @@ const adminLeadingPartyBonus$ = bindValue<string>("cityCouncil", "adminLeadingPa
 
 function partyBadgeSrc(party: string): string | null {
   return null;
+}
+
+interface Round1ResultDto {
+  party: string;
+  voteShare: number;
+  votes: number;
+  displayName?: string;
+  displayColor?: string;
+}
+
+function resolveRound1Label(r: Round1ResultDto, translate: TranslateFn): string {
+  if (r.displayName && r.displayName.length > 0) return r.displayName;
+  return translatePartyName(r.party, translate);
+}
+
+function resolveRound1Color(r: Round1ResultDto): string {
+  if (r.displayColor && r.displayColor.length > 0) {
+    return CUSTOM_PARTY_PALETTE_HEX[r.displayColor] ?? "#888";
+  }
+  return PARTY_COLORS[r.party] ?? "#888";
+}
+
+/**
+ * Une ligne d'histogramme horizontal : logo 25rem à gauche, barre fine au centre, voix +
+ * pourcentage à droite. Même esprit visuel que PollBar (PollTab.tsx), mais avec le logo du
+ * parti plutôt qu'une simple pastille de couleur.
+ */
+function Round1Bar({ result, translate }: { result: Round1ResultDto; translate: TranslateFn }) {
+  const label = resolveRound1Label(result, translate);
+  const color = resolveRound1Color(result);
+  const isCustom = !!(result.displayName && result.displayName.length > 0);
+  const pct = Math.round(result.voteShare * 1000) / 10;
+  const widthPct = Math.max(0, Math.min(100, result.voteShare * 100));
+  const statsLine = `${result.votes.toLocaleString()} (${pct}%)`;
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", marginBottom: "8rem" }}>
+      <div style={{ marginRight: "8rem", flexShrink: 0 }}>
+        <PartyLogo party={result.party} color={color} isCustom={isCustom} sizeRem={25} />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "3rem" }}>
+          <span style={{ color: "white", fontSize: "11rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {label}
+          </span>
+          <span style={{ color: "rgba(255,255,255,0.8)", fontSize: "11rem", whiteSpace: "nowrap", marginLeft: "6rem", flexShrink: 0 }}>
+            {statsLine}
+          </span>
+        </div>
+        <div style={{ height: "10rem", borderRadius: "3rem", background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
+          <div style={{ width: `${widthPct}%`, height: "100%", background: color }} />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 class SafeBoundary extends Component<{ children: any }, { crashed: boolean }> {
@@ -208,6 +266,7 @@ const AdministrationSectionInner = ({ InfoSection }: { InfoSection: any }) => {
   const voters = useValue(adminVoters$);
   const abstention = useValue(adminAbstention$);
   const resultsJson = useValue(adminResultsJson$);
+  const round1ResultsJson = useValue(adminRound1ResultsJson$);
   const bastionStreakParty = useValue(adminBastionStreakParty$);
   const bastionStreakCount = useValue(adminBastionStreakCount$);
   const bastionActive = useValue(adminBastionActive$);
@@ -220,6 +279,16 @@ const results: PartyResultDto[] = useMemo(() => {
     return [];
   }
 }, [resultsJson]);
+
+const round1Results: Round1ResultDto[] = useMemo(() => {
+  try {
+    const parsed = JSON.parse(round1ResultsJson ?? "[]");
+    return Array.isArray(parsed) ? parsed.filter((r) => r && typeof r.party === "string") : [];
+  } catch {
+    return [];
+  }
+}, [round1ResultsJson]);
+
   const cityEventHeadline = useValue(cityEventHeadline$);
 
   if (!visible || !InfoSection) return null;
@@ -271,6 +340,14 @@ const results: PartyResultDto[] = useMemo(() => {
               : finalist1 && finalist2
               ? round1PendingLine
               : t("CityCouncil.Admin.ROUND1_PENDING_DEFAULT", "Aucune majorité au 1er tour. Le 2e tour est en attente.")}
+          </div>
+        )}
+
+        {phase === "Round1Done" && round1Results.length > 0 && (
+          <div style={{ marginTop: "10rem" }}>
+            {round1Results.map((r) => (
+              <Round1Bar key={r.party} result={r} translate={translate} />
+            ))}
           </div>
         )}
 

@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.IO.Ports;
 using System.Linq;
-using Game.Events;
 
 namespace CityCouncil
 {
@@ -20,21 +18,21 @@ namespace CityCouncil
         // Bases par tranche d'âge (avant modificateurs de richesse), somme = 1 par tranche
         private static readonly Dictionary<PoliticalParty, float> SeniorBase = new()
         {
-            { PoliticalParty.Republicain, 0.50f },
-            { PoliticalParty.Populiste, 0.15f },
+            { PoliticalParty.Republicain, 0.60f },
+            { PoliticalParty.Populiste, 0.13f },
             { PoliticalParty.GaucheRadicale, 0.05f },
-            { PoliticalParty.Democrate, 0.20f },
+            { PoliticalParty.Democrate, 0.12f },
             { PoliticalParty.Ecologiste, 0.10f },
         };
         private const float SeniorAbstentionBase = 0.05f;
 
         private static readonly Dictionary<PoliticalParty, float> AdultBase = new()
         {
-            { PoliticalParty.Democrate, 0.30f },
+            { PoliticalParty.Democrate, 0.25f },
             { PoliticalParty.Ecologiste, 0.20f },
-            { PoliticalParty.Republicain, 0.20f },
-            { PoliticalParty.Populiste, 0.15f },
-            { PoliticalParty.GaucheRadicale, 0.15f },
+            { PoliticalParty.Republicain, 0.23f },
+            { PoliticalParty.Populiste, 0.16f },
+            { PoliticalParty.GaucheRadicale, 0.16f },
         };
         private const float AdultAbstentionBase = 0.25f;
 
@@ -108,8 +106,8 @@ namespace CityCouncil
                 case WealthLevel.Modest:
                     if (isAdult)
                     {
-                        Boost(shares, PoliticalParty.Populiste, 0.04f);
-                        Boost(shares, PoliticalParty.GaucheRadicale, 0.02f);
+                        Boost(shares, PoliticalParty.Populiste, 0.30f);
+                        Boost(shares, PoliticalParty.GaucheRadicale, 0.40f);
                     }
                     else
                     {
@@ -121,7 +119,7 @@ namespace CityCouncil
                 case WealthLevel.Comfortable:
                     if (isAdult)
                     {
-                        Boost(shares, PoliticalParty.Ecologiste, 0.10f);
+                        Boost(shares, PoliticalParty.Ecologiste, 0.15f);
                         Boost(shares, PoliticalParty.Democrate, 0.04f);
                     }
                     else
@@ -134,7 +132,7 @@ namespace CityCouncil
                     if (isAdult)
                     {
                         Boost(shares, PoliticalParty.Democrate, 0.05f);
-                        Boost(shares, PoliticalParty.Ecologiste, 0.10f);
+                        Boost(shares, PoliticalParty.Ecologiste, 0.15f);
                     }
                     else
                     {
@@ -210,14 +208,14 @@ namespace CityCouncil
         /// </summary>
         private static readonly Dictionary<string, (PoliticalParty party, float percent)[]> PolicyModifiers = new()
         {
-            ["Energy Consumption Awareness"] = new[] { (PoliticalParty.Ecologiste, 0.01f) },
-            ["Recycling"] = new[] { (PoliticalParty.Ecologiste, 0.01f), (PoliticalParty.Populiste, 0.01f) },
-            ["Roadside Parking Fee"] = new[] { (PoliticalParty.Populiste, 0.05f), (PoliticalParty.GaucheRadicale, 0.05f) },
-            ["Speed Bumps"] = new[] { (PoliticalParty.Populiste, 0.05f), (PoliticalParty.GaucheRadicale, 0.05f) },
-            ["Heavy Traffic Ban"] = new[] { (PoliticalParty.Ecologiste, 0.01f) },
+            ["Energy Consumption Awareness"] = new[] { (PoliticalParty.Ecologiste, 0.12f) },
+            ["Recycling"] = new[] { (PoliticalParty.Ecologiste, 0.12f), (PoliticalParty.Populiste, 0.01f) },
+            ["Roadside Parking Fee"] = new[] { (PoliticalParty.Populiste, 0.10f), (PoliticalParty.GaucheRadicale, 0.15f) },
+            ["Speed Bumps"] = new[] { (PoliticalParty.Populiste, 0.10f), (PoliticalParty.GaucheRadicale, 0.08f) },
+            ["Heavy Traffic Ban"] = new[] { (PoliticalParty.Ecologiste, 0.02f) },
             ["Gated Community"] = new[] { (PoliticalParty.Populiste, 0.20f), (PoliticalParty.Republicain, 0.20f) },
             ["Combustion Engine Ban"] = new[] { (PoliticalParty.Ecologiste, -0.20f) },
-            ["Urban Cycling Initiative"] = new[] { (PoliticalParty.Ecologiste, 0.01f) },
+            ["Urban Cycling Initiative"] = new[] { (PoliticalParty.Ecologiste, 0.08f) },
             ["Bicycle Traffic Restriction"] = new[] { (PoliticalParty.Populiste, 0.05f), (PoliticalParty.Republicain, 0.05f) },
         };
 
@@ -285,7 +283,7 @@ namespace CityCouncil
         /// nécessaire uniquement si un effet cible EventEffectTarget.LeadingPartyCityWide ; null sinon.</param>
         /// 
         // AJOUT — bonus offensif : impact de +3 % sur un district Bastion qui n'appartient pas au
-// détenteur du bonus. Même point du pipeline que le bonus Bastion.
+        // détenteur du bonus. Même point du pipeline que le bonus Bastion.
         private const float OffensiveBonusPct = 0.03f;
 
         public static RoundResult ComputeRound1(
@@ -298,8 +296,8 @@ namespace CityCouncil
     IEnumerable<PoliticalParty> offensiveBonusHolders = null,
     IEnumerable<(PoliticalParty party, CampaignTarget target, float percent)> activeCampaigns = null,
     IEnumerable<DistrictCampaignEntry> districtCampaigns = null,
-    IEnumerable<IllegalCampaignEntry> illegalCampaigns = null,     
-    IEnumerable<SanctionEntry> citySanctions = null)                
+    IEnumerable<IllegalCampaignEntry> illegalCampaigns = null,
+    IEnumerable<SanctionEntry> citySanctions = null)
         {
             var rng = new Random(seed);
             var seniorBaseWithMargin = ApplyMarginOfError(SeniorBase, rng, MarginOfErrorPct);
@@ -340,7 +338,7 @@ namespace CityCouncil
                 }
             }
 
-            // AJOUT — campagnes de district, appliquées APRÈS la campagne ville (point 7), sur les
+            // AJOUT — campagnes de district, appliquées APRÈS la campagne ville, sur les
             // deux tranches d'âge symétriquement (pas de ciblage d'âge pour ce mécanisme, contrairement
             // à la campagne ville).
             if (districtCampaigns != null)
@@ -381,7 +379,7 @@ namespace CityCouncil
                 }
             }
 
-            // AJOUT — sanctions city-wide de la Commission Électorale, appliquées en dernier
+            // Sanctions city-wide de la Commission Électorale, appliquées en dernier
             // (après tout le reste), symétriquement sur les deux tranches d'âge.
             if (citySanctions != null)
             {
