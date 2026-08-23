@@ -87,6 +87,7 @@ namespace CityCouncil
                 { LocaleKeys.Event_ScandaleDemocrate, "Scandale au Parti Démocrate : des documents financiers font état d'irrégularités dans les comptes de campagnes de certaines élections passées. Une enquête est ouverte."},
                 { LocaleKeys.Event_ZIDeveloppement, "La Zone industrielle se développe à grande vitesse, au point que la municipalité va devoir réfléchir à la délimitation de nouvelles parcelles. Si les Républicains promettent de faciliter les négociations, les écologistes eux s'inquiètent de l'impact environemental à venir."},
                 { LocaleKeys.Event_PopulisteAnimalMagazine, "la leader du Parti Populiste fait la Une du site internet Animal Magazine, en compagnie de ses chats et de son mari. succès garanti sur le rééseaux, renforçant la normalisation du parti."},
+                { LocaleKeys.Event_DesaccordEcoloDemocrateInegalites, "Les Écologistes ont un profond désaccord avec les Démocrates sur le plan de réduction des inégalités. Il n'est plus assuré que les Écologistes suivent autant les Démocrates en cas d'élimination au premier tour." },
 
                 // Party Labels
                 { LocaleKeys.Party_Ecologiste, "Écologiste" },

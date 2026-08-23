@@ -43,6 +43,8 @@ namespace CityCouncil
         private CouncilPropagandaSystem m_PropagandaSystem;
         private CouncilElectoralCommissionSystem m_CommissionSystem;
         private CouncilScoreSystem m_ScoreSystem;
+        private CouncilEconomySystem m_EconomySystem;
+        private CouncilTaxSystem m_TaxSystem;
 
         protected override void OnCreate()
         {
@@ -58,6 +60,8 @@ namespace CityCouncil
             m_PropagandaSystem = World.GetOrCreateSystemManaged<CouncilPropagandaSystem>();
             m_CommissionSystem = World.GetOrCreateSystemManaged<CouncilElectoralCommissionSystem>();
             m_ScoreSystem = World.GetOrCreateSystemManaged<CouncilScoreSystem>();
+            m_EconomySystem = World.GetOrCreateSystemManaged<CouncilEconomySystem>();
+            m_TaxSystem = World.GetOrCreateSystemManaged<CouncilTaxSystem>();
 
 
             m_DistrictQuery = GetEntityQuery(new EntityQueryDesc
@@ -232,6 +236,8 @@ namespace CityCouncil
             var activeCampaigns = m_PropagandaSystem.GetActiveCampaigns();
             var districtCampaigns = m_PropagandaSystem.GetActiveDistrictCampaigns(districtEntity);
             var illegalCampaigns = m_PropagandaSystem.GetActiveIllegalCampaigns(districtEntity);
+            bool unemploymentCrisis = m_EconomySystem.IsUnemploymentCrisisActive();
+            var (taxDiscontentPopuliste, taxDiscontentGauche) = m_TaxSystem.GetTaxDiscontentBonus();
 
             // AJOUT — sanctions city-wide : combine celles de tous les partis (rarement plusieurs à la
             // fois), la fonction GetActiveSanctionsForParty filtrant déjà par expiry.
@@ -251,7 +257,10 @@ namespace CityCouncil
             activeCampaigns,
             districtCampaigns,
             illegalCampaigns,
-            citySanctions);
+            citySanctions,
+            unemploymentCrisis,
+            taxDiscontentPopuliste,
+            taxDiscontentGauche);
 
             data.m_VotersRound1 = result.m_Voters;
             data.m_AbstentionRound1 = result.m_Abstention;
@@ -333,7 +342,8 @@ namespace CityCouncil
                 m_Abstention = data.m_AbstentionRound1,
             };
 
-            var result = VoteCalculator.ComputeRound2(round1Result, totalPopulation, finalist1, finalist2);
+            var activeEvent = m_CityEventSystem.GetActiveEventDefinition();
+            var result = VoteCalculator.ComputeRound2(round1Result, totalPopulation, finalist1, finalist2, activeEvent?.Effects);
 
             data.m_VotersRound2 = result.m_Voters;
             data.m_AbstentionRound2 = result.m_Abstention;

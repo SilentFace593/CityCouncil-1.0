@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using CityCouncil;
+using static Game.Prefabs.ReplacePrefabSystem;
 
 namespace CityCouncil
 {
@@ -210,10 +212,10 @@ namespace CityCouncil
         {
             ["Energy Consumption Awareness"] = new[] { (PoliticalParty.Ecologiste, 0.12f) },
             ["Recycling"] = new[] { (PoliticalParty.Ecologiste, 0.12f), (PoliticalParty.Populiste, 0.01f) },
-            ["Roadside Parking Fee"] = new[] { (PoliticalParty.Populiste, 0.10f), (PoliticalParty.GaucheRadicale, 0.15f) },
-            ["Speed Bumps"] = new[] { (PoliticalParty.Populiste, 0.10f), (PoliticalParty.GaucheRadicale, 0.08f) },
+            ["Roadside Parking Fee"] = new[] { (PoliticalParty.Populiste, 0.05f), (PoliticalParty.GaucheRadicale, 0.15f) },
+            ["Speed Bumps"] = new[] { (PoliticalParty.Populiste, 0.05f) },
             ["Heavy Traffic Ban"] = new[] { (PoliticalParty.Ecologiste, 0.02f) },
-            ["Gated Community"] = new[] { (PoliticalParty.Populiste, 0.20f), (PoliticalParty.Republicain, 0.20f) },
+            ["Gated Community"] = new[] { (PoliticalParty.Populiste, 0.20f), (PoliticalParty.Republicain, 0.18f) },
             ["Combustion Engine Ban"] = new[] { (PoliticalParty.Ecologiste, -0.20f) },
             ["Urban Cycling Initiative"] = new[] { (PoliticalParty.Ecologiste, 0.08f) },
             ["Bicycle Traffic Restriction"] = new[] { (PoliticalParty.Populiste, 0.05f), (PoliticalParty.Republicain, 0.05f) },
@@ -297,7 +299,10 @@ namespace CityCouncil
     IEnumerable<(PoliticalParty party, CampaignTarget target, float percent)> activeCampaigns = null,
     IEnumerable<DistrictCampaignEntry> districtCampaigns = null,
     IEnumerable<IllegalCampaignEntry> illegalCampaigns = null,
-    IEnumerable<SanctionEntry> citySanctions = null)
+    IEnumerable<SanctionEntry> citySanctions = null,
+    bool unemploymentCrisisActive = false,
+    float taxDiscontentBonusPopuliste = 0f,
+    float taxDiscontentBonusGaucheRadicale = 0f)
         {
             var rng = new Random(seed);
             var seniorBaseWithMargin = ApplyMarginOfError(SeniorBase, rng, MarginOfErrorPct);
@@ -308,6 +313,29 @@ namespace CityCouncil
 
             ApplyEventEffects(seniorShares, ref seniorAbst, isAdult: false, activeEventEffects, cityLeadingParty);
             ApplyEventEffects(adultShares, ref adultAbst, isAdult: true, activeEventEffects, cityLeadingParty);
+
+            // AJOUT — bonus Populiste "colère sociale" si le chômage dépasse le seuil (cf.
+                       // CouncilEconomySystem.UnemploymentThresholdPct), city-wide et symétrique séniors/adultes,
+                       // même mécanisme que le bonus Bastion ci-dessous.
+                        if (unemploymentCrisisActive)
+                            {
+                Boost(seniorShares, PoliticalParty.Populiste, CouncilEconomySystem.PopulisteUnemploymentBonusPct);
+                Boost(adultShares, PoliticalParty.Populiste, CouncilEconomySystem.PopulisteUnemploymentBonusPct);
+                            }
+
+            // AJOUT — mécontentement fiscal (colère populaire ou anti-inégalité, jamais les deux
+            // à la fois, cf. CouncilTaxSystem.GetTaxDiscontentBonus), Populiste ET GaucheRadicale,
+            // symétrique séniors/adultes, même mécanisme que le bonus chômage ci-dessus.
+            if (taxDiscontentBonusPopuliste > 0f)
+            {
+                Boost(seniorShares, PoliticalParty.Populiste, taxDiscontentBonusPopuliste);
+                Boost(adultShares, PoliticalParty.Populiste, taxDiscontentBonusPopuliste);
+                            }
+            if (taxDiscontentBonusGaucheRadicale > 0f)
+                            {
+                Boost(seniorShares, PoliticalParty.GaucheRadicale, taxDiscontentBonusGaucheRadicale);
+                Boost(adultShares, PoliticalParty.GaucheRadicale, taxDiscontentBonusGaucheRadicale);
+            }
 
             if (isBastion)
             {
@@ -418,17 +446,54 @@ namespace CityCouncil
         }
 
         /// <summary>
-        /// Calcule le résultat du 2e tour à partir des scores du 1er tour et des deux finalistes.
-        /// Redistribue les voix des partis éliminés selon TransferMatrix ; le reste s'abstient.
-        /// Les votants du 1er tour qui avaient déjà voté pour un finaliste restent acquis.
+        /// Construit un dictionnaire d'overrides de report (eliminated, finalist) -> nouvelle part,
+        /// à partir des effets TransferOverride de l'évènement de ville actif. Retourne null si
+        /// aucun override n'est en jeu, pour éviter d'allouer un dictionnaire vide à chaque tour.
         /// </summary>
-        public static RoundResult ComputeRound2(
+        private static Dictionary<(PoliticalParty eliminated, PoliticalParty finalist), float> BuildTransferOverrides(
+            EventEffect[] activeEventEffects)
+        {
+            if (activeEventEffects == null) return null;
+
+            Dictionary<(PoliticalParty, PoliticalParty), float> overrides = null;
+            foreach (var effect in activeEventEffects)
+            {
+                if (effect.Target != EventEffectTarget.TransferOverride) continue;
+                overrides ??= new Dictionary<(PoliticalParty, PoliticalParty), float>();
+                overrides[(effect.Party, effect.TargetParty)] = effect.Percent;
+            }
+            return overrides;
+        }
+
+        /// <summary>
+        /// Résout la part de report pour un couple (éliminé, finaliste) : priorité à un override
+        /// d'évènement actif, sinon la valeur normale de TransferMatrix (0 si le couple n'y figure
+        /// pas, cohérent avec le comportement existant).
+        /// </summary>
+        private static float ResolveTransferShare(
+            PoliticalParty eliminated, PoliticalParty finalist,
+            Dictionary<(PoliticalParty eliminated, PoliticalParty finalist), float> overrides)
+        {
+                if (overrides != null && overrides.TryGetValue((eliminated, finalist), out float overridden))
+                        return overridden;
+                return TransferMatrix.TryGetValue((eliminated, finalist), out float t) ? t : 0f;
+            }
+
+/// <summary>
+/// Calcule le résultat du 2e tour à partir des scores du 1er tour et des deux finalistes.
+/// Redistribue les voix des partis éliminés selon TransferMatrix ; le reste s'abstient.
+/// Les votants du 1er tour qui avaient déjà voté pour un finaliste restent acquis.
+/// </summary>
+public static RoundResult ComputeRound2(
             RoundResult round1, int round1TotalPopulation,
-            PoliticalParty finalist1, PoliticalParty finalist2)
+            PoliticalParty finalist1, PoliticalParty finalist2,
+            EventEffect[] activeEventEffects = null)
         {
             float votesF1 = round1.m_VoteShares[finalist1];
             float votesF2 = round1.m_VoteShares[finalist2];
             float newAbstentionShare = 0f;
+
+            var transferOverrides = BuildTransferOverrides(activeEventEffects);
 
             foreach (var kv in round1.m_VoteShares)
             {
@@ -436,8 +501,8 @@ namespace CityCouncil
                 if (eliminated == finalist1 || eliminated == finalist2) continue;
 
                 float share = kv.Value;
-                float toF1 = TransferMatrix.TryGetValue((eliminated, finalist1), out var t1) ? t1 : 0f;
-                float toF2 = TransferMatrix.TryGetValue((eliminated, finalist2), out var t2) ? t2 : 0f;
+                float toF1 = ResolveTransferShare(eliminated, finalist1, transferOverrides);
+                float toF2 = ResolveTransferShare(eliminated, finalist2, transferOverrides);
                 // Clamp pour éviter de dépasser 100% par erreur de saisie dans la matrice
                 toF1 = Math.Clamp(toF1, 0f, 1f);
                 toF2 = Math.Clamp(toF2, 0f, 1f - toF1);

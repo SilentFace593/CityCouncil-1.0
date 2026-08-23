@@ -85,6 +85,7 @@ namespace CityCouncil
                 { LocaleKeys.Event_ScandaleDemocrate, ""},
                 { LocaleKeys.Event_ZIDeveloppement, ""},
                 { LocaleKeys.Event_PopulisteAnimalMagazine, ""},
+                { LocaleKeys.Event_DesaccordEcoloDemocrateInegalites, "The Greens have a deep disagreement with the Democrats over the inequality reduction plan. Green voters are no longer as reliably following Democrats if eliminated in the first round." },
 
                 // Ajouts dans CityCouncilLocaleEN
                 { LocaleKeys.Party_Ecologiste, "Greens" },

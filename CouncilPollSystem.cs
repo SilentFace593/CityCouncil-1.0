@@ -42,6 +42,8 @@ namespace CityCouncil
         private CouncilCityEventSystem m_CityEventSystem;
         private CouncilPropagandaSystem m_PropagandaSystem;
         private CouncilElectoralCommissionSystem m_CommissionSystem;
+        private CouncilEconomySystem m_EconomySystem;
+        private CouncilTaxSystem m_TaxSystem;
 
         private readonly Random m_Rng = new Random();
         private Entity m_SingletonEntity = Entity.Null;
@@ -60,6 +62,8 @@ namespace CityCouncil
             m_CityEventSystem = World.GetOrCreateSystemManaged<CouncilCityEventSystem>();
             m_PropagandaSystem = World.GetOrCreateSystemManaged<CouncilPropagandaSystem>();
             m_CommissionSystem = World.GetOrCreateSystemManaged<CouncilElectoralCommissionSystem>();
+            m_EconomySystem = World.GetOrCreateSystemManaged<CouncilEconomySystem>();
+            m_TaxSystem = World.GetOrCreateSystemManaged<CouncilTaxSystem>();
         }
 
         protected override void OnGamePreload(Purpose purpose, Game.GameMode mode)
@@ -235,6 +239,7 @@ namespace CityCouncil
                     var activePolicies = m_ElectionSystem.GetActivePoliciesForPoll(d);
                     int seed = d.Index ^ seedBase;
 
+                    var (pollTaxPopuliste, pollTaxGauche) = m_TaxSystem.GetTaxDiscontentBonus();
                     var result = VoteCalculator.ComputeRound1(
                         seniors, adults, wealth, seed, activePolicies,
                         activeEvent?.Effects, cityLeadingParty,
@@ -243,7 +248,10 @@ namespace CityCouncil
                         activeCampaigns: activeCampaigns,
                         districtCampaigns: null,
                         illegalCampaigns: null,
-                        citySanctions: citySanctions);
+                        citySanctions: citySanctions,
+                        unemploymentCrisisActive: m_EconomySystem.IsUnemploymentCrisisActive(),
+                        taxDiscontentBonusPopuliste: m_TaxSystem.GetTaxDiscontentBonus().populisteBonus,
+                        taxDiscontentBonusGaucheRadicale: m_TaxSystem.GetTaxDiscontentBonus().gaucheRadicaleBonus);
 
                     foreach (var kv in result.m_VoteShares)
                         totals[kv.Key] += kv.Value * result.m_Voters;

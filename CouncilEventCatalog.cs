@@ -21,12 +21,14 @@ namespace CityCouncil
         SpecificParty,
         LeadingPartyCityWide,
         Abstention,
+        TransferOverride,
     }
 
     public struct EventEffect
     {
         public EventEffectTarget Target;
-        public PoliticalParty Party;
+        public PoliticalParty Party;       
+        public PoliticalParty TargetParty; 
         public float Percent;
         public EventAgeScope AgeScope;
 
@@ -38,6 +40,9 @@ namespace CityCouncil
 
         public static EventEffect AbstentionDelta(float percent, EventAgeScope scope = EventAgeScope.All)
             => new EventEffect { Target = EventEffectTarget.Abstention, Percent = percent, AgeScope = scope };
+
+        public static EventEffect TransferOverride(PoliticalParty eliminated, PoliticalParty finalist, float newValue)
+            => new EventEffect { Target = EventEffectTarget.TransferOverride, Party = eliminated, TargetParty = finalist, Percent = newValue, AgeScope = EventAgeScope.All };
     }
 
     public class CouncilEventDefinition
@@ -204,6 +209,19 @@ namespace CityCouncil
                     EventEffect.PartyBonus(PoliticalParty.Populiste, 0.10f, EventAgeScope.All),
                 },
 
+            },
+
+            new CouncilEventDefinition
+            {
+                Id = "desaccord_ecolo_democrate_inegalites",
+                Headline = LocaleKeys.Event_DesaccordEcoloDemocrateInegalites,
+                Category = EventCategory.Evenement,
+                Effects = new[]
+                {
+                    // Report normal Ecologiste -> Democrate = 0.60f (cf. TransferMatrix) ; réduit à 0.30f
+                    // tant que l'évènement est actif.
+                    EventEffect.TransferOverride(PoliticalParty.Ecologiste, PoliticalParty.Democrate, 0.30f),
+                },
             },
 
         };

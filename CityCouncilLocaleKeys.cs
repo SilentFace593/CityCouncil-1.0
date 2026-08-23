@@ -81,6 +81,7 @@
         public const string Event_InvestissemntSecurite = "CityCouncil.Event.INVESTISSEMENT_SECURITE";
         public const string Event_DurcissementNorme = "CityCouncil.Event.DURCISSEMENT_NORME";
         public const string Event_InvestissementSecurite = "CityCouncil.Event.INVESTISSEMENT_SECURITE";
+        public const string Event_DesaccordEcoloDemocrateInegalites = "CityCouncil.Event.DESACCORD_ECOLO_DEMOCRATE_INEGALITES";
 
 
         // Party Labels
