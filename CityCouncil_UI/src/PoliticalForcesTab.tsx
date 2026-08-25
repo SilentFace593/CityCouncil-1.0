@@ -11,6 +11,10 @@ import {
   type PartyResultDto,
 } from "./PartyResultDto";
 import { TreasuryBreakdown, type PartyMembershipDto } from "./TreasuryBreakdown";
+import bonusExcluRepublicainIcon from "./images/Bonus_EXCLU_Republicain.png";
+import bonusExcluPopulisteIcon from "./images/Bonus_EXCLU_Populiste.png";
+import bonusExcluEcologisteIcon from "./images/Bonus_EXCLU_Ecologiste.png";
+import bonusExcluGaucheRadicaleIcon from "./images/Bonus_EXCLU_Gauche.png";
 
 const hemicycleSeatsJson$ = bindValue<string>("cityCouncil", "hemicycleSeatsJson");
 const partyMembershipJson$ = bindValue<string>("cityCouncil", "partyMembershipJson");
@@ -22,6 +26,12 @@ const customPartyPendingActivation$ = bindValue<boolean>("cityCouncil", "customP
 const partyBonusesJson$ = bindValue<string>("cityCouncil", "partyBonusesJson"); 
 const blackFundJson$ = bindValue<string>("cityCouncil", "blackFundJson");
 const lastInvoiceLocaleKey$ = bindValue<string>("cityCouncil", "lastInvoiceLocaleKey");
+const republicanBureauBonusActive$ = bindValue<boolean>("cityCouncil", "republicanBureauBonusActive");
+const centralIntelligenceBureauPresent$ = bindValue<boolean>("cityCouncil", "centralIntelligenceBureauPresent");
+const populistPrisonBonusActive$ = bindValue<boolean>("cityCouncil", "populistPrisonBonusActive");
+const ecologistNuclearBonusActive$ = bindValue<boolean>("cityCouncil", "ecologistNuclearBonusActive");
+const radicalLeftUniversityBonusActive$ = bindValue<boolean>("cityCouncil", "radicalLeftUniversityBonusActive");
+
 
 interface BlackFundDto { active: boolean; balance: number; }
 
@@ -79,6 +89,11 @@ export function PoliticalForcesTab() {
   const bonusesJson = useValue(partyBonusesJson$);
   const blackFundJson = useValue(blackFundJson$);
   const lastInvoiceKey = useValue(lastInvoiceLocaleKey$);
+  const bureauBonusActive = useValue(republicanBureauBonusActive$);
+  const bureauPresent = useValue(centralIntelligenceBureauPresent$);
+  const populistBonusActive = useValue(populistPrisonBonusActive$);
+  const ecologistBonusActive = useValue(ecologistNuclearBonusActive$);
+  const radicalLeftBonusActive = useValue(radicalLeftUniversityBonusActive$);
 
   const blackFund: BlackFundDto = useMemo(() => {
     try {
@@ -175,40 +190,61 @@ export function PoliticalForcesTab() {
   return (
     <div style={{ display: "flex", width: "100%", height: "100%", boxSizing: "border-box" }}>
       {/* Colonne gauche : liste des partis */}
-      <div style={{ width: "150rem", flexShrink: 0, borderRight: "1rem solid rgba(255,255,255,0.12)", overflowY: "auto" }}>
-        {entries.map((e) => {
-          const isSelected = selected && e.key === selected.key;
-          return (
-            <div
-              key={e.key}
-              onClick={() => setSelectedKey(e.key)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                padding: "8rem 10rem",
-                cursor: "pointer",
-                background: isSelected ? "rgba(255,255,255,0.10)" : "transparent",
-                borderLeft: isSelected ? "3rem solid white" : "3rem solid transparent",
-              }}
-            >
-              <div
-                style={{
-                  width: "12rem",
-                  height: "12rem",
-                  borderRadius: "50%",
-                  background: e.color,
-                  flexShrink: 0,
-                  marginRight: "8rem",
-                }}
-              />
-              <div style={{ color: "white", fontSize: "13rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", display: "flex", alignItems: "center", gap: "4rem" }}>
-                <span>{e.label}</span>
-                {e.bonus !== "None" && <span style={{ fontSize: "12rem" }}>{BONUS_BADGE[e.bonus] ?? ""}</span>}
-              </div>
-            </div>
-          );
-        })}
+<div style={{ width: "150rem", flexShrink: 0, borderRight: "1rem solid rgba(255,255,255,0.12)", overflowY: "auto" }}>
+  {entries.map((e) => {
+    const isSelected = selected && e.key === selected.key;
+    return (
+      <div
+        key={e.key}
+        onClick={() => setSelectedKey(e.key)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          padding: "8rem 10rem",
+          cursor: "pointer",
+          background: isSelected ? "rgba(255,255,255,0.10)" : "transparent",
+          borderLeft: isSelected ? "3rem solid white" : "3rem solid transparent",
+        }}
+      >
+        <div
+          style={{
+            width: "12rem",
+            height: "12rem",
+            borderRadius: "50%",
+            background: e.color,
+            flexShrink: 0,
+            marginRight: "8rem",
+          }}
+        />
+        <div style={{ color: "white", fontSize: "13rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", display: "flex", alignItems: "center", gap: "4rem" }}>
+          <span>{e.label}</span>
+          {e.bonus !== "None" && <span style={{ fontSize: "12rem" }}>{BONUS_BADGE[e.bonus] ?? ""}</span>}
+
+          {e.key === "Republicain" && bureauBonusActive && (
+            <img
+              src={bonusExcluRepublicainIcon}
+              alt=""
+              style={{ width: "12rem", height: "12rem", flexShrink: 0 }}
+            />
+          )}
+
+          {e.key === "Populiste" && populistBonusActive && (
+            <img src={bonusExcluPopulisteIcon} alt="" style={{ width: "12rem", height: "12rem", flexShrink: 0 }} />
+          )}
+
+            {e.key === "Ecologiste" && ecologistBonusActive && (
+              <img src={bonusExcluEcologisteIcon} alt="" style={{ width: "12rem", height: "12rem", flexShrink: 0 }} />
+            )}
+
+            {e.key === "GaucheRadicale" && radicalLeftBonusActive && (
+              <img src={bonusExcluGaucheRadicaleIcon} alt="" style={{ width: "12rem", height: "12rem", flexShrink: 0 }} />
+            )}
+
+        </div>
       </div>
+    );
+  })}
+</div>
 
       {/* Colonne droite : détail du parti sélectionné */}
       {selected && (
@@ -245,6 +281,65 @@ export function PoliticalForcesTab() {
               {bonusLabel}
             </div>
           )}
+
+          {selected.key === "Republicain" && bureauBonusActive && (
+            <div style={{ display: "flex", alignItems: "center", marginBottom: "10rem" }}>
+                    <img
+                      src={bonusExcluRepublicainIcon}
+                      alt=""
+                      style={{ width: "18rem", height: "18rem", marginRight: "6rem", flexShrink: 0 }}
+                    />
+                <span style={{ color: "rgba(150,190,255,0.9)", fontSize: "12rem", fontWeight: 700, whiteSpace: "nowrap" }}>
+                  {t("CityCouncil.Forces.BUREAU_BONUS_ACTIVE", "Central Intelligence Bureau : +50% cotisations")}
+                </span>
+             </div>
+)}
+
+            {selected.key === "Republicain" && !bureauBonusActive && bureauPresent && (
+              <div style={{ color: "rgba(255,255,255,0.5)", fontSize: "11rem", marginBottom: "10rem", lineHeight: "15rem" }}>
+                {t("CityCouncil.Forces.BUREAU_PRESENT_HINT", "Le Central Intelligence Bureau est construit — 3 victoires consécutives à la majorité générale activeront le bonus de cotisation.")}
+              </div>
+            )}
+
+            {selected.key === "Populiste" && populistBonusActive && (
+              <div style={{ display: "flex", alignItems: "center", marginBottom: "10rem" }}>
+                <img
+                  src={bonusExcluPopulisteIcon}
+                  alt=""
+                  style={{ width: "18rem", height: "18rem", marginRight: "6rem", flexShrink: 0 }}
+                />
+                <span style={{ color: "rgba(150,190,255,0.9)", fontSize: "12rem", fontWeight: 700, whiteSpace: "nowrap" }}>
+                  {t("CityCouncil.Forces.PRISON_BONUS_ACTIVE", "Prison : campagnes illégales -30% coût / -30% détection")}
+                </span>
+              </div>
+            )}
+
+            {selected.key === "Ecologiste" && ecologistBonusActive && (
+              <div style={{ display: "flex", alignItems: "center", marginBottom: "10rem" }}>
+                <img
+                  src={bonusExcluEcologisteIcon}
+                  alt=""
+                  style={{ width: "18rem", height: "18rem", marginRight: "6rem", flexShrink: 0 }}
+                />
+                <span style={{ color: "rgba(150,190,255,0.9)", fontSize: "12rem", fontWeight: 700, whiteSpace: "nowrap" }}>
+                  {t("CityCouncil.Forces.NUCLEAR_BONUS_ACTIVE", "Centrale nucléaire : +4% quartiers modestes, +4% séniors ville entière")}
+                </span>
+              </div>
+            )}
+
+            {selected.key === "GaucheRadicale" && radicalLeftBonusActive && (
+              <div style={{ display: "flex", alignItems: "center", marginBottom: "10rem" }}>
+                <img
+                  src={bonusExcluGaucheRadicaleIcon}
+                  alt=""
+                  style={{ width: "18rem", height: "18rem", marginRight: "6rem", flexShrink: 0 }}
+                />
+                <span style={{ color: "rgba(150,190,255,0.9)", fontSize: "12rem", fontWeight: 700, whiteSpace: "nowrap" }}>
+                  {t("CityCouncil.Forces.UNIVERSITY_BONUS_ACTIVE", "Université : 5 campagnes de district au lieu de 3")}
+                </span>
+              </div>
+            )}
+
 
           <div style={{ display: "flex", flexDirection: "column", gap: "6rem" }}>
             <div style={{ color: "rgba(255,255,255,0.9)", fontSize: "13rem", whiteSpace: "nowrap" }}>{membersLine}</div>

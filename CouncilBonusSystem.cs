@@ -31,6 +31,7 @@ namespace CityCouncil
 
         private Entity m_SingletonEntity = Entity.Null;
         private double m_LastCycleDay = -1;
+        private CouncilInstitutionSystem m_InstitutionSystem;
 
         protected override void OnCreate()
         {
@@ -39,6 +40,7 @@ namespace CityCouncil
             m_DistrictQuery = GetEntityQuery(ComponentType.ReadOnly<CouncilDistrictData>());
             m_SimulationSystem = World.GetOrCreateSystemManaged<SimulationSystem>();
             m_CustomPartySystem = World.GetOrCreateSystemManaged<CouncilCustomPartySystem>();
+            m_InstitutionSystem = World.GetOrCreateSystemManaged<CouncilInstitutionSystem>();
         }
 
         protected override void OnGamePreload(Purpose purpose, Game.GameMode mode)
@@ -286,6 +288,58 @@ namespace CityCouncil
             double currentDay = (double)m_SimulationSystem.frameIndex / 262144.0;
             m_LastCycleDay = currentDay - CycleIntervalDays - 0.001;
             s_Log.Info("[CouncilBonusSystem] DEBUG : contrôle de majorité forcé au prochain update.");
+        }
+
+        private const int RepublicanBureauStreakThreshold = 3;
+        public bool IsRepublicanBureauBonusActive()
+        {
+            var data = GetData();
+            bool hasStreak = data.m_HasStreak
+                && data.m_StreakParty == PoliticalParty.Republicain
+                && data.m_StreakCount >= RepublicanBureauStreakThreshold;
+
+            if (!hasStreak) return false;
+
+            return m_InstitutionSystem.IsCentralIntelligenceBureauPresent();
+        }
+
+        private const int PrisonBonusStreakThreshold = 3;
+        public bool IsPopulistPrisonBonusActive()
+        {
+            var data = GetData();
+            bool hasStreak = data.m_HasStreak
+                && data.m_StreakParty == PoliticalParty.Populiste
+                && data.m_StreakCount >= PrisonBonusStreakThreshold;
+
+            if (!hasStreak) return false;
+
+            return m_InstitutionSystem.IsPrisonPresent();
+        }
+
+        private const int NuclearBonusStreakThreshold = 3;
+        public bool IsEcologistNuclearBonusActive()
+        {
+            var data = GetData();
+            bool hasStreak = data.m_HasStreak
+                && data.m_StreakParty == PoliticalParty.Ecologiste
+                && data.m_StreakCount >= NuclearBonusStreakThreshold;
+
+            if (!hasStreak) return false;
+
+            return m_InstitutionSystem.IsNuclearPowerPlantPresent();
+        }
+
+        private const int UniversityBonusStreakThreshold = 3;
+        public bool IsRadicalLeftUniversityBonusActive()
+        {
+            var data = GetData();
+            bool hasStreak = data.m_HasStreak
+                && data.m_StreakParty == PoliticalParty.GaucheRadicale
+                && data.m_StreakCount >= UniversityBonusStreakThreshold;
+
+            if (!hasStreak) return false;
+
+            return m_InstitutionSystem.IsUniversityPresent();
         }
 
     }

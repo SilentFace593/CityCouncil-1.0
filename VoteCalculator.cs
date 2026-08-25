@@ -287,6 +287,8 @@ namespace CityCouncil
         // AJOUT — bonus offensif : impact de +3 % sur un district Bastion qui n'appartient pas au
         // détenteur du bonus. Même point du pipeline que le bonus Bastion.
         private const float OffensiveBonusPct = 0.03f;
+        private const float EcologistNuclearWealthBonusPct = 0.04f; // Wretched/Poor/Modest, toutes tranches
+        private const float EcologistNuclearSeniorBonusPct = 0.04f; // ville entière, séniors uniquement
 
         public static RoundResult ComputeRound1(
     int seniors, int adults, WealthLevel wealth, int seed,
@@ -302,7 +304,8 @@ namespace CityCouncil
     IEnumerable<SanctionEntry> citySanctions = null,
     bool unemploymentCrisisActive = false,
     float taxDiscontentBonusPopuliste = 0f,
-    float taxDiscontentBonusGaucheRadicale = 0f)
+    float taxDiscontentBonusGaucheRadicale = 0f,
+    bool ecologistNuclearBonusActive = false)
         {
             var rng = new Random(seed);
             var seniorBaseWithMargin = ApplyMarginOfError(SeniorBase, rng, MarginOfErrorPct);
@@ -341,6 +344,17 @@ namespace CityCouncil
             {
                 Boost(seniorShares, bastionParty, BastionBonusPct);
                 Boost(adultShares, bastionParty, BastionBonusPct);
+            }
+
+            if (ecologistNuclearBonusActive)
+            {
+                Boost(seniorShares, PoliticalParty.Ecologiste, EcologistNuclearSeniorBonusPct);
+
+                if (wealth == WealthLevel.Wretched || wealth == WealthLevel.Poor || wealth == WealthLevel.Modest)
+                {
+                    Boost(seniorShares, PoliticalParty.Ecologiste, EcologistNuclearWealthBonusPct);
+                    Boost(adultShares, PoliticalParty.Ecologiste, EcologistNuclearWealthBonusPct);
+                }
             }
 
             if (offensiveBonusHolders != null)

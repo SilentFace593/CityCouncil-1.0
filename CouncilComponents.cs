@@ -150,6 +150,7 @@ namespace CityCouncil
 
         public const double DistrictCampaignDurationDays = 7.0; // même rythme que le cycle électoral
         public const int MaxActiveCampaignsPerParty = 3;        // point 4 : jusqu'à 3 districts simultanés
+        public const int MaxActiveCampaignsPerPartyWithUniversityBonus = 5;
     }
 
     public struct DistrictCampaignEntry
@@ -187,6 +188,39 @@ namespace CityCouncil
         Defensif = 1,
         Offensif = 2
     }
+
+    public enum PartyStructureType : byte
+    {
+        Cadres = 0,
+        Masse = 1
+    }
+
+    /// <summary>
+    /// Règles de cotisation/adhérents selon le type de structure d'un parti. Indépendant de
+    /// l'espace politique (PoliticalParty) : c'est un paramètre du SLOT actif, choisi librement
+    /// par le joueur à la création de son parti, ou fixé par défaut pour les IA (cf.
+    /// GetDefaultForSpace, utilisé aussi pour réinitialiser un slot après suppression du parti joueur).
+    /// </summary>
+    public static class PartyStructureCatalog
+    {
+        public static readonly System.Collections.Generic.Dictionary<PartyStructureType, (float membersPerSeatGained, float duesPerMember)> Rules = new()
+    {
+        { PartyStructureType.Cadres, (1f, 450f) },
+        { PartyStructureType.Masse, (3f, 100f) },
+    };
+
+        /// <summary>Type par défaut d'un parti IA, selon l'espace politique vanilla qu'il occupe.</summary>
+        public static PartyStructureType GetDefaultForSpace(PoliticalParty party)
+        {
+            return party switch
+            {
+                PoliticalParty.Populiste => PartyStructureType.Masse,
+                PoliticalParty.GaucheRadicale => PartyStructureType.Masse,
+                _ => PartyStructureType.Cadres, // Democrate, Republicain, Ecologiste
+            };
+        }
+    }
+
     /// <summary>Bonus permanent détenu par un slot politique (parti vanilla, ou hôte du parti joueur).</summary>
     public struct CouncilBonusEntry
     {
@@ -471,6 +505,7 @@ namespace CityCouncil
             public long m_TotalFromDues;          // cotisations, cf. CouncilPartyMembershipSystem.RunCycleCheck
             public long m_TotalSpentPropaganda;   // débité par CouncilPropagandaSystem.TryLaunchCampaign
             public long m_TotalSpentPolls; // AJOUT — cumul débité par CouncilPollSystem.TryOrderPoll
+            public PartyStructureType m_StructureType;
         }
 
         /// <summary>
@@ -481,7 +516,7 @@ namespace CityCouncil
         {
             public FixedList512Bytes<PartyMembershipEntry> m_Entries;
 
-            private const int kVersion = 3; // AJOUT m_TotalSpentPolls -> bump version
+            private const int kVersion = 4; 
 
             public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
             {
@@ -495,7 +530,8 @@ namespace CityCouncil
                     writer.Write(m_Entries[i].m_TotalFromCityFunding);
                     writer.Write(m_Entries[i].m_TotalFromDues);
                     writer.Write(m_Entries[i].m_TotalSpentPropaganda);
-                    writer.Write(m_Entries[i].m_TotalSpentPolls); // AJOUT
+                    writer.Write(m_Entries[i].m_TotalSpentPolls); 
+                    writer.Write((byte)m_Entries[i].m_StructureType);
                 }
             }
 
@@ -521,17 +557,25 @@ namespace CityCouncil
                     {
                         reader.Read(out spentPolls);
                     }
-                    // Compat v1/v2 : aucun sondage n'existait avant ce système, 0 par défaut.
+
+                    var partyEnum = (PoliticalParty)party;
+                    var structureType = PartyStructureCatalog.GetDefaultForSpace(partyEnum); // compat < v4
+                    if (version >= 4)
+                    {
+                        reader.Read(out byte structureByte);
+                        structureType = (PartyStructureType)structureByte;
+                    }
 
                     m_Entries.Add(new PartyMembershipEntry
                     {
-                        m_Party = (PoliticalParty)party,
+                        m_Party = partyEnum,
                         m_Members = members,
                         m_Treasury = treasury,
                         m_TotalFromCityFunding = fromCity,
                         m_TotalFromDues = fromDues,
                         m_TotalSpentPropaganda = spentPropaganda,
-                        m_TotalSpentPolls = spentPolls
+                        m_TotalSpentPolls = spentPolls,
+                        m_StructureType = structureType
                     });
                 }
             }
@@ -603,8 +647,9 @@ namespace CityCouncil
         // immédiatement à la création/au changement de bord.
         public bool m_SubstitutionActive;
         public PoliticalParty m_ActiveSpace;   // bord réellement substitué (valide seulement si m_SubstitutionActive)
+        public PartyStructureType m_StructureType;
 
-        private const int kVersion = 2;
+        private const int kVersion = 3;
 
         public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
         {
@@ -616,6 +661,7 @@ namespace CityCouncil
             writer.Write(m_PendingDeletion);
             writer.Write(m_SubstitutionActive);
             writer.Write((byte)m_ActiveSpace);
+            writer.Write((byte)m_StructureType);
         }
 
         public void Deserialize<TReader>(TReader reader) where TReader : IReader
@@ -634,10 +680,20 @@ namespace CityCouncil
             }
             else
             {
-                // Compat sauvegardes v1 : un parti déjà existant à l'époque était immédiatement actif
-                // (ancien comportement), on préserve ce comportement pour ne pas casser une partie en cours.
                 m_SubstitutionActive = m_Exists;
                 m_ActiveSpace = m_Space;
+            }
+
+            if (version >= 3)
+            {
+                reader.Read(out byte structureByte);
+                m_StructureType = (PartyStructureType)structureByte;
+            }
+            else
+            {
+                // Compat < v3 : un parti joueur déjà existant était forcément un parti de cadres
+                // (comportement d'avant l'introduction de cette mécanique).
+                m_StructureType = PartyStructureType.Cadres;
             }
         }
     }
@@ -833,21 +889,21 @@ namespace CityCouncil
     public static class IllegalCampaignCatalog
     {
         public const int Cost = 10000;
-        public const float MaxMalus = 0.06f; // malus tiré aléatoirement entre 0 et 6%
-        public const int MaxActiveCampaignsPerParty = 3; // compteur SÉPARÉ des campagnes classiques (point 4)
+        public const float MaxMalus = 0.06f;
+        public const int MaxActiveCampaignsPerParty = 3;
         public const double CampaignDurationDays = 7.0;
 
-        /// <summary>
-        /// Probabilité de détection et probabilité/plafond d'escalade de vigilance en fonction du
-        /// nombre de campagnes illégales actives par le parti au moment du contrôle (1, 2 ou 3+).
-        /// </summary>
+        // Bonus Populiste (Prison01 + 3 victoires) : réduction de 30% sur coût et détection.
+        public const float PopulistBonusCostMultiplier = 0.70f;
+        public const float PopulistBonusDetectionMultiplier = 0.70f;
+
         public static (float detectionChance, float escalateChance, VigilanceLevel maxLevelThisCheck) GetRisk(int activeCount)
         {
             return activeCount switch
             {
-                1 => (0.33f, 0.50f, VigilanceLevel.Medium), // point : "reste en niveau 1 ou 2"
+                1 => (0.33f, 0.50f, VigilanceLevel.Medium),
                 2 => (0.70f, 0.85f, VigilanceLevel.High),
-                _ => (0.90f, 1.00f, VigilanceLevel.High),   // 3 campagnes ou plus : escalade quasi garantie
+                _ => (0.90f, 1.00f, VigilanceLevel.High),
             };
         }
     }

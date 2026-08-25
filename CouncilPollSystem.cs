@@ -44,6 +44,7 @@ namespace CityCouncil
         private CouncilElectoralCommissionSystem m_CommissionSystem;
         private CouncilEconomySystem m_EconomySystem;
         private CouncilTaxSystem m_TaxSystem;
+        private CouncilBonusSystem m_BonusSystem;
 
         private readonly Random m_Rng = new Random();
         private Entity m_SingletonEntity = Entity.Null;
@@ -64,6 +65,7 @@ namespace CityCouncil
             m_CommissionSystem = World.GetOrCreateSystemManaged<CouncilElectoralCommissionSystem>();
             m_EconomySystem = World.GetOrCreateSystemManaged<CouncilEconomySystem>();
             m_TaxSystem = World.GetOrCreateSystemManaged<CouncilTaxSystem>();
+            m_BonusSystem = World.GetOrCreateSystemManaged<CouncilBonusSystem>();
         }
 
         protected override void OnGamePreload(Purpose purpose, Game.GameMode mode)
@@ -215,6 +217,7 @@ namespace CityCouncil
             var activeEvent = m_CityEventSystem.GetActiveEventDefinition();
             PoliticalParty? cityLeadingParty = activeEvent != null ? GetCityLeadingPartyForEvent() : null;
             var activeCampaigns = m_PropagandaSystem.GetActiveCampaigns();
+            bool ecologistNuclearBonus = m_BonusSystem.IsEcologistNuclearBonusActive();
 
             var citySanctions = new List<SanctionEntry>();
             foreach (PoliticalParty p in Enum.GetValues(typeof(PoliticalParty)))
@@ -227,8 +230,6 @@ namespace CityCouncil
             var districts = m_DistrictQuery.ToEntityArray(Allocator.Temp);
             try
             {
-                // Graine distincte de celle des vraies élections ("POLL"), pour ne pas reproduire
-                // exactement la marge d'erreur d'un scrutin qui se déroulerait le même jour.
                 int seedBase = (int)(currentDay * 1000.0) ^ 0x504F4C4C;
 
                 foreach (var d in districts)
@@ -250,8 +251,9 @@ namespace CityCouncil
                         illegalCampaigns: null,
                         citySanctions: citySanctions,
                         unemploymentCrisisActive: m_EconomySystem.IsUnemploymentCrisisActive(),
-                        taxDiscontentBonusPopuliste: m_TaxSystem.GetTaxDiscontentBonus().populisteBonus,
-                        taxDiscontentBonusGaucheRadicale: m_TaxSystem.GetTaxDiscontentBonus().gaucheRadicaleBonus);
+                        taxDiscontentBonusPopuliste: pollTaxPopuliste,
+                        taxDiscontentBonusGaucheRadicale: pollTaxGauche,
+                        ecologistNuclearBonusActive: ecologistNuclearBonus);
 
                     foreach (var kv in result.m_VoteShares)
                         totals[kv.Key] += kv.Value * result.m_Voters;

@@ -18,6 +18,8 @@ const customPartyColor$ = bindValue<string>("cityCouncil", "customPartyColor");
 const customPartySpace$ = bindValue<string>("cityCouncil", "customPartySpace");
 const customPartyPendingDeletion$ = bindValue<boolean>("cityCouncil", "customPartyPendingDeletion");
 const customPartyPendingActivation$ = bindValue<boolean>("cityCouncil", "customPartyPendingActivation");
+const customPartyStructureType$ = bindValue<string>("cityCouncil", "customPartyStructureType");
+
 
 const SPACES = PARTY_ORDER;
 
@@ -106,6 +108,62 @@ function SpaceCheckboxRow({
   );
 }
 
+function StructureCheckboxOption({
+  label,
+  description,
+  checked,
+  onSelect,
+}: {
+  label: string;
+  description: string;
+  checked: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <div
+      onClick={onSelect}
+      style={{
+        flex: 1,
+        display: "flex",
+        alignItems: "flex-start",
+        cursor: "pointer",
+        padding: "8rem 10rem",
+        background: "rgba(255,255,255,0.06)",
+        borderRadius: "6rem",
+        border: checked ? "1rem solid rgba(120,170,255,0.9)" : "1rem solid transparent",
+      }}
+    >
+      <div
+        style={{
+          width: "16rem",
+          height: "16rem",
+          borderRadius: "3rem",
+          border: checked ? "1rem solid rgba(120,170,255,0.9)" : "1rem solid rgba(255,255,255,0.35)",
+          background: checked ? "rgba(70,130,220,0.85)" : "rgba(255,255,255,0.06)",
+          marginRight: "8rem",
+          flexShrink: 0,
+          marginTop: "1rem",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        {checked && (
+          <div style={{ color: "white", fontSize: "11rem", fontWeight: "bold", lineHeight: "11rem" }}>
+            ✓
+          </div>
+        )}
+      </div>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ color: "rgba(255,255,255,0.9)", fontSize: "13rem" }}>{label}</div>
+        <div style={{ color: "rgba(255,255,255,0.5)", fontSize: "11rem", marginTop: "2rem", lineHeight: "14rem" }}>
+          {description}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function YourPartyTab() {
   const { translate } = useLocalization();
 
@@ -113,27 +171,31 @@ export function YourPartyTab() {
   const currentName = useValue(customPartyName$);
   const currentColor = useValue(customPartyColor$);
   const currentSpace = useValue(customPartySpace$);
+  const currentStructureType = useValue(customPartyStructureType$);
   const pendingDeletion = useValue(customPartyPendingDeletion$);
   const pendingActivation = useValue(customPartyPendingActivation$);
 
   const [name, setName] = useState("");
   const [color, setColor] = useState<string>("Bleu");
   const [space, setSpace] = useState<string>("Democrate");
+  const [structureType, setStructureType] = useState<"Cadres" | "Masse">("Cadres");
 
   useEffect(() => {
     if (exists) {
       setName(currentName);
       setColor(currentColor || "Bleu");
       setSpace(currentSpace || "Democrate");
+      setStructureType((currentStructureType as "Cadres" | "Masse") || "Cadres");
     }
-  }, [exists, currentName, currentColor, currentSpace]);
+  }, [exists, currentName, currentColor, currentSpace, currentStructureType]);
 
+  // *** CES DEUX LIGNES DOIVENT RESTER ICI, AVANT handleSubmit ***
   const trimmed = name.trim();
   const canSubmit = trimmed.length > 0 && trimmed.length <= 40;
 
   const handleSubmit = () => {
     if (!canSubmit) return;
-    trigger("cityCouncil", "createOrUpdateCustomParty", trimmed, color, space);
+    trigger("cityCouncil", "createOrUpdateCustomParty", trimmed, color, space, structureType);
   };
 
   const handleRequestDelete = () => trigger("cityCouncil", "requestDeleteCustomParty");
@@ -304,6 +366,27 @@ export function YourPartyTab() {
           ))}
         </div>
       </div>
+
+
+      <div style={{ marginBottom: "14rem" }}>
+  <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "14rem", marginBottom: "6rem", textTransform: "uppercase" }}>
+    {t("CityCouncil.YourPartyTab.STRUCTURE_LABEL", "Type de parti")}
+  </div>
+  <div style={{ display: "flex", gap: "10rem" }}>
+    <StructureCheckboxOption
+      label={t("CityCouncil.YourPartyTab.STRUCTURE_CADRES", "Parti de cadres")}
+      description={t("CityCouncil.YourPartyTab.STRUCTURE_CADRES_DESC", "+1 adhérent par siège gagné, cotisation de 450 crédits/adhérent.")}
+      checked={structureType === "Cadres"}
+      onSelect={() => setStructureType("Cadres")}
+    />
+    <StructureCheckboxOption
+      label={t("CityCouncil.YourPartyTab.STRUCTURE_MASSE", "Parti de masse")}
+      description={t("CityCouncil.YourPartyTab.STRUCTURE_MASSE_DESC", "+3 adhérents par siège gagné, cotisation de 100 crédits/adhérent.")}
+      checked={structureType === "Masse"}
+      onSelect={() => setStructureType("Masse")}
+    />
+  </div>
+</div>
 
       <ActionButton
         label={createButtonLabel}

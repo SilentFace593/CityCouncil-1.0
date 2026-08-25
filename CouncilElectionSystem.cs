@@ -238,6 +238,7 @@ namespace CityCouncil
             var illegalCampaigns = m_PropagandaSystem.GetActiveIllegalCampaigns(districtEntity);
             bool unemploymentCrisis = m_EconomySystem.IsUnemploymentCrisisActive();
             var (taxDiscontentPopuliste, taxDiscontentGauche) = m_TaxSystem.GetTaxDiscontentBonus();
+            bool ecologistNuclearBonus = m_BonusSystem.IsEcologistNuclearBonusActive();
 
             // AJOUT — sanctions city-wide : combine celles de tous les partis (rarement plusieurs à la
             // fois), la fonction GetActiveSanctionsForParty filtrant déjà par expiry.
@@ -260,7 +261,8 @@ namespace CityCouncil
             citySanctions,
             unemploymentCrisis,
             taxDiscontentPopuliste,
-            taxDiscontentGauche);
+            taxDiscontentGauche,
+            ecologistNuclearBonus);
 
             data.m_VotersRound1 = result.m_Voters;
             data.m_AbstentionRound1 = result.m_Abstention;

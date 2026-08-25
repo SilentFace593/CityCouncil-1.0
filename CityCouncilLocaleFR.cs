@@ -24,6 +24,11 @@ namespace CityCouncil
                 { LocaleKeys.YourPartyTab_ColorLabel, "Couleur" },
                 { LocaleKeys.YourPartyTab_SpaceLabel, "Espace politique" },
                 { LocaleKeys.YourPartyTab_PendingActivation, "Votre parti ne pourra concourir qu'à partir de la prochaine élection." },
+                { LocaleKeys.YourPartyTab_StructureLabel, "Type de parti" },
+                { LocaleKeys.YourPartyTab_StructureCadres, "Parti de cadres" },
+                { LocaleKeys.YourPartyTab_StructureMasse, "Parti de masse" },
+                { LocaleKeys.YourPartyTab_StructureCadresDesc, "+1 adhérent par siège gagné, cotisation de 450 crédits/adhérent." },
+                { LocaleKeys.YourPartyTab_StructureMasseDesc, "+3 adhérents par siège gagné, cotisation de 100 crédits/adhérent." },
 
                 // HemicyclePanel
                 { LocaleKeys.Hemicycle_PanelTitle, "Conseil municipal" },
@@ -108,6 +113,7 @@ namespace CityCouncil
                 { LocaleKeys.Admin_BastionLabel, "Bastion : " },            
                 { LocaleKeys.Admin_BastionActiveSuffix, " — Bonus actif (+4%)" },
 
+                // Bonus permanent
                 { LocaleKeys.Forces_BonusDefensifLabel, "Bonus permanent : Défensif" },
                 { LocaleKeys.Forces_BonusOffensifLabel, "Bonus permanent : Offensif" },
                 { LocaleKeys.Admin_BonusDefensifTooltip, "Bonus permanent Défensif" },
@@ -119,6 +125,13 @@ namespace CityCouncil
                 { LocaleKeys.Hemicycle_BonusChoiceConfirm, "Valider" },
                 { LocaleKeys.Hemicycle_BonusChoiceHint, "Pour changer de bonus, vous devrez remporter la majorité au moins une fois de plus." },
                 { LocaleKeys.Hemicycle_BonusPendingTooltip, "Bonus Permanent à choisir !" },
+
+                // Bonus Exclusif
+                { LocaleKeys.Forces_BureauBonusActive, "Central Intelligence Bureau : +50% cotisations" },
+                { LocaleKeys.Forces_BureauPresentHint, "Le Central Intelligence Bureau est construit — 3 victoires consécutives à la majorité générale activeront le bonus de cotisation." },
+                { LocaleKeys.Forces_PrisonBonusActive, "Prison : campagnes illégales -30% coût / -30% détection" },
+                { LocaleKeys.Forces_NuclearBonusActive, "Centrale nucléaire : +4% quartiers modestes, +4% séniors ville entière" },
+                { LocaleKeys.Forces_UniversityBonusActive, "Université : 5 campagnes de district au lieu de 3" },
 
                 // Propagande
                 { LocaleKeys.Propaganda_TabLabel, "Propagande" },
@@ -203,6 +216,7 @@ namespace CityCouncil
                 { LocaleKeys.Illegal_InsufficientBlackFund, "Solde de la caisse noire insuffisant." },
                 { LocaleKeys.Illegal_MaxReached, "Nombre maximum de campagnes illégales atteint (3)." },
 
+                // Sondages
                 { LocaleKeys.Poll_TabLabel, "Sondages" },
                 { LocaleKeys.Poll_CostLabel, "Coût : " },
                 { LocaleKeys.Poll_OrderButton, "Commander un sondage" },
@@ -212,6 +226,13 @@ namespace CityCouncil
                 { LocaleKeys.Poll_NoResults, "Aucun sondage n'a encore été commandé." },
                 { LocaleKeys.Poll_NoPlayerParty, "Créez votre propre parti (onglet \"Votre Parti\") pour commander des sondages." },
                 { LocaleKeys.Treasury_PollsSpent, "Dépenses de sondages" },
+                { LocaleKeys.Poll_ContextHeader, "Contexte électoral" },
+                { LocaleKeys.Poll_ContextEmpty, "Aucun facteur city-wide notable pour le moment." },
+                { LocaleKeys.Poll_ContextUnemployment, "Chômage élevé" },
+                { LocaleKeys.Poll_ContextTaxPoor, "Impôts trop élevés pour les ménages modestes" },
+                { LocaleKeys.Poll_ContextTaxRich, "Avantages fiscaux pour les plus riches" },
+                { LocaleKeys.Poll_ContextPropagandaPrefix, "Campagne de propagande : " },
+                { LocaleKeys.Poll_ContextSanctionPrefix, "Sanction ville entière : " },
 
                 // Score
                 { LocaleKeys.Score_TabLabel, "Score" },

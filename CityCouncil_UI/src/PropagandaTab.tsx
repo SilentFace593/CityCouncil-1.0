@@ -14,6 +14,8 @@ const districtListJson$ = bindValue<string>("cityCouncil", "districtListJson");
 const districtCampaignsJson$ = bindValue<string>("cityCouncil", "districtCampaignsJson");
 const illegalCampaignsJson$ = bindValue<string>("cityCouncil", "illegalCampaignsJson");
 const blackFundJson$ = bindValue<string>("cityCouncil", "blackFundJson");
+const illegalCampaignCost$ = bindValue<number>("cityCouncil", "illegalCampaignCost");
+const districtCampaignMax$ = bindValue<number>("cityCouncil", "districtCampaignMax");
 
 interface PartyMembershipDto { party: string; members: number; treasury: number; }
 interface PropagandaDto { party: string; active: boolean; target: string; bonusPercent: number; autoRenew: boolean; }
@@ -147,6 +149,8 @@ export function PropagandaTab() {
   const districtCampaignsJson = useValue(districtCampaignsJson$);
   const illegalCampaignsJson = useValue(illegalCampaignsJson$);
   const blackFundJson = useValue(blackFundJson$);
+  const illegalCampaignCost = useValue(illegalCampaignCost$);
+  const districtCampaignMax = useValue(districtCampaignMax$);
 
   const illegalCampaigns: IllegalCampaignDto[] = useMemo(() => {
   try { const p = JSON.parse(illegalCampaignsJson ?? "[]"); return Array.isArray(p) ? p : []; }
@@ -205,7 +209,7 @@ const [attackTarget, setAttackTarget] = useState<string>("");
 const [attackDirty, setAttackDirty] = useState(false);
 
 const slotsUsed = districtCampaigns.length;
-const slotsFull = slotsUsed >= 3;
+const slotsFull = slotsUsed >= districtCampaignMax;
 
 const handleLaunchDistrict = () => {
   if (!playerControlsAvailable || !customSpace || selectedDistrictId === null || slotsFull) return;
@@ -379,8 +383,8 @@ const handleCancelDistrict = (districtId: number) =>
   </div>
 
   <div style={{ color: "rgba(255,255,255,0.5)", fontSize: "11rem", marginBottom: "10rem" }}>
-    {`${slotsUsed} / 3 campagnes de district actives`}
-  </div>
+  {`${slotsUsed} / ${districtCampaignMax} campagnes de district actives`}
+</div>
 
   {playerControlsAvailable && !slotsFull && (
     <>
@@ -446,10 +450,10 @@ const handleCancelDistrict = (districtId: number) =>
   )}
 
   {slotsFull && (
-    <div style={{ color: "rgba(255,180,120,0.9)", fontSize: "12rem" }}>
-      {t("CityCouncil.DistrictCampaign.MAX_REACHED", "Nombre maximum de campagnes de district atteint (3).")}
-    </div>
-  )}
+  <div style={{ color: "rgba(255,180,120,0.9)", fontSize: "12rem" }}>
+    {`${t("CityCouncil.DistrictCampaign.MAX_REACHED_PREFIX", "Nombre maximum de campagnes de district atteint (")}${districtCampaignMax})`}
+  </div>
+)}
 
 {playerControlsAvailable && blackFundActive && (
   <div style={{ marginTop: "20rem", paddingTop: "16rem", borderTop: "1rem solid rgba(220,80,80,0.3)" }}>
@@ -483,9 +487,11 @@ const handleCancelDistrict = (districtId: number) =>
             onChange={setIllegalTarget}
           />
         </div>
+
         <div style={{ color: "rgba(255,255,255,0.5)", fontSize: "11rem", marginBottom: "10rem" }}>
-          {`${t("CityCouncil.Illegal.COST_LABEL", "Coût : ")}10 000`}
+            {`${t("CityCouncil.Illegal.COST_LABEL", "Coût : ")}${illegalCampaignCost.toLocaleString()}`}
         </div>
+
         <ActionButton
           label={t("CityCouncil.Illegal.LAUNCH_BUTTON", "Lancer la campagne illégale")}
           enabled={illegalDistrictId !== null && !!illegalTarget}

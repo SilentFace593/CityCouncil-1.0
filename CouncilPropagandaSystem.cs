@@ -1,10 +1,11 @@
-﻿using Colossal.Logging;
+﻿using System.Collections.Generic;
+using Colossal.Logging;
 using Colossal.Serialization.Entities;
 using Game;
 using Game.Simulation;
-using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Entities;
+using UnityEngine;
 
 namespace CityCouncil
 {
@@ -28,6 +29,7 @@ namespace CityCouncil
         private CouncilCustomPartySystem m_CustomPartySystem;
         private EntityQuery m_DistrictQueryForCampaigns;
         private CouncilBlackFundSystem m_BlackFundSystem;
+        private CouncilBonusSystem m_BonusSystem;
 
         protected override void OnCreate()
         {
@@ -38,6 +40,7 @@ namespace CityCouncil
             m_CustomPartySystem = World.GetOrCreateSystemManaged<CouncilCustomPartySystem>();
             m_DistrictQueryForCampaigns = GetEntityQuery(ComponentType.ReadWrite<CouncilDistrictData>());
             m_BlackFundSystem = World.GetOrCreateSystemManaged<CouncilBlackFundSystem>();
+            m_BonusSystem = World.GetOrCreateSystemManaged<CouncilBonusSystem>();
         }
 
         protected override void OnGamePreload(Purpose purpose, Game.GameMode mode)
@@ -122,7 +125,7 @@ namespace CityCouncil
         {
             const float LaunchChance = 0.25f;
             if (m_AiRng.NextDouble() >= LaunchChance) return;
-            if (CountActiveDistrictCampaignsForParty(party) >= DistrictCampaignCatalog.MaxActiveCampaignsPerParty) return;
+            if (CountActiveDistrictCampaignsForParty(party) >= GetMaxDistrictCampaignsForParty(party)) return;
 
             var districts = m_DistrictQueryForCampaigns.ToEntityArray(Allocator.Temp);
             try
@@ -169,10 +172,13 @@ namespace CityCouncil
         /// </summary>
         private void TryAiLaunchIllegalCampaign(PoliticalParty party, int treasury)
         {
-            const float LaunchChance = 0.15f; // plus rare que les campagnes légales : risque plus élevé
+            const float LaunchChance = 0.15f;
             if (m_AiRng.NextDouble() >= LaunchChance) return;
-            if (treasury < IllegalCampaignCatalog.Cost) return;
+
+            int cost = GetIllegalCampaignCost(party);
+            if (treasury < cost) return;
             if (CountActiveIllegalCampaignsForParty(party) >= IllegalCampaignCatalog.MaxActiveCampaignsPerParty) return;
+
 
             var districts = m_DistrictQueryForCampaigns.ToEntityArray(Allocator.Temp);
             try
@@ -191,6 +197,15 @@ namespace CityCouncil
             }
             finally { districts.Dispose(); }
         }
+
+
+        private int GetMaxDistrictCampaignsForParty(PoliticalParty party)
+        {
+            if (party == PoliticalParty.GaucheRadicale && m_BonusSystem.IsRadicalLeftUniversityBonusActive())
+                return DistrictCampaignCatalog.MaxActiveCampaignsPerPartyWithUniversityBonus;
+            return DistrictCampaignCatalog.MaxActiveCampaignsPerParty;
+        }
+
 
         private CampaignIntensity? CheapestAffordableBoostTier(int treasury)
         {
@@ -296,6 +311,15 @@ namespace CityCouncil
         }
 
         private double CurrentDay() => (double)m_SimulationSystem.frameIndex / 262144.0;
+
+        /// <summary>Coût effectif d'une campagne illégale pour un parti, après bonus éventuel.</summary>
+        public int GetIllegalCampaignCost(PoliticalParty party)
+        {
+            int baseCost = IllegalCampaignCatalog.Cost;
+            if (party == PoliticalParty.Populiste && m_BonusSystem.IsPopulistPrisonBonusActive())
+                return Mathf.RoundToInt(baseCost * IllegalCampaignCatalog.PopulistBonusCostMultiplier);
+            return baseCost;
+        }
 
         /// <summary>
         /// Lance (ou remplace, sans remboursement) une campagne pour un parti. Débite la
@@ -452,9 +476,10 @@ namespace CityCouncil
             }
 
             int activeCount = CountActiveDistrictCampaignsForParty(party);
+            int maxAllowed = GetMaxDistrictCampaignsForParty(party);
             if (activeCount >= DistrictCampaignCatalog.MaxActiveCampaignsPerParty)
             {
-                error = "Nombre maximum de campagnes de district atteint (3).";
+                error = $"Nombre maximum de campagnes de district atteint ({maxAllowed}).";
                 return false;
             }
 
@@ -625,7 +650,7 @@ namespace CityCouncil
         /// cas IA simplifié, cf. point 9). Le malus est tiré UNE SEULE FOIS ici (0 à 6%) et reste fixe.
         /// </summary>
         public bool TryLaunchIllegalDistrictCampaign(
-            Entity districtEntity, PoliticalParty party, PoliticalParty targetParty, bool fromBlackFund, out string error)
+    Entity districtEntity, PoliticalParty party, PoliticalParty targetParty, bool fromBlackFund, out string error)
         {
             error = null;
 
@@ -659,9 +684,11 @@ namespace CityCouncil
                 }
             }
 
+            int cost = GetIllegalCampaignCost(party); // AJOUT — remplace IllegalCampaignCatalog.Cost
+
             bool spent = fromBlackFund
-                ? m_BlackFundSystem.TrySpendFromBlackFund(party, IllegalCampaignCatalog.Cost)
-                : m_MembershipSystem.TrySpendTreasury(party, IllegalCampaignCatalog.Cost);
+                ? m_BlackFundSystem.TrySpendFromBlackFund(party, cost)
+                : m_MembershipSystem.TrySpendTreasury(party, cost);
 
             if (!spent)
             {
@@ -669,8 +696,8 @@ namespace CityCouncil
                 return false;
             }
 
-            data = EntityManager.GetComponentData<CouncilDistrictData>(districtEntity); // relu après débit
-            float malus = (float)m_AiRng.NextDouble() * IllegalCampaignCatalog.MaxMalus; // tiré une fois
+            data = EntityManager.GetComponentData<CouncilDistrictData>(districtEntity);
+            float malus = (float)m_AiRng.NextDouble() * IllegalCampaignCatalog.MaxMalus;
 
             data.m_IllegalCampaigns.Add(new IllegalCampaignEntry
             {
@@ -682,7 +709,7 @@ namespace CityCouncil
             EntityManager.SetComponentData(districtEntity, data);
 
             s_Log.Info($"[CouncilPropagandaSystem] Campagne ILLÉGALE lancée : {party} contre {targetParty} " +
-                       $"sur district {districtEntity.Index}, malus {malus:P1}, financement {(fromBlackFund ? "caisse noire" : "trésorerie")}.");
+                       $"sur district {districtEntity.Index}, malus {malus:P1}, coût {cost}, financement {(fromBlackFund ? "caisse noire" : "trésorerie")}.");
             return true;
         }
 

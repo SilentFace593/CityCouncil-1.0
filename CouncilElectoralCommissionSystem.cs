@@ -34,6 +34,7 @@ namespace CityCouncil
 
         private Entity m_SingletonEntity = Entity.Null;
         private double m_LastCycleDay = -1;
+        private CouncilBonusSystem m_BonusSystem;
 
         protected override void OnCreate()
         {
@@ -43,6 +44,7 @@ namespace CityCouncil
             m_PropagandaSystem = World.GetOrCreateSystemManaged<CouncilPropagandaSystem>();
             m_BlackFundSystem = World.GetOrCreateSystemManaged<CouncilBlackFundSystem>();
             m_MembershipSystem = World.GetOrCreateSystemManaged<CouncilPartyMembershipSystem>();
+            m_BonusSystem = World.GetOrCreateSystemManaged<CouncilBonusSystem>();
         }
 
         protected override void OnGamePreload(Purpose purpose, Game.GameMode mode)
@@ -196,7 +198,6 @@ namespace CityCouncil
 
                 if (activeIllegalCount == 0)
                 {
-                    // Érosion : -1 niveau si calme depuis le dernier contrôle.
                     if (currentLevel > VigilanceLevel.Low)
                     {
                         var eroded = (VigilanceLevel)((byte)currentLevel - 1);
@@ -207,6 +208,13 @@ namespace CityCouncil
                 }
 
                 var (detectionChance, escalateChance, maxLevelThisCheck) = IllegalCampaignCatalog.GetRisk(activeIllegalCount);
+
+                // AJOUT — bonus Populiste (Prison01 + 3 victoires) : -30% sur détection ET escalade.
+                if (party == PoliticalParty.Populiste && m_BonusSystem.IsPopulistPrisonBonusActive())
+                {
+                    detectionChance *= IllegalCampaignCatalog.PopulistBonusDetectionMultiplier;
+                    escalateChance *= IllegalCampaignCatalog.PopulistBonusDetectionMultiplier;
+                }
 
                 bool detected = m_Rng.NextDouble() < detectionChance;
                 bool escalates = m_Rng.NextDouble() < escalateChance;

@@ -16,6 +16,11 @@
         public const string YourPartyTab_ColorLabel = "CityCouncil.YourPartyTab.COLOR_LABEL";
         public const string YourPartyTab_SpaceLabel = "CityCouncil.YourPartyTab.SPACE_LABEL";
         public const string YourPartyTab_PendingActivation = "CityCouncil.YourPartyTab.PENDING_ACTIVATION";
+        public const string YourPartyTab_StructureLabel = "CityCouncil.YourPartyTab.STRUCTURE_LABEL";
+        public const string YourPartyTab_StructureCadres = "CityCouncil.YourPartyTab.STRUCTURE_CADRES";
+        public const string YourPartyTab_StructureMasse = "CityCouncil.YourPartyTab.STRUCTURE_MASSE";
+        public const string YourPartyTab_StructureCadresDesc = "CityCouncil.YourPartyTab.STRUCTURE_CADRES_DESC";
+        public const string YourPartyTab_StructureMasseDesc = "CityCouncil.YourPartyTab.STRUCTURE_MASSE_DESC";
 
         // --- HemicyclePanel ---
         public const string Hemicycle_PanelTitle = "CityCouncil.Hemicycle.PANEL_TITLE";
@@ -117,6 +122,13 @@
         public const string Hemicycle_BonusChoiceHint = "CityCouncil.Hemicycle.BONUS_CHOICE_HINT";
         public const string Hemicycle_BonusPendingTooltip = "CityCouncil.Hemicycle.BONUS_PENDING_TOOLTIP";
 
+        //--- Bonus Exclusif ---
+        public const string Forces_BureauBonusActive = "CityCouncil.Forces.BUREAU_BONUS_ACTIVE";
+        public const string Forces_BureauPresentHint = "CityCouncil.Forces.BUREAU_PRESENT_HINT";
+        public const string Forces_PrisonBonusActive = "CityCouncil.Forces.PRISON_BONUS_ACTIVE";
+        public const string Forces_NuclearBonusActive = "CityCouncil.Forces.NUCLEAR_BONUS_ACTIVE";
+        public const string Forces_UniversityBonusActive = "CityCouncil.Forces.UNIVERSITY_BONUS_ACTIVE";
+
         // --- PropagandaTab ---
         public const string Propaganda_TabLabel = "CityCouncil.Propaganda.TAB_LABEL";
         public const string Propaganda_PartyLabel = "CityCouncil.Propaganda.PARTY_LABEL";
@@ -209,6 +221,13 @@
         public const string Poll_ResultsHeader = "CityCouncil.Poll.RESULTS_HEADER";
         public const string Poll_NoResults = "CityCouncil.Poll.NO_RESULTS";
         public const string Poll_NoPlayerParty = "CityCouncil.Poll.NO_PLAYER_PARTY";
+        public const string Poll_ContextHeader = "CityCouncil.Poll.CONTEXT_HEADER";
+        public const string Poll_ContextEmpty = "CityCouncil.Poll.CONTEXT_EMPTY";
+        public const string Poll_ContextUnemployment = "CityCouncil.Poll.CONTEXT_UNEMPLOYMENT";
+        public const string Poll_ContextTaxPoor = "CityCouncil.Poll.CONTEXT_TAX_POOR";
+        public const string Poll_ContextTaxRich = "CityCouncil.Poll.CONTEXT_TAX_RICH";
+        public const string Poll_ContextPropagandaPrefix = "CityCouncil.Poll.CONTEXT_PROPAGANDA_PREFIX";
+        public const string Poll_ContextSanctionPrefix = "CityCouncil.Poll.CONTEXT_SANCTION_PREFIX";
 
         //Score
         public const string Score_TabLabel = "CityCouncil.Score.TAB_LABEL";

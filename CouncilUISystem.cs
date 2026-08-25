@@ -36,7 +36,9 @@ namespace CityCouncil.Systems
         private CityCouncil.CouncilBlackFundSystem m_BlackFundSystem;
         private CityCouncil.CouncilElectoralCommissionSystem m_CommissionSystem;
         private CouncilCustomPartyData m_LastPushedCustomPartyData;
-       
+        private CityCouncil.CouncilEconomySystem m_EconomySystem;
+        private CityCouncil.CouncilTaxSystem m_TaxSystem;
+
 
         // --- Évènement de ville actif (affiché en bas de l'encart Administration) ---
         private ValueBinding<string> m_CityEventHeadlineBinding;
@@ -71,6 +73,7 @@ namespace CityCouncil.Systems
         private ValueBinding<string> m_CustomPartySpaceBinding;   // enum PoliticalParty, sérialisé en ToString()
         private ValueBinding<bool> m_CustomPartyPendingDeletionBinding;
         private ValueBinding<bool> m_CustomPartyPendingActivationBinding;
+        private ValueBinding<string> m_CustomPartyStructureTypeBinding;
 
         // État caché pour détecter les changements
         private Entity m_LastSelectedEntity = Entity.Null;
@@ -95,6 +98,33 @@ namespace CityCouncil.Systems
         private bool m_LastPushedBonusPending;
         private bool m_HasLastPushedBonus;
         private bool m_HasLastPushedCustomParty;
+
+        //Bonus Exclusif
+        private CityCouncil.CouncilInstitutionSystem m_InstitutionSystem;
+        private ValueBinding<bool> m_RepublicanBureauBonusActiveBinding;
+        private ValueBinding<bool> m_CentralIntelligenceBureauPresentBinding;
+        private bool m_LastPushedBureauBonusActive;
+        private bool m_LastPushedBureauPresent;
+        private bool m_HasLastPushedBureauState;
+        private ValueBinding<bool> m_PopulistPrisonBonusActiveBinding;
+        private ValueBinding<bool> m_PrisonPresentBinding;
+        private ValueBinding<int> m_IllegalCampaignCostBinding;
+        private bool m_LastPushedPrisonBonusActive;
+        private bool m_LastPushedPrisonPresent;
+        private int m_LastPushedIllegalCampaignCost = -1;
+        private bool m_HasLastPushedPrisonState;
+        private ValueBinding<bool> m_EcologistNuclearBonusActiveBinding;
+        private ValueBinding<bool> m_NuclearPowerPlantPresentBinding;
+        private bool m_LastPushedNuclearBonusActive;
+        private bool m_LastPushedNuclearPresent;
+        private bool m_HasLastPushedNuclearState;
+        private ValueBinding<bool> m_RadicalLeftUniversityBonusActiveBinding;
+        private ValueBinding<bool> m_UniversityPresentBinding;
+        private ValueBinding<int> m_DistrictCampaignMaxBinding;
+        private bool m_LastPushedUniversityBonusActive;
+        private bool m_LastPushedUniversityPresent;
+        private int m_LastPushedDistrictCampaignMax = -1;
+        private bool m_HasLastPushedUniversityState;
 
         //Propagande
         private CityCouncil.CouncilPropagandaSystem m_PropagandaSystem;
@@ -127,6 +157,9 @@ namespace CityCouncil.Systems
         private ValueBinding<bool> m_PollAllowedBinding;
         private double m_LastPushedPollDay = double.MinValue;
         private bool m_HasLastPushedPoll;
+        private ValueBinding<string> m_ElectoralContextJsonBinding;
+        private string m_LastPushedElectoralContextJson;
+        private bool m_HasLastPushedElectoralContext;
 
         //Score
         private CityCouncil.CouncilScoreSystem m_ScoreSystem;
@@ -160,6 +193,10 @@ namespace CityCouncil.Systems
             m_CommissionSystem = World.GetOrCreateSystemManaged<CityCouncil.CouncilElectoralCommissionSystem>();
             m_PollSystem = World.GetOrCreateSystemManaged<CityCouncil.CouncilPollSystem>();
             m_ScoreSystem = World.GetOrCreateSystemManaged<CityCouncil.CouncilScoreSystem>();
+            m_EconomySystem = World.GetOrCreateSystemManaged<CityCouncil.CouncilEconomySystem>();
+            m_TaxSystem = World.GetOrCreateSystemManaged<CityCouncil.CouncilTaxSystem>();
+            m_InstitutionSystem = World.GetOrCreateSystemManaged<CityCouncil.CouncilInstitutionSystem>();
+
 
 
 
@@ -207,7 +244,18 @@ namespace CityCouncil.Systems
             m_ScoreJsonBinding = new ValueBinding<string>(kGroup, "scoreJson", "[]");
             m_ShowDebugTabBinding = new ValueBinding<bool>(kGroup, "showDebugTab", false);
             m_FundingAutoRenewBinding = new ValueBinding<bool>(kGroup, "fundingAutoRenew", false);
-
+            m_CustomPartyStructureTypeBinding = new ValueBinding<string>(kGroup, "customPartyStructureType", "Cadres");           
+            m_ElectoralContextJsonBinding = new ValueBinding<string>(kGroup, "electoralContextJson", "{}");
+            m_RepublicanBureauBonusActiveBinding = new ValueBinding<bool>(kGroup, "republicanBureauBonusActive", false);
+            m_CentralIntelligenceBureauPresentBinding = new ValueBinding<bool>(kGroup, "centralIntelligenceBureauPresent", false);
+            m_PopulistPrisonBonusActiveBinding = new ValueBinding<bool>(kGroup, "populistPrisonBonusActive", false);
+            m_PrisonPresentBinding = new ValueBinding<bool>(kGroup, "prisonPresent", false);
+            m_IllegalCampaignCostBinding = new ValueBinding<int>(kGroup, "illegalCampaignCost", CityCouncil.IllegalCampaignCatalog.Cost);
+            m_EcologistNuclearBonusActiveBinding = new ValueBinding<bool>(kGroup, "ecologistNuclearBonusActive", false);
+            m_NuclearPowerPlantPresentBinding = new ValueBinding<bool>(kGroup, "nuclearPowerPlantPresent", false);
+            m_RadicalLeftUniversityBonusActiveBinding = new ValueBinding<bool>(kGroup, "radicalLeftUniversityBonusActive", false);
+            m_UniversityPresentBinding = new ValueBinding<bool>(kGroup, "universityPresent", false);
+            m_DistrictCampaignMaxBinding = new ValueBinding<int>(kGroup, "districtCampaignMax", CityCouncil.DistrictCampaignCatalog.MaxActiveCampaignsPerParty);
 
 
 
@@ -254,6 +302,22 @@ namespace CityCouncil.Systems
             AddBinding(m_ScoreJsonBinding);
             AddBinding(m_ShowDebugTabBinding);
             AddBinding(m_FundingAutoRenewBinding);
+            AddBinding(m_CustomPartyStructureTypeBinding);
+            AddBinding(m_ElectoralContextJsonBinding);
+            AddBinding(m_RepublicanBureauBonusActiveBinding);
+            AddBinding(m_CentralIntelligenceBureauPresentBinding);
+            AddBinding(m_PopulistPrisonBonusActiveBinding);
+            AddBinding(m_PrisonPresentBinding);
+            AddBinding(m_IllegalCampaignCostBinding);
+            AddBinding(m_EcologistNuclearBonusActiveBinding);
+            AddBinding(m_NuclearPowerPlantPresentBinding);
+            AddBinding(m_RadicalLeftUniversityBonusActiveBinding);
+            AddBinding(m_UniversityPresentBinding);
+            AddBinding(m_DistrictCampaignMaxBinding);
+
+            // Outil de debug : logge tous les noms de prefabs de bâtiments présents en ville.
+            AddBinding(new TriggerBinding(kGroup, "debugLogAllBuildings",
+                () => m_InstitutionSystem.DebugLogAllBuildingPrefabNames()));
 
             AddBinding(new TriggerBinding(kGroup, "debugForceGeneralElectionCheck",
     () => { m_ScoreSystem.DebugForceGeneralElectionCheck(); UpdateScoreBindingIfChanged(force: true); }));
@@ -350,15 +414,17 @@ namespace CityCouncil.Systems
             // arguments côté C#/Colossal.UI.Binding, adapter cette ligne et l'appel React
             // correspondant (trigger("cityCouncil", "createOrUpdateCustomParty", name, colorIdx,
             // spaceIdx) côté JS) en conséquence.
-            AddBinding(new TriggerBinding<string, string, string>(kGroup, "createOrUpdateCustomParty",
-     (name, colorName, spaceName) =>
+            AddBinding(new TriggerBinding<string, string, string, string>(kGroup, "createOrUpdateCustomParty",
+     (name, colorName, spaceName, structureTypeName) =>
      {
          if (!System.Enum.TryParse<CityCouncil.PartyColor>(colorName, out var color))
              color = CityCouncil.PartyColor.Bleu;
          if (!System.Enum.TryParse<CityCouncil.PoliticalParty>(spaceName, out var space))
              space = CityCouncil.PoliticalParty.Democrate;
+         if (!System.Enum.TryParse<CityCouncil.PartyStructureType>(structureTypeName, out var structureType))
+             structureType = CityCouncil.PartyStructureType.Cadres;
 
-         m_CustomPartySystem.TryCreateOrUpdate(name, color, space, out _);
+         m_CustomPartySystem.TryCreateOrUpdate(name, color, space, structureType, out _);
          PushCustomPartyState();
          PushFundingState();
      }));
@@ -478,6 +544,11 @@ namespace CityCouncil.Systems
             UpdatePollBindingIfChanged();
             UpdateScoreBindingIfChanged();
             UpdateShowDebugTabBinding();
+            UpdateElectoralContextBindingIfChanged();
+            UpdateRepublicanBureauBindingIfChanged();
+            UpdatePrisonBonusBindingIfChanged();
+            UpdateNuclearBonusBindingIfChanged();
+            UpdateUniversityBonusBindingIfChanged();
 
 
 
@@ -567,6 +638,23 @@ namespace CityCouncil.Systems
             }
         }
 
+        private void UpdateNuclearBonusBindingIfChanged()
+        {
+            bool bonusActive = m_BonusSystem.IsEcologistNuclearBonusActive();
+            bool present = m_InstitutionSystem.IsNuclearPowerPlantPresent();
+
+            if (m_HasLastPushedNuclearState
+                && bonusActive == m_LastPushedNuclearBonusActive
+                && present == m_LastPushedNuclearPresent)
+                return;
+
+            m_EcologistNuclearBonusActiveBinding.Update(bonusActive);
+            m_NuclearPowerPlantPresentBinding.Update(present);
+            m_LastPushedNuclearBonusActive = bonusActive;
+            m_LastPushedNuclearPresent = present;
+            m_HasLastPushedNuclearState = true;
+        }
+
         private void UpdateIllegalCampaignsBindingIfChanged()
         {
             var custom = m_CustomPartySystem.GetData();
@@ -605,6 +693,68 @@ namespace CityCouncil.Systems
                 m_LastPushedIllegalCampaignsJson = json;
                 m_HasLastPushedIllegalCampaigns = true;
             }
+        }
+
+        /// <summary>
+        /// Contexte électoral city-wide affiché sous le sondage : agrège tous les modificateurs
+        /// city-wide utilisés par VoteCalculator.ComputeRound1 (donc pertinents pour interpréter un
+        /// sondage), à l'exclusion des effets purement locaux (Bastion, campagnes de district,
+        /// campagnes illégales) qui n'ont pas de sens à l'échelle de la ville.
+        /// </summary>
+        private void UpdateElectoralContextBindingIfChanged()
+        {
+            double currentDay = GetApproxCurrentDay();
+
+            var activeEvent = m_CityEventSystem.GetActiveEventDefinition();
+            bool hasEvent = activeEvent != null;
+            string eventHeadlineKey = activeEvent?.Headline ?? "";
+
+            bool unemploymentActive = m_EconomySystem.IsUnemploymentCrisisActive();
+            var (taxPoorBonus, taxRichBonus) = m_TaxSystem.GetTaxDiscontentBonus();
+            bool taxPoorActive = taxPoorBonus > 0f;
+            bool taxRichActive = taxRichBonus > 0f;
+
+            var propaganda = new List<ElectoralContextPropagandaDto>();
+            foreach (var (party, target, percent) in m_PropagandaSystem.GetActiveCampaigns())
+            {
+                propaganda.Add(new ElectoralContextPropagandaDto
+                {
+                    party = party.ToString(),
+                    target = target.ToString(),
+                    bonusPercent = percent
+                });
+            }
+
+            var sanctions = new List<ElectoralContextSanctionDto>();
+            foreach (PoliticalParty p in System.Enum.GetValues(typeof(PoliticalParty)))
+            {
+                foreach (var s in m_CommissionSystem.GetActiveSanctionsForParty(p, currentDay))
+                {
+                    sanctions.Add(new ElectoralContextSanctionDto
+                    {
+                        party = p.ToString(),
+                        malusPercent = s.m_MalusPercent
+                    });
+                }
+            }
+
+            var dto = new ElectoralContextDto
+            {
+                hasEvent = hasEvent,
+                eventHeadlineKey = eventHeadlineKey,
+                unemploymentActive = unemploymentActive,
+                taxPoorActive = taxPoorActive,
+                taxRichActive = taxRichActive,
+                propaganda = propaganda,
+                sanctions = sanctions
+            };
+
+            string json = dto.ToJson();
+            if (m_HasLastPushedElectoralContext && json == m_LastPushedElectoralContextJson) return;
+
+            m_ElectoralContextJsonBinding.Update(json);
+            m_LastPushedElectoralContextJson = json;
+            m_HasLastPushedElectoralContext = true;
         }
 
         private void UpdateCommissionReportBindingIfChanged()
@@ -740,7 +890,8 @@ namespace CityCouncil.Systems
                 && a.m_Space == b.m_Space
                 && a.m_PendingDeletion == b.m_PendingDeletion
                 && a.m_SubstitutionActive == b.m_SubstitutionActive
-                && a.m_ActiveSpace == b.m_ActiveSpace;
+                && a.m_ActiveSpace == b.m_ActiveSpace
+                && a.m_StructureType == b.m_StructureType;
         }
 
         private void UpdateMembershipBindingIfChanged()
@@ -820,6 +971,23 @@ namespace CityCouncil.Systems
             m_ScoreJsonBinding.Update(json);
             m_LastPushedScoreJson = json;
             m_HasLastPushedScore = true;
+        }
+
+        private void UpdateRepublicanBureauBindingIfChanged()
+        {
+            bool bonusActive = m_BonusSystem.IsRepublicanBureauBonusActive();
+            bool bureauPresent = m_InstitutionSystem.IsCentralIntelligenceBureauPresent();
+
+            if (m_HasLastPushedBureauState
+                && bonusActive == m_LastPushedBureauBonusActive
+                && bureauPresent == m_LastPushedBureauPresent)
+                return;
+
+            m_RepublicanBureauBonusActiveBinding.Update(bonusActive);
+            m_CentralIntelligenceBureauPresentBinding.Update(bureauPresent);
+            m_LastPushedBureauBonusActive = bonusActive;
+            m_LastPushedBureauPresent = bureauPresent;
+            m_HasLastPushedBureauState = true;
         }
 
 
@@ -929,6 +1097,7 @@ namespace CityCouncil.Systems
             m_CustomPartyColorBinding.Update(data.m_Exists ? data.m_Color.ToString() : "");
             m_CustomPartySpaceBinding.Update(data.m_Exists ? data.m_Space.ToString() : "");
             m_CustomPartyPendingDeletionBinding.Update(data.m_Exists && data.m_PendingDeletion);
+            m_CustomPartyStructureTypeBinding.Update(data.m_Exists ? data.m_StructureType.ToString() : "Cadres"); // AJOUT
 
             bool pendingActivation = data.m_Exists && !data.m_PendingDeletion
                 && (!data.m_SubstitutionActive || data.m_ActiveSpace != data.m_Space);
@@ -1018,6 +1187,63 @@ namespace CityCouncil.Systems
             m_LastPushedBonusPending = pending;
             m_HasLastPushedBonus = true;
         }
+
+        private void UpdateUniversityBonusBindingIfChanged()
+        {
+            bool bonusActive = m_BonusSystem.IsRadicalLeftUniversityBonusActive();
+            bool present = m_InstitutionSystem.IsUniversityPresent();
+
+            // Plafond affiché : celui du parti joueur actif s'il existe, sinon la valeur de base.
+            var custom = m_CustomPartySystem.GetData();
+            int max = CityCouncil.DistrictCampaignCatalog.MaxActiveCampaignsPerParty;
+            if (custom.m_Exists && custom.m_SubstitutionActive
+                && custom.m_ActiveSpace == PoliticalParty.GaucheRadicale
+                && bonusActive)
+            {
+                max = CityCouncil.DistrictCampaignCatalog.MaxActiveCampaignsPerPartyWithUniversityBonus;
+            }
+
+            if (m_HasLastPushedUniversityState
+                && bonusActive == m_LastPushedUniversityBonusActive
+                && present == m_LastPushedUniversityPresent
+                && max == m_LastPushedDistrictCampaignMax)
+                return;
+
+            m_RadicalLeftUniversityBonusActiveBinding.Update(bonusActive);
+            m_UniversityPresentBinding.Update(present);
+            m_DistrictCampaignMaxBinding.Update(max);
+            m_LastPushedUniversityBonusActive = bonusActive;
+            m_LastPushedUniversityPresent = present;
+            m_LastPushedDistrictCampaignMax = max;
+            m_HasLastPushedUniversityState = true;
+        }
+
+        private void UpdatePrisonBonusBindingIfChanged()
+        {
+            bool bonusActive = m_BonusSystem.IsPopulistPrisonBonusActive();
+            bool present = m_InstitutionSystem.IsPrisonPresent();
+
+            // Coût affiché : celui du parti joueur actif s'il existe, sinon le coût de base.
+            var custom = m_CustomPartySystem.GetData();
+            int cost = (custom.m_Exists && custom.m_SubstitutionActive)
+                ? m_PropagandaSystem.GetIllegalCampaignCost(custom.m_ActiveSpace)
+                : CityCouncil.IllegalCampaignCatalog.Cost;
+
+            if (m_HasLastPushedPrisonState
+                && bonusActive == m_LastPushedPrisonBonusActive
+                && present == m_LastPushedPrisonPresent
+                && cost == m_LastPushedIllegalCampaignCost)
+                return;
+
+            m_PopulistPrisonBonusActiveBinding.Update(bonusActive);
+            m_PrisonPresentBinding.Update(present);
+            m_IllegalCampaignCostBinding.Update(cost);
+            m_LastPushedPrisonBonusActive = bonusActive;
+            m_LastPushedPrisonPresent = present;
+            m_LastPushedIllegalCampaignCost = cost;
+            m_HasLastPushedPrisonState = true;
+        }
+
 
         public struct PartyBonusDto
         {
@@ -1490,6 +1716,75 @@ private static bool DataEquals(in CouncilDistrictData a, in CouncilDistrictData 
 
         private static string EscapeJson(string s) =>
             (s ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"");
+    }
+
+    public struct ElectoralContextPropagandaDto
+    {
+        public string party;
+        public string target;
+        public float bonusPercent;
+    }
+
+    public struct ElectoralContextSanctionDto
+    {
+        public string party;
+        public float malusPercent;
+    }
+
+    /// <summary>
+    /// DTO du contexte électoral city-wide affiché sous le sondage (PollTab.tsx). Sérialisation
+    /// manuelle en JSON, même pattern que les autres DTOs de ce fichier.
+    /// </summary>
+    public struct ElectoralContextDto
+    {
+        public bool hasEvent;
+        public string eventHeadlineKey;
+        public bool unemploymentActive;
+        public bool taxPoorActive;
+        public bool taxRichActive;
+        public List<ElectoralContextPropagandaDto> propaganda;
+        public List<ElectoralContextSanctionDto> sanctions;
+
+        public string ToJson()
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.Append('{');
+            sb.Append("\"hasEvent\":").Append(hasEvent ? "true" : "false").Append(',');
+            sb.Append("\"eventHeadlineKey\":\"").Append(EscapeJson(eventHeadlineKey ?? "")).Append("\",");
+            sb.Append("\"unemploymentActive\":").Append(unemploymentActive ? "true" : "false").Append(',');
+            sb.Append("\"taxPoorActive\":").Append(taxPoorActive ? "true" : "false").Append(',');
+            sb.Append("\"taxRichActive\":").Append(taxRichActive ? "true" : "false").Append(',');
+
+            sb.Append("\"propaganda\":[");
+            for (int i = 0; i < propaganda.Count; i++)
+            {
+                if (i > 0) sb.Append(',');
+                var p = propaganda[i];
+                sb.Append('{');
+                sb.Append("\"party\":\"").Append(p.party).Append("\",");
+                sb.Append("\"target\":\"").Append(p.target).Append("\",");
+                sb.Append("\"bonusPercent\":").Append(p.bonusPercent.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                sb.Append('}');
+            }
+            sb.Append("],");
+
+            sb.Append("\"sanctions\":[");
+            for (int i = 0; i < sanctions.Count; i++)
+            {
+                if (i > 0) sb.Append(',');
+                var s = sanctions[i];
+                sb.Append('{');
+                sb.Append("\"party\":\"").Append(s.party).Append("\",");
+                sb.Append("\"malusPercent\":").Append(s.malusPercent.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                sb.Append('}');
+            }
+            sb.Append(']');
+
+            sb.Append('}');
+            return sb.ToString();
+        }
+
+        private static string EscapeJson(string s) => s.Replace("\\", "\\\\").Replace("\"", "\\\"");
     }
 
 

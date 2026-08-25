@@ -7,6 +7,7 @@ import {
   PARTY_ORDER,
   type PartyResultDto,
   type TranslateFn,
+  translatePartyName,
 } from "./PartyResultDto";
 import { centeredTabWrapperStyle, centeredTabContentStyle } from "./layoutConstants";
 
@@ -16,10 +17,31 @@ const partyMembershipJson$ = bindValue<string>("cityCouncil", "partyMembershipJs
 const customPartyExists$ = bindValue<boolean>("cityCouncil", "customPartyExists");
 const customPartySpace$ = bindValue<string>("cityCouncil", "customPartySpace");
 const customPartyPendingActivation$ = bindValue<boolean>("cityCouncil", "customPartyPendingActivation");
+const electoralContextJson$ = bindValue<string>("cityCouncil", "electoralContextJson");
+const cityEventHeadline$ = bindValue<string>("cityCouncil", "cityEventHeadline");
 
 interface PartyMembershipDto {
   party: string;
   treasury: number;
+}
+
+interface ElectoralContextPropagandaDto {
+  party: string;
+  target: string;
+  bonusPercent: number;
+}
+interface ElectoralContextSanctionDto {
+  party: string;
+  malusPercent: number;
+}
+interface ElectoralContextDto {
+  hasEvent: boolean;
+  eventHeadlineKey: string;
+  unemploymentActive: boolean;
+  taxPoorActive: boolean;
+  taxRichActive: boolean;
+  propaganda: ElectoralContextPropagandaDto[];
+  sanctions: ElectoralContextSanctionDto[];
 }
 
 // Coût fixe — dupliqué depuis CouncilPollSystem.PollCost (même choix de duplication de
@@ -85,6 +107,23 @@ function PollBar({ result, translate }: { result: PartyResultDto; translate: Tra
   );
 }
 
+function ContextLine({ text }: { text: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "flex-start", marginBottom: "6rem" }}>
+      <div
+        style={{
+          width: "6rem", height: "6rem", borderRadius: "50%",
+          background: "rgba(255,180,120,0.9)", flexShrink: 0,
+          marginTop: "5rem", marginRight: "8rem",
+        }}
+      />
+      <span style={{ color: "rgba(255,255,255,0.85)", fontSize: "12rem", lineHeight: "16rem" }}>
+        {text}
+      </span>
+    </div>
+  );
+}
+
 export function PollTab() {
   const { translate } = useLocalization();
   const t = (key: string, fallback: string): string => translate(key, fallback) ?? fallback;
@@ -95,8 +134,58 @@ export function PollTab() {
   const customExists = useValue(customPartyExists$);
   const customSpace = useValue(customPartySpace$);
   const customPending = useValue(customPartyPendingActivation$);
+  const electoralContextJson = useValue(electoralContextJson$);
+  const cityEventHeadline = useValue(cityEventHeadline$);
 
   const playerControlsAvailable = !!customExists && !customPending && !!customSpace;
+
+  const electoralContext: ElectoralContextDto | null = useMemo(() => {
+  try {
+    const p = JSON.parse(electoralContextJson ?? "{}");
+    return {
+      hasEvent: !!p.hasEvent,
+      eventHeadlineKey: p.eventHeadlineKey ?? "",
+      unemploymentActive: !!p.unemploymentActive,
+      taxPoorActive: !!p.taxPoorActive,
+      taxRichActive: !!p.taxRichActive,
+      propaganda: Array.isArray(p.propaganda) ? p.propaganda : [],
+      sanctions: Array.isArray(p.sanctions) ? p.sanctions : [],
+    };
+  } catch {
+    return null;
+  }
+}, [electoralContextJson]);
+
+const contextLines: string[] = useMemo(() => {
+  if (!electoralContext) return [];
+  const lines: string[] = [];
+
+  if (electoralContext.hasEvent && cityEventHeadline) {
+    lines.push(t(cityEventHeadline, cityEventHeadline));
+  }
+  if (electoralContext.unemploymentActive) {
+    lines.push(t("CityCouncil.Poll.CONTEXT_UNEMPLOYMENT", "Chômage élevé"));
+  }
+  if (electoralContext.taxPoorActive) {
+    lines.push(t("CityCouncil.Poll.CONTEXT_TAX_POOR", "Impôts trop élevés pour les ménages modestes"));
+  }
+  if (electoralContext.taxRichActive) {
+    lines.push(t("CityCouncil.Poll.CONTEXT_TAX_RICH", "Avantages fiscaux pour les plus riches"));
+  }
+  for (const c of electoralContext.propaganda) {
+    const prefix = t("CityCouncil.Poll.CONTEXT_PROPAGANDA_PREFIX", "Campagne de propagande : ");
+    const targetLabel = c.target === "Adultes"
+      ? t("CityCouncil.Propaganda.TARGET_ADULTS", "Adultes")
+      : t("CityCouncil.Propaganda.TARGET_SENIORS", "Séniors");
+    lines.push(`${prefix}${translatePartyName(c.party, translate)} (${targetLabel}, +${Math.round(c.bonusPercent * 100)}%)`);
+  }
+  for (const s of electoralContext.sanctions) {
+    const prefix = t("CityCouncil.Poll.CONTEXT_SANCTION_PREFIX", "Sanction ville entière : ");
+    lines.push(`${prefix}${translatePartyName(s.party, translate)} (-${Math.round(s.malusPercent * 100)}%)`);
+  }
+
+  return lines;
+}, [electoralContext, cityEventHeadline, translate]);
 
   const results: PartyResultDto[] = useMemo(() => {
     try {
@@ -177,6 +266,25 @@ export function PollTab() {
           ))}
         </div>
       )}
+
+            <div style={{ marginTop: "20rem", paddingTop: "16rem", borderTop: "1rem solid rgba(255,255,255,0.15)" }}>
+        <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "12rem", marginBottom: "10rem", textTransform: "uppercase" }}>
+          {t("CityCouncil.Poll.CONTEXT_HEADER", "Contexte électoral")}
+        </div>
+
+        {contextLines.length === 0 ? (
+          <div style={{ color: "rgba(255,255,255,0.5)", fontSize: "12rem" }}>
+            {t("CityCouncil.Poll.CONTEXT_EMPTY", "Aucun facteur city-wide notable pour le moment.")}
+          </div>
+        ) : (
+          <div style={{ padding: "10rem", background: "rgba(255,255,255,0.06)", borderRadius: "6rem" }}>
+            {contextLines.map((line, i) => (
+              <ContextLine key={i} text={line} />
+            ))}
+          </div>
+        )}
+      </div>
+
     </div>
   </div>
   );

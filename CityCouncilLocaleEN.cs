@@ -24,6 +24,11 @@ namespace CityCouncil
                 { LocaleKeys.YourPartyTab_ColorLabel, "Color" },
                 { LocaleKeys.YourPartyTab_SpaceLabel, "Political space" },
                 { LocaleKeys.YourPartyTab_PendingActivation, "Your party will only be able to compete starting from the next election." },
+                { LocaleKeys.YourPartyTab_StructureLabel, "Party type" },
+                { LocaleKeys.YourPartyTab_StructureCadres, "Cadre party" },
+                { LocaleKeys.YourPartyTab_StructureMasse, "Mass party" },
+                { LocaleKeys.YourPartyTab_StructureCadresDesc, "+1 member per seat won, 450 credits due per member." },
+                { LocaleKeys.YourPartyTab_StructureMasseDesc, "+3 members per seat won, 100 credits due per member." },
 
                 // HemicyclePanel
                 { LocaleKeys.Hemicycle_PanelTitle, "City Council" },
@@ -107,6 +112,7 @@ namespace CityCouncil
                 { LocaleKeys.Admin_BastionLabel, "Stronghold: " },
                 { LocaleKeys.Admin_BastionActiveSuffix, " — Bonus active (+4%)" },
 
+                // Bonus Permanent
                 { LocaleKeys.Forces_BonusDefensifLabel, "Permanent bonus: Defensive" },
                 { LocaleKeys.Forces_BonusOffensifLabel, "Permanent bonus: Offensive" },
                 { LocaleKeys.Admin_BonusDefensifTooltip, "Permanent Defensive bonus" },
@@ -118,6 +124,13 @@ namespace CityCouncil
                 { LocaleKeys.Hemicycle_BonusChoiceConfirm, "Confirm" },
                 { LocaleKeys.Hemicycle_BonusChoiceHint, "To change bonus, you'll need to win the majority at least once more." },
                 { LocaleKeys.Hemicycle_BonusPendingTooltip, "Permanent Bonus to choose!" },
+
+                // Bonus Exclusif
+                { LocaleKeys.Forces_BureauBonusActive, "Central Intelligence Bureau: +50% dues" },
+                { LocaleKeys.Forces_BureauPresentHint, "The Central Intelligence Bureau is built — 3 consecutive general-majority wins will activate the dues bonus." },
+                { LocaleKeys.Forces_PrisonBonusActive, "Prison: illegal campaigns -30% cost / -30% detection" },
+                { LocaleKeys.Forces_NuclearBonusActive, "Nuclear power plant: +4% low-income neighborhoods, +4% seniors city-wide" },
+                { LocaleKeys.Forces_UniversityBonusActive, "University: 5 district campaigns instead of 3" },
 
                 // Propaganda
                 { LocaleKeys.Propaganda_TabLabel, "Propaganda" },
@@ -202,6 +215,7 @@ namespace CityCouncil
                 { LocaleKeys.Illegal_InsufficientBlackFund, "Insufficient black fund balance." },
                 { LocaleKeys.Illegal_MaxReached, "Maximum number of illegal campaigns reached (3)." },
 
+                // Poll
                 { LocaleKeys.Poll_TabLabel, "Polls" },
                 { LocaleKeys.Poll_CostLabel, "Cost: " },
                 { LocaleKeys.Poll_OrderButton, "Order a poll" },
@@ -211,6 +225,13 @@ namespace CityCouncil
                 { LocaleKeys.Poll_NoResults, "No poll has been ordered yet." },
                 { LocaleKeys.Poll_NoPlayerParty, "Create your own party (\"Your Party\" tab) to order polls." },
                 { LocaleKeys.Treasury_PollsSpent, "Poll spending" },
+                { LocaleKeys.Poll_ContextHeader, "Electoral context" },
+                { LocaleKeys.Poll_ContextEmpty, "No notable city-wide factor at the moment." },
+                { LocaleKeys.Poll_ContextUnemployment, "High unemployment" },
+                { LocaleKeys.Poll_ContextTaxPoor, "Taxes too high for low-income households" },
+                { LocaleKeys.Poll_ContextTaxRich, "Tax advantages for the wealthiest" },
+                { LocaleKeys.Poll_ContextPropagandaPrefix, "Propaganda campaign: " },
+                { LocaleKeys.Poll_ContextSanctionPrefix, "City-wide sanction: " },
 
                 //Score
                 { LocaleKeys.Score_TabLabel, "Score" },

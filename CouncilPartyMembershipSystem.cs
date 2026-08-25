@@ -27,10 +27,8 @@ namespace CityCouncil
         private static readonly ILog s_Log = LogManager.GetLogger("CityCouncil").SetShowsErrorsInUI(false);
 
         // --- Curseurs de gameplay, ajustables librement sans toucher au reste de la logique ---
-        private const float CreditsPerMemberPerCycle = 200f;
         private const float WinBonusPct = 0.03f;
         private const float LoseMalusPct = 0.02f;
-        private const float MembersPerSeatGained = 10f;
         private const float MembersPerSeatLost = 4f;
 
         // Même durée que le cycle électoral (CouncilElectionSystem.ElectionCycleDays) : le
@@ -44,6 +42,7 @@ namespace CityCouncil
         private Entity m_SingletonEntity = Entity.Null;
 
         private double m_LastCycleCheckDay = -1;
+        private CouncilBonusSystem m_BonusSystem;
 
         protected override void OnCreate()
         {
@@ -51,6 +50,7 @@ namespace CityCouncil
             m_SingletonQuery = GetEntityQuery(ComponentType.ReadOnly<CouncilPartyMembershipData>());
             m_DistrictQuery = GetEntityQuery(ComponentType.ReadOnly<CouncilDistrictData>());
             m_SimulationSystem = World.GetOrCreateSystemManaged<SimulationSystem>();
+            m_BonusSystem = World.GetOrCreateSystemManaged<CouncilBonusSystem>();
         }
 
         protected override void OnGamePreload(Colossal.Serialization.Entities.Purpose purpose, Game.GameMode mode)
@@ -200,13 +200,48 @@ namespace CityCouncil
                 int delta = newCount - oldCount;
 
                 if (delta > 0)
-                    entry.m_Members += delta * MembersPerSeatGained;
+                {
+                    float membersPerSeat = PartyStructureCatalog.Rules[entry.m_StructureType].membersPerSeatGained;
+                    entry.m_Members += delta * membersPerSeat;
+                }
                 else if (delta < 0)
+                {
                     entry.m_Members = MathF.Max(0f, entry.m_Members + delta * MembersPerSeatLost);
+                }
 
                 entries[i] = entry;
             }
 
+            data.m_Entries = entries;
+            SetData(data);
+        }
+
+        /// <summary>Type de structure actuel d'un slot (Cadres/Masse).</summary>
+        public PartyStructureType GetStructureType(PoliticalParty party)
+        {
+            foreach (var e in GetData().m_Entries)
+                if (e.m_Party == party) return e.m_StructureType;
+            return PartyStructureCatalog.GetDefaultForSpace(party);
+        }
+
+        /// <summary>
+        /// Change le type de structure d'un slot. N'affecte ni la trésorerie ni les adhérents déjà
+        /// accumulés : seuls les FUTURS gains de sièges et cotisations utiliseront la nouvelle règle.
+        /// Appelé par CouncilCustomPartySystem : au moment où une substitution devient active (choix
+        /// du joueur) ou est retirée (retour au défaut du parti hôte).
+        /// </summary>
+        public void SetStructureType(PoliticalParty party, PartyStructureType type)
+        {
+            var data = GetData();
+            var entries = data.m_Entries;
+            for (int i = 0; i < entries.Length; i++)
+            {
+                if (entries[i].m_Party != party) continue;
+                var e = entries[i];
+                e.m_StructureType = type;
+                entries[i] = e;
+                break;
+            }
             data.m_Entries = entries;
             SetData(data);
         }
@@ -282,10 +317,7 @@ namespace CityCouncil
                     }
                 }
             }
-            finally
-            {
-                districts.Dispose();
-            }
+            finally { districts.Dispose(); }
 
             if (totalSeatsByParty.Count == 0) return;
 
@@ -298,9 +330,16 @@ namespace CityCouncil
             {
                 var entry = entries[i];
 
-                int duesAmount = (int)MathF.Floor(entry.m_Members * CreditsPerMemberPerCycle);
+                float duesPerMember = PartyStructureCatalog.Rules[entry.m_StructureType].duesPerMember;
+
+                // AJOUT — bonus spécial Républicain : +50% de cotisation par adhérent tant que les
+                // conditions du Central Intelligence Bureau + série de 3 victoires sont réunies.
+                if (entry.m_Party == PoliticalParty.Republicain && m_BonusSystem.IsRepublicanBureauBonusActive())
+                    duesPerMember *= 1.5f;
+
+                int duesAmount = (int)MathF.Floor(entry.m_Members * duesPerMember);
                 entry.m_Treasury += duesAmount;
-                entry.m_TotalFromDues += duesAmount; // AJOUT — traçage cotisations
+                entry.m_TotalFromDues += duesAmount;
 
                 bool wonAtLeastOneDistrict = partiesWithAtLeastOneDistrict.Contains(entry.m_Party);
                 bool isCityMajority = entry.m_Party == cityMajority;

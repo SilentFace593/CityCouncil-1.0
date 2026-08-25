@@ -151,7 +151,7 @@ namespace CityCouncil
         /// Un changement de m_Space vers un bord différent de m_ActiveSpace remet donc naturellement
         /// la substitution "en attente" jusqu'à la prochaine élection, même pour un parti déjà actif.
         /// </summary>
-        public bool TryCreateOrUpdate(string name, PartyColor color, PoliticalParty space, out string error)
+        public bool TryCreateOrUpdate(string name, PartyColor color, PoliticalParty space, PartyStructureType structureType, out string error)
         {
             error = null;
             name = (name ?? string.Empty).Trim();
@@ -168,10 +168,11 @@ namespace CityCouncil
             data.m_Name = name;
             data.m_Color = color;
             data.m_Space = space;
+            data.m_StructureType = structureType; // AJOUT
             data.m_PendingDeletion = false;
             SetData(data);
 
-            s_Log.Info($"[CouncilCustomPartySystem] Parti joueur défini : '{name}' ({color}, bord ciblé {space}).");
+            s_Log.Info($"[CouncilCustomPartySystem] Parti joueur défini : '{name}' ({color}, bord ciblé {space}, structure {structureType}).");
             return true;
         }
 
@@ -222,6 +223,14 @@ namespace CityCouncil
 
             if (data.m_PendingDeletion)
             {
+                // AJOUT — le slot qu'occupait le parti joueur retrouve son type de structure par défaut
+                // (celui du parti vanilla hôte), puisque le parti custom qui l'habillait disparaît.
+                if (data.m_SubstitutionActive)
+                {
+                    var defaultType = PartyStructureCatalog.GetDefaultForSpace(data.m_ActiveSpace);
+                    m_MembershipSystem.SetStructureType(data.m_ActiveSpace, defaultType);
+                }
+
                 data.m_Exists = false;
                 data.m_PendingDeletion = false;
                 data.m_SubstitutionActive = false;
@@ -232,7 +241,14 @@ namespace CityCouncil
             }
 
             bool needsActivation = !data.m_SubstitutionActive || data.m_ActiveSpace != data.m_Space;
-            if (!needsActivation) return;
+            if (!needsActivation)
+            {
+                // AJOUT — même sans changement d'espace, le joueur a pu changer son type de structure
+                // via "Mettre à jour le parti" sans attendre une nouvelle substitution : on l'applique
+                // quand même à chaque appel (idempotent, coût négligeable).
+                m_MembershipSystem.SetStructureType(data.m_ActiveSpace, data.m_StructureType);
+                return;
+            }
 
             var newSpace = data.m_Space;
             data.m_ActiveSpace = newSpace;
@@ -240,10 +256,11 @@ namespace CityCouncil
             SetData(data);
 
             m_MembershipSystem.ResetPartyTreasuryAndMembers(newSpace);
-            ResetBastionProgressForParty(newSpace); // AJOUT
+            m_MembershipSystem.SetStructureType(newSpace, data.m_StructureType); // AJOUT
+            ResetBastionProgressForParty(newSpace);
             m_ScoreSystem.ResetScore(newSpace);
 
-            s_Log.Info($"[CouncilCustomPartySystem] Substitution activée pour le bord {newSpace} (adhérents/trésorerie/Bastion remis à zéro).");
+            s_Log.Info($"[CouncilCustomPartySystem] Substitution activée pour le bord {newSpace} (adhérents/trésorerie/Bastion remis à zéro, structure {data.m_StructureType}).");
         }
 
         /// <summary>
