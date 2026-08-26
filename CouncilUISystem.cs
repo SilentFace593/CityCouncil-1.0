@@ -172,6 +172,12 @@ namespace CityCouncil.Systems
         private string m_LastPushedScoreJson;
         private bool m_HasLastPushedScore;
 
+        // Consigne de vote
+        private CityCouncil.CouncilVotingInstructionSystem m_VotingInstructionSystem;
+        private ValueBinding<string> m_VotingInstructionDistrictsJsonBinding;
+        private string m_LastPushedVotingInstructionDistrictsJson;
+        private bool m_HasLastPushedVotingInstructionDistricts;
+
         //Onglet DEBUG
         private ValueBinding<bool> m_ShowDebugTabBinding;
         private bool m_LastPushedShowDebugTab;
@@ -201,7 +207,7 @@ namespace CityCouncil.Systems
             m_EconomySystem = World.GetOrCreateSystemManaged<CityCouncil.CouncilEconomySystem>();
             m_TaxSystem = World.GetOrCreateSystemManaged<CityCouncil.CouncilTaxSystem>();
             m_InstitutionSystem = World.GetOrCreateSystemManaged<CityCouncil.CouncilInstitutionSystem>();
-
+            m_VotingInstructionSystem = World.GetOrCreateSystemManaged<CityCouncil.CouncilVotingInstructionSystem>();
 
 
 
@@ -263,6 +269,7 @@ namespace CityCouncil.Systems
             m_DistrictCampaignMaxBinding = new ValueBinding<int>(kGroup, "districtCampaignMax", CityCouncil.DistrictCampaignCatalog.MaxActiveCampaignsPerParty);
             m_DemocratDigitalBonusActiveBinding = new ValueBinding<bool>(kGroup, "democratDigitalBonusActive", false);
             m_SatelliteUplinkPresentBinding = new ValueBinding<bool>(kGroup, "satelliteUplinkPresent", false);
+            m_VotingInstructionDistrictsJsonBinding = new ValueBinding<string>(kGroup, "votingInstructionDistrictsJson", "[]");
 
 
             AddBinding(m_AdminVisibleBinding);
@@ -322,6 +329,27 @@ namespace CityCouncil.Systems
             AddBinding(m_DistrictCampaignMaxBinding);
             AddBinding(m_DemocratDigitalBonusActiveBinding);
             AddBinding(m_SatelliteUplinkPresentBinding);
+            AddBinding(m_VotingInstructionDistrictsJsonBinding);
+
+            AddBinding(new TriggerBinding<string>(kGroup, "submitVotingInstructions",
+    (choicesStr) =>
+    {
+        // Format : "districtId:PartyName,districtId:PartyName,..."
+        var choices = new List<System.Collections.Generic.KeyValuePair<int, PoliticalParty>>();
+        if (!string.IsNullOrEmpty(choicesStr))
+        {
+            foreach (var pair in choicesStr.Split(','))
+            {
+                var parts = pair.Split(':');
+                if (parts.Length != 2) continue;
+                if (!int.TryParse(parts[0], out int districtId)) continue;
+                if (!System.Enum.TryParse<PoliticalParty>(parts[1], out var party)) continue;
+                choices.Add(new System.Collections.Generic.KeyValuePair<int, PoliticalParty>(districtId, party));
+            }
+        }
+        m_VotingInstructionSystem.SubmitInstructions(choices);
+        UpdateVotingInstructionDistrictsBinding(force: true);
+    }));
 
             AddBinding(new TriggerBinding<string>(kGroup, "launchDigitalCampaign",
                 (autoRenewStr) =>
@@ -570,6 +598,7 @@ namespace CityCouncil.Systems
             UpdateNuclearBonusBindingIfChanged();
             UpdateUniversityBonusBindingIfChanged();
             UpdateDigitalBonusBindingIfChanged();
+            UpdateVotingInstructionDistrictsBinding();
 
 
             Entity selected = m_ToolSystem.selected;
@@ -627,6 +656,57 @@ namespace CityCouncil.Systems
             m_LastPushedShowDebugTab = value;
             m_HasLastPushedShowDebugTab = true;
         }
+
+
+        private void UpdateVotingInstructionDistrictsBinding(bool force = false)
+        {
+            var custom = m_CustomPartySystem.GetData();
+            var dtos = new List<VotingInstructionDistrictDto>();
+
+            if (custom.m_Exists && custom.m_SubstitutionActive)
+            {
+                var playerParty = custom.m_ActiveSpace;
+                var districts = m_DistrictQuery.ToEntityArray(Unity.Collections.Allocator.Temp);
+                try
+                {
+                    foreach (var d in districts)
+                    {
+                        if (!m_EntityManager.HasComponent<CouncilDistrictData>(d)) continue;
+                        var data = m_EntityManager.GetComponentData<CouncilDistrictData>(d);
+                        if (data.m_Phase != ElectionPhase.Round1Done || data.m_WonInRound1) continue;
+                        if (data.m_Round1Results.Length < 2) continue;
+
+                        var f1 = data.m_Round1Results[0].m_Party;
+                        var f2 = data.m_Round1Results[1].m_Party;
+                        if (playerParty == f1 || playerParty == f2) continue; // joueur qualifié, pas de consigne
+
+                        bool playerWasInRace = false;
+                        foreach (var r in data.m_Round1Results)
+                            if (r.m_Party == playerParty) { playerWasInRace = true; break; }
+                        if (!playerWasInRace) continue;
+
+                        dtos.Add(new VotingInstructionDistrictDto
+                        {
+                            districtId = d.Index,
+                            districtName = GetDistrictDisplayName(d),
+                            finalist1 = f1.ToString(),
+                            finalist2 = f2.ToString(),
+                            submitted = m_VotingInstructionSystem.IsSubmitted(d.Index),
+                            selectedParty = m_VotingInstructionSystem.TryGetInstruction(d.Index, out var sel) ? sel.ToString() : ""
+                        });
+                    }
+                }
+                finally { districts.Dispose(); }
+            }
+
+            string json = VotingInstructionDistrictDto.ToJsonArray(dtos);
+            if (!force && m_HasLastPushedVotingInstructionDistricts && json == m_LastPushedVotingInstructionDistrictsJson) return;
+
+            m_VotingInstructionDistrictsJsonBinding.Update(json);
+            m_LastPushedVotingInstructionDistrictsJson = json;
+            m_HasLastPushedVotingInstructionDistricts = true;
+        }
+
 
         private void UpdateBlackFundBindingIfChanged()
         {
@@ -1822,6 +1902,39 @@ private static bool DataEquals(in CouncilDistrictData a, in CouncilDistrictData 
         }
 
         private static string EscapeJson(string s) => s.Replace("\\", "\\\\").Replace("\"", "\\\"");
+    }
+
+    public struct VotingInstructionDistrictDto
+    {
+        public int districtId;
+        public string districtName;
+        public string finalist1;
+        public string finalist2;
+        public bool submitted;
+        public string selectedParty; // "" si aucun choix, sinon nom du finaliste sélectionné
+
+        public static string ToJsonArray(System.Collections.Generic.IEnumerable<VotingInstructionDistrictDto> items)
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.Append('[');
+            bool first = true;
+            foreach (var d in items)
+            {
+                if (!first) sb.Append(',');
+                first = false;
+                sb.Append('{');
+                sb.Append("\"districtId\":").Append(d.districtId).Append(',');
+                sb.Append("\"districtName\":\"").Append(EscapeJson(d.districtName)).Append("\",");
+                sb.Append("\"finalist1\":\"").Append(d.finalist1).Append("\",");
+                sb.Append("\"finalist2\":\"").Append(d.finalist2).Append("\",");
+                sb.Append("\"submitted\":").Append(d.submitted ? "true" : "false").Append(',');
+                sb.Append("\"selectedParty\":\"").Append(d.selectedParty ?? "").Append("\"");
+                sb.Append('}');
+            }
+            sb.Append(']');
+            return sb.ToString();
+        }
+        private static string EscapeJson(string s) => (s ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"");
     }
 
 

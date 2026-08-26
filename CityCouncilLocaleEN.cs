@@ -42,6 +42,9 @@ namespace CityCouncil
                 { LocaleKeys.Hemicycle_LegendSeatsSingular, "seat" },
                 { LocaleKeys.Hemicycle_LegendBastionsPlural, "strongholds" },
                 { LocaleKeys.Hemicycle_LegendBastionsSingular, "stronghold" },
+                { LocaleKeys.VotingInstruction_Header, "Voting instructions" },
+                { LocaleKeys.VotingInstruction_Intro, "You can give voting instructions in the following districts, though your supporters may not follow them..." },
+                { LocaleKeys.VotingInstruction_ValidateButton, "Confirm" },
 
                 // AdministrationSection
                 { LocaleKeys.Admin_Header, "Administration" },

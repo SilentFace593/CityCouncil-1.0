@@ -14,6 +14,7 @@ import { ScoreTab } from "./ScoreTab";
 import { RulesTab } from "./RulesTab";
 import { DebugTab } from "./DebugTab";
 import { centeredTabWrapperStyle, centeredTabContentStyle } from "./layoutConstants";
+import { VotingInstructionsCard } from "./VotingInstructionsCard";
 
 // --- Bindings exposés par CouncilUISystem.cs (group "cityCouncil") ---
 const hemicycleSeatsJson$ = bindValue<string>("cityCouncil", "hemicycleSeatsJson");
@@ -307,6 +308,7 @@ function HemicycleResultsContent() {
 </div>
 
        <BonusChoicePrompt />
+       <VotingInstructionsCard />
 
     </div>
     </div>

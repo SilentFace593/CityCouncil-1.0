@@ -45,6 +45,8 @@ namespace CityCouncil
         private CouncilScoreSystem m_ScoreSystem;
         private CouncilEconomySystem m_EconomySystem;
         private CouncilTaxSystem m_TaxSystem;
+        private CouncilVotingInstructionSystem m_VotingInstructionSystem;
+        private readonly Random m_InstructionRng = new Random();
 
         protected override void OnCreate()
         {
@@ -62,6 +64,7 @@ namespace CityCouncil
             m_ScoreSystem = World.GetOrCreateSystemManaged<CouncilScoreSystem>();
             m_EconomySystem = World.GetOrCreateSystemManaged<CouncilEconomySystem>();
             m_TaxSystem = World.GetOrCreateSystemManaged<CouncilTaxSystem>();
+            m_VotingInstructionSystem = World.GetOrCreateSystemManaged<CouncilVotingInstructionSystem>();
 
 
             m_DistrictQuery = GetEntityQuery(new EntityQueryDesc
@@ -330,7 +333,6 @@ namespace CityCouncil
         private void RunRound2(Entity districtEntity, ref CouncilDistrictData data, int totalPopulation)
         {
             var previousLeader = data.m_LeadingParty;
-            bool wasAlreadyLeading = previousLeader == data.m_LeadingParty; // sera comparé après recalcul ci-dessous
 
             var round1Shares = data.m_Round1Results.ToArray().ToDictionary(r => r.m_Party, r => r.m_VoteShare);
             var ordered = round1Shares.OrderByDescending(kv => kv.Value).ToList();
@@ -345,13 +347,46 @@ namespace CityCouncil
             };
 
             var activeEvent = m_CityEventSystem.GetActiveEventDefinition();
-            var result = VoteCalculator.ComputeRound2(round1Result, totalPopulation, finalist1, finalist2, activeEvent?.Effects);
+
+            // AJOUT — consigne de vote : ne s'applique que si le parti joueur actif était bien éliminé
+            // dans CE district (ni finaliste 1 ni finaliste 2), et qu'une consigne validée existe encore.
+            PoliticalParty? instructedEliminated = null;
+            PoliticalParty? instructedTarget = null;
+            float complianceRoll = 0f;
+
+            var custom = m_CustomPartySystem.GetData();
+            if (custom.m_Exists && custom.m_SubstitutionActive)
+            {
+                var playerParty = custom.m_ActiveSpace;
+                bool playerEliminated = playerParty != finalist1 && playerParty != finalist2
+                                      && round1Shares.ContainsKey(playerParty);
+
+                if (playerEliminated && m_VotingInstructionSystem.TryGetInstruction(districtEntity.Index, out var target))
+                {
+                    instructedEliminated = playerParty;
+                    instructedTarget = target;
+                    complianceRoll = VoteCalculator.VotingInstructionComplianceMin
+                        + (float)m_InstructionRng.NextDouble()
+                          * (VoteCalculator.VotingInstructionComplianceMax - VoteCalculator.VotingInstructionComplianceMin);
+
+                    s_Log.Info($"[CouncilElectionSystem] Consigne de vote appliquée district {districtEntity.Index} : " +
+                               $"{playerParty} -> {target}, compliance {complianceRoll:P0}.");
+                }
+
+                // Toujours consommée, appliquée ou non (parti changé entre-temps, etc.) : ne doit pas
+                // survivre au-delà de ce 2e tour.
+                m_VotingInstructionSystem.ConsumeInstruction(districtEntity.Index);
+            }
+
+            var result = VoteCalculator.ComputeRound2(
+                round1Result, totalPopulation, finalist1, finalist2, activeEvent?.Effects,
+                instructedEliminated, instructedTarget, complianceRoll);
 
             data.m_VotersRound2 = result.m_Voters;
             data.m_AbstentionRound2 = result.m_Abstention;
             data.m_LeadingParty = result.m_Leader;
 
-            bool isNewConquest = previousLeader != result.m_Leader; // AJOUT — comparaison avant/après le 2e tour
+            bool isNewConquest = previousLeader != result.m_Leader;
 
             FinalizeResults(ref data, result.m_VoteShares, data.m_TotalSeats, isNewConquest);
 

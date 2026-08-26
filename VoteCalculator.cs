@@ -289,6 +289,8 @@ namespace CityCouncil
         private const float OffensiveBonusPct = 0.03f;
         private const float EcologistNuclearWealthBonusPct = 0.04f; // Wretched/Poor/Modest, toutes tranches
         private const float EcologistNuclearSeniorBonusPct = 0.04f; // ville entière, séniors uniquement
+        public const float VotingInstructionComplianceMin = 0.30f;
+        public const float VotingInstructionComplianceMax = 0.70f;
 
         public static RoundResult ComputeRound1(
     int seniors, int adults, WealthLevel wealth, int seed,
@@ -502,15 +504,18 @@ namespace CityCouncil
                 return TransferMatrix.TryGetValue((eliminated, finalist), out float t) ? t : 0f;
             }
 
-/// <summary>
-/// Calcule le résultat du 2e tour à partir des scores du 1er tour et des deux finalistes.
-/// Redistribue les voix des partis éliminés selon TransferMatrix ; le reste s'abstient.
-/// Les votants du 1er tour qui avaient déjà voté pour un finaliste restent acquis.
-/// </summary>
-public static RoundResult ComputeRound2(
+        /// <summary>
+        /// Calcule le résultat du 2e tour à partir des scores du 1er tour et des deux finalistes.
+        /// Redistribue les voix des partis éliminés selon TransferMatrix ; le reste s'abstient.
+        /// Les votants du 1er tour qui avaient déjà voté pour un finaliste restent acquis.
+        /// </summary>
+        public static RoundResult ComputeRound2(
             RoundResult round1, int round1TotalPopulation,
             PoliticalParty finalist1, PoliticalParty finalist2,
-            EventEffect[] activeEventEffects = null)
+            EventEffect[] activeEventEffects = null,
+            PoliticalParty? instructedEliminatedParty = null,
+            PoliticalParty? instructedTarget = null,
+            float complianceRoll = 0f)
         {
             float votesF1 = round1.m_VoteShares[finalist1];
             float votesF2 = round1.m_VoteShares[finalist2];
@@ -526,26 +531,43 @@ public static RoundResult ComputeRound2(
                 float share = kv.Value;
                 float toF1 = ResolveTransferShare(eliminated, finalist1, transferOverrides);
                 float toF2 = ResolveTransferShare(eliminated, finalist2, transferOverrides);
-                // Clamp pour éviter de dépasser 100% par erreur de saisie dans la matrice
                 toF1 = Math.Clamp(toF1, 0f, 1f);
                 toF2 = Math.Clamp(toF2, 0f, 1f - toF1);
+
+                // AJOUT — consigne de vote du joueur : une fraction (compliance) des voix du parti
+                // éliminé suit la consigne intégralement, le reste suit la matrice normale. Ne
+                // s'applique qu'au SEUL parti concerné par la consigne (le parti joueur éliminé).
+                if (instructedEliminatedParty.HasValue && eliminated == instructedEliminatedParty.Value
+                    && instructedTarget.HasValue && (instructedTarget.Value == finalist1 || instructedTarget.Value == finalist2))
+                {
+                    float compliance = Math.Clamp(complianceRoll, 0f, 1f);
+                    float instructedVotes = share * compliance;
+                    float remainder = share - instructedVotes;
+
+                    if (instructedTarget.Value == finalist1) votesF1 += instructedVotes;
+                    else votesF2 += instructedVotes;
+
+                    votesF1 += remainder * toF1;
+                    votesF2 += remainder * toF2;
+                    newAbstentionShare += remainder * (1f - toF1 - toF2);
+                    continue;
+                }
 
                 votesF1 += share * toF1;
                 votesF2 += share * toF2;
                 newAbstentionShare += share * (1f - toF1 - toF2);
             }
 
-            // Nombre de votants au 1er tour qui participent effectivement au 2e tour
             int baseVoters = round1.m_Voters;
             int abstainingNow = (int)Math.Round(baseVoters * newAbstentionShare);
             int votersRound2 = baseVoters - abstainingNow;
 
             float total = votesF1 + votesF2;
             var shares = new Dictionary<PoliticalParty, float>
-            {
-                { finalist1, total > 0 ? votesF1 / total : 0.5f },
-                { finalist2, total > 0 ? votesF2 / total : 0.5f },
-            };
+    {
+        { finalist1, total > 0 ? votesF1 / total : 0.5f },
+        { finalist2, total > 0 ? votesF2 / total : 0.5f },
+    };
 
             var leader = shares[finalist1] >= shares[finalist2] ? finalist1 : finalist2;
 
@@ -553,9 +575,8 @@ public static RoundResult ComputeRound2(
             {
                 m_VoteShares = shares,
                 m_Voters = votersRound2,
-                // Abstention totale = ceux qui n'avaient déjà pas voté au 1er tour + les nouveaux abstentionnistes
                 m_Abstention = (round1TotalPopulation - baseVoters) + abstainingNow,
-                m_MajorityReached = true, // le 2e tour est toujours tranché
+                m_MajorityReached = true,
                 m_Leader = leader
             };
         }

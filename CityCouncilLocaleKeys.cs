@@ -34,6 +34,9 @@
         public const string Hemicycle_LegendSeatsSingular = "CityCouncil.Hemicycle.LEGEND_SEATS_SINGULAR";
         public const string Hemicycle_LegendBastionsPlural = "CityCouncil.Hemicycle.LEGEND_BASTIONS_PLURAL";
         public const string Hemicycle_LegendBastionsSingular = "CityCouncil.Hemicycle.LEGEND_BASTIONS_SINGULAR";
+        public const string VotingInstruction_Header = "CityCouncil.VotingInstruction.HEADER";
+        public const string VotingInstruction_Intro = "CityCouncil.VotingInstruction.INTRO";
+        public const string VotingInstruction_ValidateButton = "CityCouncil.VotingInstruction.VALIDATE_BUTTON";
 
         // --- AdministrationSection ---
         public const string Admin_Header = "CityCouncil.Admin.HEADER";
