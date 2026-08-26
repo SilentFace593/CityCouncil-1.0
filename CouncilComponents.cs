@@ -27,7 +27,8 @@ namespace CityCouncil
     public enum CampaignTarget : byte
     {
         Adultes = 0,
-        Seniors = 1
+        Seniors = 1,
+        Toute = 2
     }
 
     public enum CampaignIntensity : byte
@@ -47,8 +48,10 @@ namespace CityCouncil
         { CampaignIntensity.Forte, (150000, 0.06f) },
     };
 
-        // Même durée qu'un cycle électoral complet — ajustable indépendamment.
         public const double CampaignDurationDays = 7.0;
+        public const int DigitalCampaignCost = 90000;
+        public const float DigitalCampaignBonusMin = 0.03f;
+        public const float DigitalCampaignBonusMax = 0.07f;
     }
 
     public struct CampaignEntry
@@ -60,13 +63,14 @@ namespace CityCouncil
         public float m_BonusPercent;
         public double m_ExpiryDay;
         public bool m_AutoRenew;
+        public bool m_IsDigital;
     }
 
     public struct CouncilPropagandaData : IComponentData, ISerializable
     {
         public FixedList512Bytes<CampaignEntry> m_Entries;
 
-        private const int kVersion = 2; // AJOUT de champ -> bump version
+        private const int kVersion = 3;
 
         public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
         {
@@ -81,6 +85,7 @@ namespace CityCouncil
                 writer.Write(m_Entries[i].m_ExpiryDay);
                 writer.Write(m_Entries[i].m_AutoRenew); // AJOUT
                 writer.Write((byte)m_Entries[i].m_Intensity);
+                writer.Write(m_Entries[i].m_IsDigital);
             }
         }
 
@@ -98,13 +103,19 @@ namespace CityCouncil
                 reader.Read(out double expiry);
 
                 bool autoRenew = false;
-                var intensity = CampaignIntensity.Petite; // valeur par défaut pour compat v1
+                var intensity = CampaignIntensity.Petite;
 
                 if (version >= 2)
                 {
                     reader.Read(out autoRenew);
                     reader.Read(out byte intensityByte);
                     intensity = (CampaignIntensity)intensityByte;
+                }
+
+                bool isDigital = false; // compat < v3
+                if (version >= 3)
+                {
+                    reader.Read(out isDigital);
                 }
 
                 m_Entries.Add(new CampaignEntry
@@ -115,7 +126,8 @@ namespace CityCouncil
                     m_Intensity = intensity,
                     m_BonusPercent = bonus,
                     m_ExpiryDay = expiry,
-                    m_AutoRenew = autoRenew
+                    m_AutoRenew = autoRenew,
+                    m_IsDigital = isDigital
                 });
             }
         }
@@ -235,19 +247,25 @@ namespace CityCouncil
     /// volontaire de la logique de calcul de majorité, même choix de découplage que documenté ailleurs
     /// dans le mod), et les bonus permanents effectivement attribués par slot.
     /// </summary>
+    public struct ExclusiveBonusEntry
+    {
+        public PoliticalParty m_Party;
+        public bool m_Unlocked; // AJOUT — vrai dès que la série de 3 a été atteinte au moins une fois pour ce parti/slot
+    }
+
     public struct CouncilBonusData : IComponentData, ISerializable
     {
-        public bool m_HasStreak;             // false tant qu'aucune majorité n'a encore été observée
-        public PoliticalParty m_StreakParty; // valide seulement si m_HasStreak
+        public bool m_HasStreak;
+        public PoliticalParty m_StreakParty;
         public int m_StreakCount;
 
-        public FixedList512Bytes<CouncilBonusEntry> m_Entries; // jusqu'à 5, un par PoliticalParty
+        public FixedList512Bytes<CouncilBonusEntry> m_Entries;
 
-        // Choix en attente pour le parti joueur (si le slot en série appartient à sa substitution active).
         public bool m_PlayerChoicePending;
-        public PoliticalParty m_PlayerChoiceSpace; // valide seulement si m_PlayerChoicePending
+        public PoliticalParty m_PlayerChoiceSpace;
+        public FixedList512Bytes<ExclusiveBonusEntry> m_ExclusiveBonusEntries;
 
-        private const int kVersion = 1;
+        private const int kVersion = 2; // AJOUT m_ExclusiveBonusEntries -> bump version
 
         public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
         {
@@ -265,11 +283,18 @@ namespace CityCouncil
 
             writer.Write(m_PlayerChoicePending);
             writer.Write((byte)m_PlayerChoiceSpace);
+
+            writer.Write(m_ExclusiveBonusEntries.Length); // AJOUT
+            for (int i = 0; i < m_ExclusiveBonusEntries.Length; i++)
+            {
+                writer.Write((byte)m_ExclusiveBonusEntries[i].m_Party);
+                writer.Write(m_ExclusiveBonusEntries[i].m_Unlocked);
+            }
         }
 
         public void Deserialize<TReader>(TReader reader) where TReader : IReader
         {
-            reader.Read(out int _);
+            reader.Read(out int version);
             reader.Read(out m_HasStreak);
             reader.Read(out byte streakParty); m_StreakParty = (PoliticalParty)streakParty;
             reader.Read(out m_StreakCount);
@@ -285,6 +310,21 @@ namespace CityCouncil
 
             reader.Read(out m_PlayerChoicePending);
             reader.Read(out byte choiceSpace); m_PlayerChoiceSpace = (PoliticalParty)choiceSpace;
+
+            m_ExclusiveBonusEntries = new FixedList512Bytes<ExclusiveBonusEntry>();
+            if (version >= 2)
+            {
+                reader.Read(out int exclusiveCount);
+                for (int i = 0; i < exclusiveCount; i++)
+                {
+                    reader.Read(out byte party);
+                    reader.Read(out bool unlocked);
+                    m_ExclusiveBonusEntries.Add(new ExclusiveBonusEntry { m_Party = (PoliticalParty)party, m_Unlocked = unlocked });
+                }
+            }
+            // Compat v1 : liste vide -> aucun bonus exclusif déverrouillé pour l'instant, EnsureSingleton
+            // ne recrée pas l'entité (elle existe déjà), donc CouncilBonusSystem doit gérer une liste
+            // possiblement vide/incomplète à la lecture (cf. IsExclusiveBonusUnlocked ci-dessous).
         }
     }
 

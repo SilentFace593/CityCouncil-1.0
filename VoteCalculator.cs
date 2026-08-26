@@ -373,10 +373,19 @@ namespace CityCouncil
             {
                 foreach (var (party, target, percent) in activeCampaigns)
                 {
-                    if (target == CampaignTarget.Adultes)
-                        Boost(adultShares, party, percent);
-                    else
-                        Boost(seniorShares, party, percent);
+                    switch (target)
+                    {
+                        case CampaignTarget.Adultes:
+                            Boost(adultShares, party, percent);
+                            break;
+                        case CampaignTarget.Seniors:
+                            Boost(seniorShares, party, percent);
+                            break;
+                        case CampaignTarget.Toute: // AJOUT — campagne digitale : symétrique sur les deux tranches
+                            Boost(adultShares, party, percent);
+                            Boost(seniorShares, party, percent);
+                            break;
+                    }
                 }
             }
 

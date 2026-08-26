@@ -125,6 +125,11 @@ namespace CityCouncil.Systems
         private bool m_LastPushedUniversityPresent;
         private int m_LastPushedDistrictCampaignMax = -1;
         private bool m_HasLastPushedUniversityState;
+        private ValueBinding<bool> m_DemocratDigitalBonusActiveBinding;
+        private ValueBinding<bool> m_SatelliteUplinkPresentBinding;
+        private bool m_LastPushedDigitalBonusActive;
+        private bool m_LastPushedSatellitePresent;
+        private bool m_HasLastPushedDigitalState;
 
         //Propagande
         private CityCouncil.CouncilPropagandaSystem m_PropagandaSystem;
@@ -256,7 +261,8 @@ namespace CityCouncil.Systems
             m_RadicalLeftUniversityBonusActiveBinding = new ValueBinding<bool>(kGroup, "radicalLeftUniversityBonusActive", false);
             m_UniversityPresentBinding = new ValueBinding<bool>(kGroup, "universityPresent", false);
             m_DistrictCampaignMaxBinding = new ValueBinding<int>(kGroup, "districtCampaignMax", CityCouncil.DistrictCampaignCatalog.MaxActiveCampaignsPerParty);
-
+            m_DemocratDigitalBonusActiveBinding = new ValueBinding<bool>(kGroup, "democratDigitalBonusActive", false);
+            m_SatelliteUplinkPresentBinding = new ValueBinding<bool>(kGroup, "satelliteUplinkPresent", false);
 
 
             AddBinding(m_AdminVisibleBinding);
@@ -314,6 +320,20 @@ namespace CityCouncil.Systems
             AddBinding(m_RadicalLeftUniversityBonusActiveBinding);
             AddBinding(m_UniversityPresentBinding);
             AddBinding(m_DistrictCampaignMaxBinding);
+            AddBinding(m_DemocratDigitalBonusActiveBinding);
+            AddBinding(m_SatelliteUplinkPresentBinding);
+
+            AddBinding(new TriggerBinding<string>(kGroup, "launchDigitalCampaign",
+                (autoRenewStr) =>
+                {
+                    var custom = m_CustomPartySystem.GetData();
+                    if (!custom.m_Exists || !custom.m_SubstitutionActive) return;
+                    if (custom.m_ActiveSpace != PoliticalParty.Democrate) return;
+
+                    bool autoRenew = autoRenewStr == "true";
+                    m_PropagandaSystem.TryLaunchDigitalCampaign(custom.m_ActiveSpace, autoRenew, out _);
+                    UpdatePropagandaBindingIfChanged(force: true);
+                }));
 
             // Outil de debug : logge tous les noms de prefabs de bâtiments présents en ville.
             AddBinding(new TriggerBinding(kGroup, "debugLogAllBuildings",
@@ -549,7 +569,7 @@ namespace CityCouncil.Systems
             UpdatePrisonBonusBindingIfChanged();
             UpdateNuclearBonusBindingIfChanged();
             UpdateUniversityBonusBindingIfChanged();
-
+            UpdateDigitalBonusBindingIfChanged();
 
 
             Entity selected = m_ToolSystem.selected;
@@ -636,6 +656,23 @@ namespace CityCouncil.Systems
                 m_LastPushedBlackFundJson = json;
                 m_HasLastPushedBlackFund = true;
             }
+        }
+
+        private void UpdateDigitalBonusBindingIfChanged()
+        {
+            bool bonusActive = m_BonusSystem.IsDemocratDigitalBonusActive();
+            bool present = m_InstitutionSystem.IsSatelliteUplinkPresent();
+
+            if (m_HasLastPushedDigitalState
+                && bonusActive == m_LastPushedDigitalBonusActive
+                && present == m_LastPushedSatellitePresent)
+                return;
+
+            m_DemocratDigitalBonusActiveBinding.Update(bonusActive);
+            m_SatelliteUplinkPresentBinding.Update(present);
+            m_LastPushedDigitalBonusActive = bonusActive;
+            m_LastPushedSatellitePresent = present;
+            m_HasLastPushedDigitalState = true;
         }
 
         private void UpdateNuclearBonusBindingIfChanged()

@@ -129,7 +129,8 @@ namespace CityCouncil
             m_SingletonEntity = EntityManager.CreateEntity();
             EntityManager.AddComponentData(m_SingletonEntity, new CouncilBonusData
             {
-                m_Entries = new FixedList512Bytes<CouncilBonusEntry>()
+                m_Entries = new FixedList512Bytes<CouncilBonusEntry>(),
+                m_ExclusiveBonusEntries = new FixedList512Bytes<ExclusiveBonusEntry>() // AJOUT
             });
             s_Log.Info("[CouncilBonusSystem] Entité singleton créée (aucune trouvée).");
         }
@@ -145,6 +146,43 @@ namespace CityCouncil
             if (m_SingletonEntity == Entity.Null) EnsureSingleton();
             EntityManager.SetComponentData(m_SingletonEntity, data);
         }
+
+
+        /// <summary>Lit si le bonus exclusif d'un parti a déjà été déverrouillé (persistant, jamais remis à zéro automatiquement). Tolère une liste incomplète (compat v1→v2) : retourne false si l'entrée n'existe pas encore.</summary>
+        private bool IsExclusiveBonusUnlocked(PoliticalParty party)
+        {
+            var data = GetData();
+            foreach (var e in data.m_ExclusiveBonusEntries)
+                if (e.m_Party == party) return e.m_Unlocked;
+            return false;
+        }
+
+        /// <summary>Déverrouille (ou confirme déverrouillé) le bonus exclusif d'un parti. Idempotent, n'écrit que si l'état change réellement.</summary>
+        private void SetExclusiveBonusUnlocked(PoliticalParty party, bool unlocked)
+        {
+            var data = GetData();
+            var entries = data.m_ExclusiveBonusEntries;
+            for (int i = 0; i < entries.Length; i++)
+            {
+                if (entries[i].m_Party != party) continue;
+                if (entries[i].m_Unlocked == unlocked) return; // déjà à jour, pas d'écriture inutile
+                var e = entries[i];
+                e.m_Unlocked = unlocked;
+                entries[i] = e;
+                data.m_ExclusiveBonusEntries = entries;
+                SetData(data);
+                s_Log.Info($"[CouncilBonusSystem] Bonus exclusif de {party} déverrouillé de façon persistante (série de {ExclusiveBonusStreakThreshold} atteinte).");
+                return;
+            }
+
+            // Entrée absente (compat v1 ou premier déverrouillage) : on l'ajoute.
+            entries.Add(new ExclusiveBonusEntry { m_Party = party, m_Unlocked = unlocked });
+            data.m_ExclusiveBonusEntries = entries;
+            SetData(data);
+            if (unlocked)
+                s_Log.Info($"[CouncilBonusSystem] Bonus exclusif de {party} déverrouillé de façon persistante (série de {ExclusiveBonusStreakThreshold} atteinte).");
+        }
+
 
         public PermanentBonusType GetBonus(PoliticalParty party)
         {
@@ -213,6 +251,9 @@ namespace CityCouncil
                 data.m_HasStreak = true;
             }
             SetData(data);
+
+            if (data.m_StreakCount >= ExclusiveBonusStreakThreshold)
+                SetExclusiveBonusUnlocked(data.m_StreakParty, true);
 
             if (data.m_StreakCount >= 2)
                 HandleBonusOpportunity(majority.Value);
@@ -290,56 +331,35 @@ namespace CityCouncil
             s_Log.Info("[CouncilBonusSystem] DEBUG : contrôle de majorité forcé au prochain update.");
         }
 
-        private const int RepublicanBureauStreakThreshold = 3;
+        private const int ExclusiveBonusStreakThreshold = 3;
         public bool IsRepublicanBureauBonusActive()
         {
-            var data = GetData();
-            bool hasStreak = data.m_HasStreak
-                && data.m_StreakParty == PoliticalParty.Republicain
-                && data.m_StreakCount >= RepublicanBureauStreakThreshold;
-
-            if (!hasStreak) return false;
-
+            if (!IsExclusiveBonusUnlocked(PoliticalParty.Republicain)) return false;
             return m_InstitutionSystem.IsCentralIntelligenceBureauPresent();
         }
 
-        private const int PrisonBonusStreakThreshold = 3;
         public bool IsPopulistPrisonBonusActive()
         {
-            var data = GetData();
-            bool hasStreak = data.m_HasStreak
-                && data.m_StreakParty == PoliticalParty.Populiste
-                && data.m_StreakCount >= PrisonBonusStreakThreshold;
-
-            if (!hasStreak) return false;
-
+            if (!IsExclusiveBonusUnlocked(PoliticalParty.Populiste)) return false;
             return m_InstitutionSystem.IsPrisonPresent();
         }
 
-        private const int NuclearBonusStreakThreshold = 3;
         public bool IsEcologistNuclearBonusActive()
         {
-            var data = GetData();
-            bool hasStreak = data.m_HasStreak
-                && data.m_StreakParty == PoliticalParty.Ecologiste
-                && data.m_StreakCount >= NuclearBonusStreakThreshold;
-
-            if (!hasStreak) return false;
-
+            if (!IsExclusiveBonusUnlocked(PoliticalParty.Ecologiste)) return false;
             return m_InstitutionSystem.IsNuclearPowerPlantPresent();
         }
 
-        private const int UniversityBonusStreakThreshold = 3;
         public bool IsRadicalLeftUniversityBonusActive()
         {
-            var data = GetData();
-            bool hasStreak = data.m_HasStreak
-                && data.m_StreakParty == PoliticalParty.GaucheRadicale
-                && data.m_StreakCount >= UniversityBonusStreakThreshold;
-
-            if (!hasStreak) return false;
-
+            if (!IsExclusiveBonusUnlocked(PoliticalParty.GaucheRadicale)) return false;
             return m_InstitutionSystem.IsUniversityPresent();
+        }
+
+        public bool IsDemocratDigitalBonusActive()
+        {
+            if (!IsExclusiveBonusUnlocked(PoliticalParty.Democrate)) return false;
+            return m_InstitutionSystem.IsSatelliteUplinkPresent();
         }
 
     }

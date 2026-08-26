@@ -15,6 +15,7 @@ import bonusExcluRepublicainIcon from "./images/Bonus_EXCLU_Republicain.png";
 import bonusExcluPopulisteIcon from "./images/Bonus_EXCLU_Populiste.png";
 import bonusExcluEcologisteIcon from "./images/Bonus_EXCLU_Ecologiste.png";
 import bonusExcluGaucheRadicaleIcon from "./images/Bonus_EXCLU_Gauche.png";
+import bonusExcluDemocrateIcon from "./images/Bonus_EXCLU_Democrate.png";
 
 const hemicycleSeatsJson$ = bindValue<string>("cityCouncil", "hemicycleSeatsJson");
 const partyMembershipJson$ = bindValue<string>("cityCouncil", "partyMembershipJson");
@@ -31,6 +32,7 @@ const centralIntelligenceBureauPresent$ = bindValue<boolean>("cityCouncil", "cen
 const populistPrisonBonusActive$ = bindValue<boolean>("cityCouncil", "populistPrisonBonusActive");
 const ecologistNuclearBonusActive$ = bindValue<boolean>("cityCouncil", "ecologistNuclearBonusActive");
 const radicalLeftUniversityBonusActive$ = bindValue<boolean>("cityCouncil", "radicalLeftUniversityBonusActive");
+const democratDigitalBonusActive$ = bindValue<boolean>("cityCouncil", "democratDigitalBonusActive");
 
 
 interface BlackFundDto { active: boolean; balance: number; }
@@ -94,6 +96,7 @@ export function PoliticalForcesTab() {
   const populistBonusActive = useValue(populistPrisonBonusActive$);
   const ecologistBonusActive = useValue(ecologistNuclearBonusActive$);
   const radicalLeftBonusActive = useValue(radicalLeftUniversityBonusActive$);
+  const democratBonusActive = useValue(democratDigitalBonusActive$);
 
   const blackFund: BlackFundDto = useMemo(() => {
     try {
@@ -240,6 +243,10 @@ export function PoliticalForcesTab() {
               <img src={bonusExcluGaucheRadicaleIcon} alt="" style={{ width: "12rem", height: "12rem", flexShrink: 0 }} />
             )}
 
+            {e.key === "Democrate" && democratBonusActive && (
+              <img src={bonusExcluDemocrateIcon} alt="" style={{ width: "12rem", height: "12rem", flexShrink: 0 }} />
+            )}
+
         </div>
       </div>
     );
@@ -336,6 +343,19 @@ export function PoliticalForcesTab() {
                 />
                 <span style={{ color: "rgba(150,190,255,0.9)", fontSize: "12rem", fontWeight: 700, whiteSpace: "nowrap" }}>
                   {t("CityCouncil.Forces.UNIVERSITY_BONUS_ACTIVE", "Université : 5 campagnes de district au lieu de 3")}
+                </span>
+              </div>
+            )}
+
+            {selected.key === "Democrate" && democratBonusActive && (
+              <div style={{ display: "flex", alignItems: "center", marginBottom: "10rem" }}>
+                <img
+                  src={bonusExcluDemocrateIcon}
+                  alt=""
+                  style={{ width: "18rem", height: "18rem", marginRight: "6rem", flexShrink: 0 }}
+                />
+                <span style={{ color: "rgba(150,190,255,0.9)", fontSize: "12rem", fontWeight: 700, whiteSpace: "nowrap" }}>
+                  {t("CityCouncil.Forces.SATELLITE_BONUS_ACTIVE", "Liaison Satellite : Campagne digitale innovante débloquée")}
                 </span>
               </div>
             )}

@@ -16,6 +16,7 @@ const illegalCampaignsJson$ = bindValue<string>("cityCouncil", "illegalCampaigns
 const blackFundJson$ = bindValue<string>("cityCouncil", "blackFundJson");
 const illegalCampaignCost$ = bindValue<number>("cityCouncil", "illegalCampaignCost");
 const districtCampaignMax$ = bindValue<number>("cityCouncil", "districtCampaignMax");
+const democratDigitalBonusActive$ = bindValue<boolean>("cityCouncil", "democratDigitalBonusActive");
 
 interface PartyMembershipDto { party: string; members: number; treasury: number; }
 interface PropagandaDto { party: string; active: boolean; target: string; bonusPercent: number; autoRenew: boolean; }
@@ -151,6 +152,8 @@ export function PropagandaTab() {
   const blackFundJson = useValue(blackFundJson$);
   const illegalCampaignCost = useValue(illegalCampaignCost$);
   const districtCampaignMax = useValue(districtCampaignMax$);
+  const digitalBonusActive = useValue(democratDigitalBonusActive$);
+  
 
   const illegalCampaigns: IllegalCampaignDto[] = useMemo(() => {
   try { const p = JSON.parse(illegalCampaignsJson ?? "[]"); return Array.isArray(p) ? p : []; }
@@ -250,6 +253,7 @@ const handleCancelDistrict = (districtId: number) =>
   const targetLabels: Record<string, string> = {
     Adultes: t("CityCouncil.Propaganda.TARGET_ADULTS", "Adultes"),
     Seniors: t("CityCouncil.Propaganda.TARGET_SENIORS", "Séniors"),
+    Toute: t("CityCouncil.Propaganda.TARGET_TOUTE", "Toute la ville"),
   };
   const intensityLabels: Record<string, string> = {
     Petite: t("CityCouncil.Propaganda.INTENSITY_SMALL", "Petite campagne"),
@@ -276,6 +280,14 @@ const handleCancelDistrict = (districtId: number) =>
   const noPlayerPartyLine = t("CityCouncil.Propaganda.NO_PLAYER_PARTY", "Créez votre propre parti (onglet \"Votre Parti\") pour lancer vos propres campagnes de propagande.");
 
   const activeList = campaigns.filter((c) => c && c.active); // GARDE (c non-null)
+
+  const isDemocratPlayer = playerControlsAvailable && customSpace === "Democrate";
+
+  const handleLaunchDigital = () => {
+if (!isDemocratPlayer || !digitalBonusActive) return;
+  trigger("cityCouncil", "launchDigitalCampaign", "false");
+};
+
 
   return (
   <div style={centeredTabWrapperStyle}>
@@ -341,6 +353,25 @@ const handleCancelDistrict = (districtId: number) =>
           {t("CityCouncil.Propaganda.AUTO_RENEW_LABEL", "Reconduire automatiquement")}
         </div>
       </div>
+
+        {isDemocratPlayer && digitalBonusActive && !playerActiveCampaign && (
+          <div style={{ padding: "10rem", background: "rgba(70,130,220,0.10)", borderRadius: "6rem", marginBottom: "12rem", border: "1rem solid rgba(120,170,255,0.35)" }}>
+            <div style={{ color: "rgba(150,190,255,0.95)", fontSize: "13rem", fontWeight: 700, marginBottom: "6rem" }}>
+              📡 {t("CityCouncil.Propaganda.DIGITAL_LABEL", "Campagne digitale innovante")}
+            </div>
+            <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "11rem", lineHeight: "15rem", marginBottom: "8rem" }}>
+              {t("CityCouncil.Propaganda.DIGITAL_DESC", "Bonus d'intention de vote aléatoire entre 3% et 7%, sur toute la ville, toutes tranches d'âge confondues.")}
+            </div>
+            <div style={{ color: "white", fontSize: "12rem", marginBottom: "8rem" }}>
+              {`${t("CityCouncil.Propaganda.COST_LABEL", "Coût : ")}90 000`}
+            </div>
+            <ActionButton
+              label={t("CityCouncil.Propaganda.DIGITAL_LAUNCH_BUTTON", "Lancer la campagne digitale")}
+              enabled={treasury >= 90000}
+              onClick={handleLaunchDigital}
+            />
+          </div>
+        )}
 
       <ActionButton
         label={t("CityCouncil.Propaganda.LAUNCH_BUTTON", "Lancer la campagne")}

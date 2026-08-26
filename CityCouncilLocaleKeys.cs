@@ -68,6 +68,7 @@
         public const string Treasury_PropagandaSpent = "CityCouncil.Treasury.PROPAGANDA_SPENT";
         public const string Treasury_CurrentTotal = "CityCouncil.Treasury.CURRENT_TOTAL";
         public const string Treasury_PollsSpent = "CityCouncil.Treasury.POLLS_SPENT";
+        
 
 
         // --- City Events ---
@@ -128,6 +129,7 @@
         public const string Forces_PrisonBonusActive = "CityCouncil.Forces.PRISON_BONUS_ACTIVE";
         public const string Forces_NuclearBonusActive = "CityCouncil.Forces.NUCLEAR_BONUS_ACTIVE";
         public const string Forces_UniversityBonusActive = "CityCouncil.Forces.UNIVERSITY_BONUS_ACTIVE";
+        public const string Forces_SatelliteBonusActive = "CityCouncil.Forces.SATELLITE_BONUS_ACTIVE";
 
         // --- PropagandaTab ---
         public const string Propaganda_TabLabel = "CityCouncil.Propaganda.TAB_LABEL";
@@ -150,6 +152,10 @@
         public const string Propaganda_AutoRenewLabel = "CityCouncil.Propaganda.AUTO_RENEW_LABEL";
         public const string Propaganda_AlreadyActive = "CityCouncil.Propaganda.ALREADY_ACTIVE";
         public const string Propaganda_CancelButton = "CityCouncil.Propaganda.CANCEL_BUTTON";
+        public const string Propaganda_DigitalLabel = "CityCouncil.Propaganda.DIGITAL_LABEL";
+        public const string Propaganda_DigitalDesc = "CityCouncil.Propaganda.DIGITAL_DESC";
+        public const string Propaganda_DigitalLaunchButton = "CityCouncil.Propaganda.DIGITAL_LAUNCH_BUTTON";
+        public const string Propaganda_TargetToute = "CityCouncil.Propaganda.TARGET_TOUTE";
 
         // --- DistrictCampaign ---
         public const string DistrictCampaign_Header = "CityCouncil.DistrictCampaign.HEADER";

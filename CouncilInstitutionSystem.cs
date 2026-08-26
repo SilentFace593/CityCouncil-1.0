@@ -28,11 +28,13 @@ namespace CityCouncil
         public const string PrisonName = "Prison01";
         public const string NuclearPowerPlantName = "NuclearPowerPlant01";
         public const string UniversityName = "University01";
+        public const string SatelliteUplinkName = "SatelliteUplink01";
 
         public bool IsCentralIntelligenceBureauPresent() => IsBuildingPresent(CentralIntelligenceBureauName);
         public bool IsPrisonPresent() => IsBuildingPresent(PrisonName);
         public bool IsNuclearPowerPlantPresent() => IsBuildingPresent(NuclearPowerPlantName);
         public bool IsUniversityPresent() => IsBuildingPresent(UniversityName);
+        public bool IsSatelliteUplinkPresent() => IsBuildingPresent(SatelliteUplinkName);
 
 
         private EntityQuery m_BuildingQuery;

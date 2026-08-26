@@ -131,6 +131,7 @@ namespace CityCouncil
                 { LocaleKeys.Forces_PrisonBonusActive, "Prison: illegal campaigns -30% cost / -30% detection" },
                 { LocaleKeys.Forces_NuclearBonusActive, "Nuclear power plant: +4% low-income neighborhoods, +4% seniors city-wide" },
                 { LocaleKeys.Forces_UniversityBonusActive, "University: 5 district campaigns instead of 3" },
+                { LocaleKeys.Forces_SatelliteBonusActive, "Satellite Uplink: Innovative Digital Campaign unlocked" },
 
                 // Propaganda
                 { LocaleKeys.Propaganda_TabLabel, "Propaganda" },
@@ -153,6 +154,10 @@ namespace CityCouncil
                 { LocaleKeys.Propaganda_AutoRenewLabel, "Automatically renew" },
                 { LocaleKeys.Propaganda_AlreadyActive, "A campaign is already running for your party. Cancel it or wait for it to end before launching a new one." },
                 { LocaleKeys.Propaganda_CancelButton, "Cancel campaign" },
+                { LocaleKeys.Propaganda_DigitalLabel, "Innovative digital campaign" },
+                { LocaleKeys.Propaganda_DigitalDesc, "Random vote intention bonus between 3% and 7%, city-wide, all age groups." },
+                { LocaleKeys.Propaganda_DigitalLaunchButton, "Launch digital campaign" },
+                { LocaleKeys.Propaganda_TargetToute, "City-wide" },
 
                 // District Campaigns
                 { LocaleKeys.DistrictCampaign_Header, "District campaigns" },

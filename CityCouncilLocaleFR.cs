@@ -132,6 +132,7 @@ namespace CityCouncil
                 { LocaleKeys.Forces_PrisonBonusActive, "Prison : campagnes illégales -30% coût / -30% détection" },
                 { LocaleKeys.Forces_NuclearBonusActive, "Centrale nucléaire : +4% quartiers modestes, +4% séniors ville entière" },
                 { LocaleKeys.Forces_UniversityBonusActive, "Université : 5 campagnes de district au lieu de 3" },
+                { LocaleKeys.Forces_SatelliteBonusActive, "Liaison Satellite : Campagne digitale innovante débloquée" },
 
                 // Propagande
                 { LocaleKeys.Propaganda_TabLabel, "Propagande" },
@@ -153,7 +154,11 @@ namespace CityCouncil
                 { LocaleKeys.Propaganda_NoPlayerParty, "Créez votre propre parti (onglet \"Votre Parti\") pour lancer vos propres campagnes de propagande." },
                 { LocaleKeys.Propaganda_AutoRenewLabel, "Reconduire automatiquement" },
                 { LocaleKeys.Propaganda_AlreadyActive, "Une campagne est déjà en cours pour votre parti. Annulez-la ou attendez son terme pour en lancer une nouvelle." },
-                { LocaleKeys.Propaganda_CancelButton, "Annuler la campagne" },
+                { LocaleKeys.Propaganda_CancelButton, "Annuler la campagne" },              
+                { LocaleKeys.Propaganda_DigitalLabel, "Campagne digitale innovante" },
+                { LocaleKeys.Propaganda_DigitalDesc, "Bonus d'intention de vote aléatoire entre 3% et 7%, sur toute la ville, toutes tranches d'âge confondues." },
+                { LocaleKeys.Propaganda_DigitalLaunchButton, "Lancer la campagne digitale" },
+                { LocaleKeys.Propaganda_TargetToute, "Toute la ville" },
 
                 // Campagnes de district
                 { LocaleKeys.DistrictCampaign_Header, "Campagnes de district" },

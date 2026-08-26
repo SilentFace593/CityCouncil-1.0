@@ -374,6 +374,75 @@ namespace CityCouncil
             return true;
         }
 
+        /// <summary>
+        /// Lance la campagne digitale exclusive au Démocrate (bonus débloqué par le Liaison Satellite +
+        /// 3 victoires générales consécutives, cf. CouncilBonusSystem.IsDemocratDigitalBonusActive).
+        /// Coût fixe de 90000, bonus tiré ALÉATOIREMENT entre 3% et 7% au lancement (fixe pour la durée
+        /// de la campagne), appliqué symétriquement aux deux tranches d'âge (CampaignTarget.Toute).
+        /// Partage le même slot qu'une campagne classique : un parti ne peut pas cumuler une campagne
+        /// normale ET la campagne digitale en même temps (même garde-fou "déjà active" que TryLaunchCampaign).
+        /// </summary>
+        public bool TryLaunchDigitalCampaign(PoliticalParty party, bool autoRenew, out string error)
+        {
+            error = null;
+
+            if (party != PoliticalParty.Democrate)
+            {
+                error = "Campagne digitale réservée au Démocrate.";
+                return false;
+            }
+
+            if (!m_BonusSystem.IsDemocratDigitalBonusActive())
+            {
+                error = "Bonus digital non débloqué (Liaison Satellite + 3 victoires générales requises).";
+                return false;
+            }
+
+            var data = GetData();
+            foreach (var e in data.m_Entries)
+            {
+                if (e.m_Party == party && e.m_Active)
+                {
+                    error = "Une campagne est déjà en cours pour ce parti.";
+                    return false;
+                }
+            }
+
+            if (!m_MembershipSystem.TrySpendTreasury(party, CampaignCatalog.DigitalCampaignCost))
+            {
+                error = "Réserves insuffisantes.";
+                return false;
+            }
+
+            float roll = CampaignCatalog.DigitalCampaignBonusMin
+                + (float)m_AiRng.NextDouble() * (CampaignCatalog.DigitalCampaignBonusMax - CampaignCatalog.DigitalCampaignBonusMin);
+
+            data = GetData(); // relu après TrySpendTreasury
+            var entries = data.m_Entries;
+            for (int i = 0; i < entries.Length; i++)
+            {
+                if (entries[i].m_Party != party) continue;
+                entries[i] = new CampaignEntry
+                {
+                    m_Party = party,
+                    m_Active = true,
+                    m_Target = CampaignTarget.Toute,
+                    m_Intensity = CampaignIntensity.Forte, // valeur arbitraire, non utilisée pour le coût (m_IsDigital prime)
+                    m_BonusPercent = roll,
+                    m_ExpiryDay = CurrentDay() + CampaignCatalog.CampaignDurationDays,
+                    m_AutoRenew = autoRenew,
+                    m_IsDigital = true
+                };
+                break;
+            }
+            data.m_Entries = entries;
+            SetData(data);
+
+            s_Log.Info($"[CouncilPropagandaSystem] Campagne DIGITALE lancée : {party}, bonus tiré +{roll:P1} (coût {CampaignCatalog.DigitalCampaignCost}, autoRenew={autoRenew}).");
+            return true;
+        }
+
+
         public bool TryCancelCampaign(PoliticalParty party, out string error)
         {
             error = null;
@@ -421,31 +490,31 @@ namespace CityCouncil
                 var target = entry.m_Target;
                 var intensity = entry.m_Intensity;
                 bool wantsRenew = entry.m_AutoRenew;
+                bool wasDigital = entry.m_IsDigital; // AJOUT
 
                 entry.m_Active = false;
                 entries[i] = entry;
                 changed = true;
                 s_Log.Info($"[CouncilPropagandaSystem] Campagne de {party} expirée.");
 
-                // AJOUT — reconduction automatique : tentée APRÈS avoir désactivé l'ancienne entrée,
-                // pour permettre à TryLaunchCampaign de réutiliser normalement ce slot. Si les réserves
-                // sont insuffisantes, on n'insiste pas silencieusement — le joueur devra relancer
-                // manuellement (le flag autoRenew reste perdu, cohérent avec "sauf si réserve insuffisante").
                 if (wantsRenew)
                 {
-                    data.m_Entries = entries; // commit l'état "inactive" avant de retenter un lancement
+                    data.m_Entries = entries;
                     SetData(data);
 
-                    if (TryLaunchCampaign(party, target, intensity, autoRenew: true, out var renewError))
-                    {
-                        s_Log.Info($"[CouncilPropagandaSystem] Campagne de {party} reconduite automatiquement.");
-                    }
+                    bool renewed;
+                    string renewError;
+                    if (wasDigital) // AJOUT — branche dédiée pour la reconduction digitale
+                        renewed = TryLaunchDigitalCampaign(party, autoRenew: true, out renewError);
                     else
-                    {
-                        s_Log.Info($"[CouncilPropagandaSystem] Reconduction automatique de {party} annulée : {renewError}");
-                    }
+                        renewed = TryLaunchCampaign(party, target, intensity, autoRenew: true, out renewError);
 
-                    data = GetData(); // relu, TryLaunchCampaign peut avoir modifié l'entrée
+                    if (renewed)
+                        s_Log.Info($"[CouncilPropagandaSystem] Campagne de {party} reconduite automatiquement.");
+                    else
+                        s_Log.Info($"[CouncilPropagandaSystem] Reconduction automatique de {party} annulée : {renewError}");
+
+                    data = GetData();
                     entries = data.m_Entries;
                 }
             }
