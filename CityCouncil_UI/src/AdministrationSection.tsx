@@ -12,7 +12,7 @@ import {
   resolvePartyLabel,
   type PartyResultDto,
   type TranslateFn,
-  BONUS_BADGE
+  BonusBadgeIcon,
 } from "./PartyResultDto";
 
 // --- Bindings exposés par CouncilUISystem.cs (group "cityCouncil") ---
@@ -133,12 +133,12 @@ function PartyBadge({ result, bonus }: { result: PartyResultDto; bonus?: string 
           <span style={{ color: "white", fontSize: "15rem", fontWeight: 600, whiteSpace: "nowrap", wordBreak: "keep-all", overflowWrap: "normal" }}>
             {label}
           </span>
-          {/* TODO : remplacer par une vraie icône .png une fois le design disponible. */}
-          {bonus && bonus !== "None" && (
-            <span title={bonusTooltip} style={{ marginLeft: "6rem", fontSize: "14rem" }}>
-              {BONUS_BADGE[bonus] ?? ""}
-            </span>
-          )}
+
+                     {bonus && bonus !== "None" && (
+              <span title={bonusTooltip} style={{ marginLeft: "6rem" }}>
+                <BonusBadgeIcon bonus={bonus} widthRem={35} />
+              </span>
+            )}
         </div>
         <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "13rem", whiteSpace: "nowrap", wordBreak: "keep-all", overflowWrap: "normal" }}>
           {seatsLine}

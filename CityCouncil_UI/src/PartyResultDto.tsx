@@ -3,6 +3,8 @@ import logoEcologiste from "./images/logo_ecologiste.png";
 import logoRepublicain from "./images/logo_republicain.png";
 import logoGauche from "./images/logo_gauche.png";
 import logoPopuliste from "./images/logo_populiste.png";
+import bonusDefensifIcon from "./images/bonus_defensif.png";
+import bonusOffensifIcon from "./images/bonus_offensif.png";
 
 export interface PartyResultDto {
   party: string;
@@ -102,11 +104,36 @@ export function resolvePartyColor(r: PartyResultDto): string {
   return PARTY_COLORS[r.party] ?? "#888";
 }
 
-export const BONUS_BADGE: Record<string, string> = {
-  Defensif: "🛡️",
-  Offensif: "⚔️",
-
+export const BONUS_BADGE_IMAGES: Record<string, string> = {
+  Defensif: bonusDefensifIcon,
+  Offensif: bonusOffensifIcon,
 };
+
+// Ratio d'origine des PNG (175x248px) — conservé quelle que soit la largeur affichée.
+const BONUS_BADGE_ASPECT_RATIO = 175 / 248;
+
+export function BonusBadgeIcon({
+  bonus,
+  widthRem,
+}: {
+  bonus: string;
+  widthRem: number;
+}) {
+  const src = BONUS_BADGE_IMAGES[bonus];
+  if (!src) return null;
+
+  return (
+    <img
+      src={src}
+      style={{
+        width: `${widthRem}rem`,
+        height: `${widthRem / BONUS_BADGE_ASPECT_RATIO}rem`,
+        objectFit: "contain",
+        flexShrink: 0,
+      }}
+    />
+  );
+}
 
 /**
  * Logo de parti à taille fixée en rem. Toujours en rem (jamais px) : cohtml redimensionne

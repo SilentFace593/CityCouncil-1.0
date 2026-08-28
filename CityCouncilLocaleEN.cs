@@ -78,6 +78,7 @@ namespace CityCouncil
                 { LocaleKeys.Treasury_Dues, "Membership dues" },
                 { LocaleKeys.Treasury_PropagandaSpent, "Propaganda spending" },
                 { LocaleKeys.Treasury_CurrentTotal, "Current balance" },
+                { LocaleKeys.PartyDesc_Ecologiste, "YOUR ENGLISH TEXT HERE, with **bold**\n\nand paragraphs separated by a blank line." },
 
 
                 // City Events

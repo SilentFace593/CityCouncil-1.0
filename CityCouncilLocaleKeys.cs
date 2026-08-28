@@ -71,7 +71,12 @@
         public const string Treasury_PropagandaSpent = "CityCouncil.Treasury.PROPAGANDA_SPENT";
         public const string Treasury_CurrentTotal = "CityCouncil.Treasury.CURRENT_TOTAL";
         public const string Treasury_PollsSpent = "CityCouncil.Treasury.POLLS_SPENT";
-        
+        public const string PartyDesc_Ecologiste = "CityCouncil.PartyDesc.ECOLOGISTE";
+        public const string PartyDesc_Democrate = "CityCouncil.PartyDesc.DEMOCRATE";
+        public const string PartyDesc_Populiste = "CityCouncil.PartyDesc.POPULISTE";
+        public const string PartyDesc_Republicain = "CityCouncil.PartyDesc.REPUBLICAIN";
+        public const string PartyDesc_GaucheRadicale = "CityCouncil.PartyDesc.GAUCHE_RADICALE";
+
 
 
         // --- City Events ---

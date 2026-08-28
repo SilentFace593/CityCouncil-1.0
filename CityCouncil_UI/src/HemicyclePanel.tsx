@@ -15,6 +15,7 @@ import { RulesTab } from "./RulesTab";
 import { DebugTab } from "./DebugTab";
 import { centeredTabWrapperStyle, centeredTabContentStyle } from "./layoutConstants";
 import { VotingInstructionsCard } from "./VotingInstructionsCard";
+import { BonusBadgeIcon } from "./PartyResultDto";
 
 // --- Bindings exposés par CouncilUISystem.cs (group "cityCouncil") ---
 const hemicycleSeatsJson$ = bindValue<string>("cityCouncil", "hemicycleSeatsJson");
@@ -182,11 +183,15 @@ function BonusChoicePrompt() {
       <div style={{ display: "flex", gap: "8rem", marginBottom: "10rem" }}>
         {/* TODO : remplacer les emoji par de vraies icônes .png une fois le design disponible. */}
         <div style={optionStyle("Defensif")} onClick={() => setSelection("Defensif")}>
-          <div style={{ fontSize: "20rem", marginBottom: "4rem" }}>🛡️</div>
+          <div style={{ marginBottom: "4rem", display: "flex", justifyContent: "center" }}>
+  <BonusBadgeIcon bonus="Defensif" widthRem={150} />
+</div>
           <div>{defensifLabel}</div>
         </div>
         <div style={optionStyle("Offensif")} onClick={() => setSelection("Offensif")}>
-          <div style={{ fontSize: "20rem", marginBottom: "4rem" }}>⚔️</div>
+         <div style={{ marginBottom: "4rem", display: "flex", justifyContent: "center" }}>
+  <BonusBadgeIcon bonus="Offensif" widthRem={150} />
+</div>
           <div>{offensifLabel}</div>
         </div>
       </div>

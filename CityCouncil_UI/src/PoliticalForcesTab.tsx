@@ -1,12 +1,12 @@
 import { useMemo, useState } from "react";
 import { bindValue, trigger, useValue } from "cs2/api";
 import { useLocalization } from "cs2/l10n";
+import { Scrollable } from "cs2/ui";
 import {
   PartyLogo,
   translatePartyName,
   PARTY_COLORS,
   PARTY_ORDER,
-  BONUS_BADGE,
   CUSTOM_PARTY_PALETTE_HEX,
   type PartyResultDto,
 } from "./PartyResultDto";
@@ -16,6 +16,8 @@ import bonusExcluPopulisteIcon from "./images/Bonus_EXCLU_Populiste.png";
 import bonusExcluEcologisteIcon from "./images/Bonus_EXCLU_Ecologiste.png";
 import bonusExcluGaucheRadicaleIcon from "./images/Bonus_EXCLU_Gauche.png";
 import bonusExcluDemocrateIcon from "./images/Bonus_EXCLU_Democrate.png";
+import { PartyDescriptionBlock } from "./PartyDescriptionBlock";
+import { BonusBadgeIcon } from "./PartyResultDto";
 
 const hemicycleSeatsJson$ = bindValue<string>("cityCouncil", "hemicycleSeatsJson");
 const partyMembershipJson$ = bindValue<string>("cityCouncil", "partyMembershipJson");
@@ -33,6 +35,7 @@ const populistPrisonBonusActive$ = bindValue<boolean>("cityCouncil", "populistPr
 const ecologistNuclearBonusActive$ = bindValue<boolean>("cityCouncil", "ecologistNuclearBonusActive");
 const radicalLeftUniversityBonusActive$ = bindValue<boolean>("cityCouncil", "radicalLeftUniversityBonusActive");
 const democratDigitalBonusActive$ = bindValue<boolean>("cityCouncil", "democratDigitalBonusActive");
+const TAB_HEIGHT = "560rem";
 
 
 interface BlackFundDto { active: boolean; balance: number; }
@@ -191,7 +194,7 @@ export function PoliticalForcesTab() {
     : "";
 
   return (
-    <div style={{ display: "flex", width: "100%", height: "100%", boxSizing: "border-box" }}>
+   <div style={{ display: "flex", width: "100%", height: TAB_HEIGHT, boxSizing: "border-box" }}>
       {/* Colonne gauche : liste des partis */}
 <div style={{ width: "150rem", flexShrink: 0, borderRight: "1rem solid rgba(255,255,255,0.12)", overflowY: "auto" }}>
   {entries.map((e) => {
@@ -221,7 +224,7 @@ export function PoliticalForcesTab() {
         />
         <div style={{ color: "white", fontSize: "13rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", display: "flex", alignItems: "center", gap: "4rem" }}>
           <span>{e.label}</span>
-          {e.bonus !== "None" && <span style={{ fontSize: "12rem" }}>{BONUS_BADGE[e.bonus] ?? ""}</span>}
+                {e.bonus !== "None" && <BonusBadgeIcon bonus={e.bonus} widthRem={12} />}
 
           {e.key === "Republicain" && bureauBonusActive && (
             <img
@@ -255,7 +258,8 @@ export function PoliticalForcesTab() {
 
       {/* Colonne droite : détail du parti sélectionné */}
       {selected && (
-        <div style={{ flex: 1, padding: "16rem", overflowY: "auto" }}>
+        <Scrollable style={{ flex: 1 }}>
+          <div style={{ padding: "16rem" }}>
           <div style={{ display: "flex", alignItems: "center", marginBottom: "10rem" }}>
             <div style={{ marginRight: "10rem" }}>
               <PartyLogo party={selected.key} color={selected.color} isCustom={selected.isPlayerParty} sizeRem={90} />
@@ -265,9 +269,13 @@ export function PoliticalForcesTab() {
             </div>
           </div>
 
-          <div style={{ color: "rgba(255,255,255,0.8)", fontSize: "13rem", marginBottom: "14rem", lineHeight: "18rem" }}>
-            {selected.description}
-          </div>
+                  <div style={{ marginBottom: "14rem" }}>
+                      <PartyDescriptionBlock
+                          partyKey={selected.key}
+                          fallbackText={selected.description}
+                          isPlayerParty={selected.isPlayerParty}
+                        />
+                  </div>
 
           {selected.pendingReplacement && (
             <div
@@ -284,18 +292,21 @@ export function PoliticalForcesTab() {
           )}
 
           {bonusLabel && (
-            <div style={{ color: "rgba(150,190,255,0.9)", fontSize: "12rem", fontWeight: 700, marginBottom: "10rem", whiteSpace: "nowrap" }}>
-              {bonusLabel}
-            </div>
-          )}
+  <div style={{ marginBottom: "10rem" }}>
+    <div style={{ color: "rgba(150,190,255,0.9)", fontSize: "12rem", fontWeight: 700, marginBottom: "6rem", whiteSpace: "nowrap" }}>
+      {bonusLabel}
+    </div>
+    {selected.bonus !== "None" && <BonusBadgeIcon bonus={selected.bonus} widthRem={150} />}
+  </div>
+)}
 
           {selected.key === "Republicain" && bureauBonusActive && (
-            <div style={{ display: "flex", alignItems: "center", marginBottom: "10rem" }}>
-                    <img
-                      src={bonusExcluRepublicainIcon}
-                      alt=""
-                      style={{ width: "18rem", height: "18rem", marginRight: "6rem", flexShrink: 0 }}
-                    />
+           <div style={{ display: "flex", alignItems: "flex-start", marginBottom: "10rem" }}>
+                        <img
+                          src={bonusExcluRepublicainIcon}
+                          alt=""
+                          style={{ width: "150rem", height: "212.46rem", objectFit: "contain", marginRight: "10rem", flexShrink: 0 }}
+                        />
                 <span style={{ color: "rgba(150,190,255,0.9)", fontSize: "12rem", fontWeight: 700, whiteSpace: "nowrap" }}>
                   {t("CityCouncil.Forces.BUREAU_BONUS_ACTIVE", "Central Intelligence Bureau : +50% cotisations")}
                 </span>
@@ -462,6 +473,7 @@ export function PoliticalForcesTab() {
             )}
           </div>
         </div>
+         </Scrollable>
       )}
     </div>
   );
