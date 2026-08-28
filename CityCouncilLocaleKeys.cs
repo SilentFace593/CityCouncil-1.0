@@ -246,6 +246,13 @@
         //Score
         public const string Score_TabLabel = "CityCouncil.Score.TAB_LABEL";
         public const string Score_Header = "CityCouncil.Score.HEADER";
+        public const string Score_DetailTrophy = "CityCouncil.Score.DETAIL_TROPHY";
+        public const string Score_DetailSeats = "CityCouncil.Score.DETAIL_SEATS";
+        public const string Score_DetailDistricts = "CityCouncil.Score.DETAIL_DISTRICTS";
+        public const string Score_DetailBastions = "CityCouncil.Score.DETAIL_BASTIONS";
+        public const string Score_DetailPossessionTotal = "CityCouncil.Score.DETAIL_POSSESSION_TOTAL";
+        public const string Score_DetailGrandTotal = "CityCouncil.Score.DETAIL_GRAND_TOTAL";
+        public const string Score_DetailMembers = "CityCouncil.Score.DETAIL_MEMBERS";
 
         //Onglet Règles
         public const string Rules_TabLabel = "CityCouncil.Rules.TAB_LABEL";

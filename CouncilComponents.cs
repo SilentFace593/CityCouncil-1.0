@@ -217,8 +217,8 @@ namespace CityCouncil
     {
         public static readonly System.Collections.Generic.Dictionary<PartyStructureType, (float membersPerSeatGained, float duesPerMember)> Rules = new()
     {
-        { PartyStructureType.Cadres, (1f, 450f) },
-        { PartyStructureType.Masse, (3f, 100f) },
+        { PartyStructureType.Cadres, (10f, 45f) },
+        { PartyStructureType.Masse, (30f, 10f) },
     };
 
         /// <summary>Type par défaut d'un parti IA, selon l'espace politique vanilla qu'il occupe.</summary>
@@ -391,8 +391,8 @@ namespace CityCouncil
         public int m_StreakCount;             // 0..3, remis à 1 dès qu'un autre parti gagne
         public bool m_IsBastion;              // true dès que m_StreakCount atteint 3
         public PoliticalParty m_BastionParty; // parti détenteur (valide seulement si m_IsBastion)
-        public FixedList64Bytes<DistrictCampaignEntry> m_DistrictCampaigns;
-        public FixedList64Bytes<IllegalCampaignEntry> m_IllegalCampaigns;
+        public FixedList512Bytes<DistrictCampaignEntry> m_DistrictCampaigns;
+        public FixedList512Bytes<IllegalCampaignEntry> m_IllegalCampaigns;
 
 
         private const int kCurrentDataVersion = 4; // bump version
@@ -1070,6 +1070,7 @@ public struct CouncilPollData : IComponentData, ISerializable
         public const long PointsPerSeatHeld = 10;
         public const long PointsPerBastionHeld = 1000;
         public const long PointsPerDistrictHeld = 300;
+        public const long PointsPerMember = 1;
         public const long PointsGeneralElectionWon = 500;  // trophée, sur changement de majorité générale
         public const long PointsDistrictWon = 150;          // trophée, sur changement de leader d'un district
     }

@@ -32,6 +32,7 @@ namespace CityCouncil
 
         private Entity m_SingletonEntity = Entity.Null;
         private double m_LastCycleDay = -1;
+        private CouncilPartyMembershipSystem m_MembershipSystem;
 
         protected override void OnCreate()
         {
@@ -39,6 +40,7 @@ namespace CityCouncil
             m_SingletonQuery = GetEntityQuery(ComponentType.ReadOnly<CouncilScoreData>());
             m_DistrictQuery = GetEntityQuery(ComponentType.ReadOnly<CouncilDistrictData>());
             m_SimulationSystem = World.GetOrCreateSystemManaged<SimulationSystem>();
+            m_MembershipSystem = World.GetOrCreateSystemManaged<CouncilPartyMembershipSystem>();
         }
 
         protected override void OnGamePreload(Purpose purpose, Game.GameMode mode)
@@ -186,6 +188,7 @@ namespace CityCouncil
             }
         }
 
+
         private PoliticalParty? GetCityMajorityParty()
         {
             var totals = new Dictionary<PoliticalParty, int>();
@@ -241,6 +244,12 @@ namespace CityCouncil
             }
             finally { districts.Dispose(); }
 
+            var membershipData = m_MembershipSystem.GetData();
+            foreach (var entry in membershipData.m_Entries)
+            {
+                possession[entry.m_Party] += (long)MathF.Round(entry.m_Members) * ScoreCatalog.PointsPerMember;
+            }
+
             return possession;
         }
 
@@ -258,6 +267,83 @@ namespace CityCouncil
                 totals[p] = trophy + possession[p];
             }
             return totals;
+        }
+
+        /// <summary>
+        /// Détail décomposé du score de chaque parti (trophées + décompte brut de possession), pour
+        /// affichage détaillé côté UI (onglet Score, ligne dépliable). Scan dédié des districts,
+        /// volontairement indépendant de GetPossessionScores/GetTotalScores — même choix de
+        /// découplage que documenté ailleurs dans le mod (cf. GetCityMajorityParty dupliqué).
+        /// </summary>
+        public Dictionary<PoliticalParty, PartyScoreBreakdown> GetScoreBreakdowns()
+        {
+            var counts = new Dictionary<PoliticalParty, (int seats, int districtsHeld, int bastionsHeld)>();
+            foreach (PoliticalParty p in Enum.GetValues(typeof(PoliticalParty))) counts[p] = (0, 0, 0);
+
+            var districts = m_DistrictQuery.ToEntityArray(Allocator.Temp);
+            try
+            {
+                foreach (var d in districts)
+                {
+                    if (!EntityManager.HasComponent<CouncilDistrictData>(d)) continue;
+                    var data = EntityManager.GetComponentData<CouncilDistrictData>(d);
+                    if (data.m_Phase != ElectionPhase.Completed) continue;
+
+                    foreach (var r in data.m_FinalResults)
+                    {
+                        var c = counts[r.m_Party];
+                        c.seats += r.m_Seats;
+                        counts[r.m_Party] = c;
+                    }
+
+                    var leaderCount = counts[data.m_LeadingParty];
+                    leaderCount.districtsHeld += 1;
+                    counts[data.m_LeadingParty] = leaderCount;
+
+                    if (data.m_IsBastion)
+                    {
+                        var bastionCount = counts[data.m_BastionParty];
+                        bastionCount.bastionsHeld += 1;
+                        counts[data.m_BastionParty] = bastionCount;
+                    }
+                }
+            }
+            finally { districts.Dispose(); }
+
+            // AJOUT — nombre d'adhérents par parti, arrondi comme partout ailleurs côté UI.
+            var membersCount = new Dictionary<PoliticalParty, int>();
+            foreach (PoliticalParty p in Enum.GetValues(typeof(PoliticalParty))) membersCount[p] = 0;
+            var membershipData = m_MembershipSystem.GetData();
+            foreach (var entry in membershipData.m_Entries)
+                membersCount[entry.m_Party] = (int)MathF.Round(entry.m_Members);
+
+            var trophyData = GetData();
+            var result = new Dictionary<PoliticalParty, PartyScoreBreakdown>();
+            foreach (PoliticalParty p in Enum.GetValues(typeof(PoliticalParty)))
+            {
+                long trophy = 0;
+                foreach (var e in trophyData.m_TrophyEntries)
+                    if (e.m_Party == p) { trophy = e.m_TrophyScore; break; }
+
+                var c = counts[p];
+                int members = membersCount[p];
+                long possession = c.seats * ScoreCatalog.PointsPerSeatHeld
+                                 + c.districtsHeld * ScoreCatalog.PointsPerDistrictHeld
+                                 + c.bastionsHeld * ScoreCatalog.PointsPerBastionHeld
+                                 + members * ScoreCatalog.PointsPerMember; // AJOUT
+
+                result[p] = new PartyScoreBreakdown
+                {
+                    TrophyScore = trophy,
+                    SeatsHeld = c.seats,
+                    DistrictsHeld = c.districtsHeld,
+                    BastionsHeld = c.bastionsHeld,
+                    MembersCount = members, // AJOUT
+                    PossessionScore = possession,
+                    TotalScore = trophy + possession
+                };
+            }
+            return result;
         }
 
         /// <summary>Remet les trophées d'un slot à 0 — appelé par CouncilCustomPartySystem lors d'une activation de substitution.</summary>
@@ -284,6 +370,18 @@ namespace CityCouncil
             m_LastCycleDay = currentDay - CycleIntervalDays - 0.001;
             RunGeneralElectionCheck();
             s_Log.Info("[CouncilScoreSystem] DEBUG : contrôle d'élection générale forcé immédiatement.");
+        }
+
+        /// <summary>Détail du score d'un parti, décomposé pour affichage dans l'onglet Score.</summary>
+        public struct PartyScoreBreakdown
+        {
+            public long TrophyScore;
+            public int SeatsHeld;
+            public int DistrictsHeld;
+            public int BastionsHeld;
+            public int MembersCount;
+            public long PossessionScore;
+            public long TotalScore;
         }
     }
 }

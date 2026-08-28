@@ -27,8 +27,8 @@ namespace CityCouncil
                 { LocaleKeys.YourPartyTab_StructureLabel, "Type de parti" },
                 { LocaleKeys.YourPartyTab_StructureCadres, "Parti de cadres" },
                 { LocaleKeys.YourPartyTab_StructureMasse, "Parti de masse" },
-                { LocaleKeys.YourPartyTab_StructureCadresDesc, "+1 adhérent par siège gagné, cotisation de 450 crédits/adhérent." },
-                { LocaleKeys.YourPartyTab_StructureMasseDesc, "+3 adhérents par siège gagné, cotisation de 100 crédits/adhérent." },
+                { LocaleKeys.YourPartyTab_StructureCadresDesc, "+10 adhérent par siège gagné, cotisation de 45 crédits/adhérent." },
+                { LocaleKeys.YourPartyTab_StructureMasseDesc, "+30 adhérents par siège gagné, cotisation de 10 crédits/adhérent." },
 
                 // HemicyclePanel
                 { LocaleKeys.Hemicycle_PanelTitle, "Conseil municipal" },
@@ -249,6 +249,13 @@ namespace CityCouncil
                 // Score
                 { LocaleKeys.Score_TabLabel, "Score" },
                 { LocaleKeys.Score_Header, "Classement" },
+                { LocaleKeys.Score_DetailTrophy, "Trophées (conquêtes définitives)" },
+                { LocaleKeys.Score_DetailSeats, "Sièges détenus" },
+                { LocaleKeys.Score_DetailDistricts, "Districts dirigés" },
+                { LocaleKeys.Score_DetailBastions, "Bastions détenus" },
+                { LocaleKeys.Score_DetailMembers, "Adhérents" },
+                { LocaleKeys.Score_DetailPossessionTotal, "Total possession" },
+                { LocaleKeys.Score_DetailGrandTotal, "Score total" },
 
                 // Règles
                 { LocaleKeys.Rules_TabLabel, "Règles" },

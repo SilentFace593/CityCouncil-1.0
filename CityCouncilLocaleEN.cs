@@ -27,8 +27,8 @@ namespace CityCouncil
                 { LocaleKeys.YourPartyTab_StructureLabel, "Party type" },
                 { LocaleKeys.YourPartyTab_StructureCadres, "Cadre party" },
                 { LocaleKeys.YourPartyTab_StructureMasse, "Mass party" },
-                { LocaleKeys.YourPartyTab_StructureCadresDesc, "+1 member per seat won, 450 credits due per member." },
-                { LocaleKeys.YourPartyTab_StructureMasseDesc, "+3 members per seat won, 100 credits due per member." },
+                { LocaleKeys.YourPartyTab_StructureCadresDesc, "+10 member per seat won, 45 credits due per member." },
+                { LocaleKeys.YourPartyTab_StructureMasseDesc, "+30 members per seat won, 10 credits due per member." },
 
                 // HemicyclePanel
                 { LocaleKeys.Hemicycle_PanelTitle, "City Council" },
@@ -245,6 +245,13 @@ namespace CityCouncil
                 //Score
                 { LocaleKeys.Score_TabLabel, "Score" },
                 { LocaleKeys.Score_Header, "Ranking" },
+                { LocaleKeys.Score_DetailTrophy, "Trophies (permanent conquests)" },
+                { LocaleKeys.Score_DetailSeats, "Seats held" },
+                { LocaleKeys.Score_DetailDistricts, "Districts led" },
+                { LocaleKeys.Score_DetailBastions, "Strongholds held" },
+                { LocaleKeys.Score_DetailMembers, "Members" },
+                { LocaleKeys.Score_DetailPossessionTotal, "Possession total" },
+                { LocaleKeys.Score_DetailGrandTotal, "Total score" },
 
                 //Rules
                 { LocaleKeys.Rules_TabLabel, "Rules" },

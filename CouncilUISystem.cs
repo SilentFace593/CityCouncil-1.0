@@ -1075,9 +1075,21 @@ namespace CityCouncil.Systems
         // Score
         private void UpdateScoreBindingIfChanged(bool force = false)
         {
-            var totals = m_ScoreSystem.GetTotalScores();
-            var dtos = totals
-                .Select(kv => new ScoreDto { party = kv.Key.ToString(), score = kv.Value, displayName = "", displayColor = "" })
+            var breakdowns = m_ScoreSystem.GetScoreBreakdowns();
+            var dtos = breakdowns
+                .Select(kv => new ScoreDto
+                {
+                    party = kv.Key.ToString(),
+                    score = kv.Value.TotalScore,
+                    displayName = "",
+                    displayColor = "",
+                    trophyScore = kv.Value.TrophyScore,
+                    seatsHeld = kv.Value.SeatsHeld,
+                    districtsHeld = kv.Value.DistrictsHeld,
+                    bastionsHeld = kv.Value.BastionsHeld,
+                    membersCount = kv.Value.MembersCount,
+                    possessionScore = kv.Value.PossessionScore
+                })
                 .Select(DecorateScoreWithCustomParty)
                 .OrderByDescending(d => d.score)
                 .ToArray();
@@ -1773,6 +1785,12 @@ private static bool DataEquals(in CouncilDistrictData a, in CouncilDistrictData 
         public long score;
         public string displayName;
         public string displayColor;
+        public long trophyScore;
+        public int seatsHeld;
+        public int districtsHeld;
+        public int bastionsHeld;
+        public int membersCount;
+        public long possessionScore;
 
         public static string ToJsonArray(System.Collections.Generic.IEnumerable<ScoreDto> items)
         {
@@ -1787,7 +1805,13 @@ private static bool DataEquals(in CouncilDistrictData a, in CouncilDistrictData 
                 sb.Append("\"party\":\"").Append(d.party).Append("\",");
                 sb.Append("\"score\":").Append(d.score.ToString(System.Globalization.CultureInfo.InvariantCulture)).Append(',');
                 sb.Append("\"displayName\":\"").Append(EscapeJson(d.displayName ?? "")).Append("\",");
-                sb.Append("\"displayColor\":\"").Append(d.displayColor ?? "").Append("\"");
+                sb.Append("\"displayColor\":\"").Append(d.displayColor ?? "").Append("\",");
+                sb.Append("\"trophyScore\":").Append(d.trophyScore).Append(',');
+                sb.Append("\"seatsHeld\":").Append(d.seatsHeld).Append(',');
+                sb.Append("\"districtsHeld\":").Append(d.districtsHeld).Append(',');
+                sb.Append("\"bastionsHeld\":").Append(d.bastionsHeld).Append(',');
+                sb.Append("\"membersCount\":").Append(d.membersCount).Append(',');
+                sb.Append("\"possessionScore\":").Append(d.possessionScore);
                 sb.Append('}');
             }
             sb.Append(']');

@@ -533,8 +533,8 @@ namespace CityCouncil
         /// UNE SEULE FOIS ici et reste fixe pour toute la durée de la campagne (cf. remarque design).
         /// </summary>
         public bool TryLaunchDistrictCampaign(
-            Entity districtEntity, PoliticalParty party, DistrictCampaignType type,
-            PoliticalParty targetParty, CampaignIntensity boostTier, out string error)
+    Entity districtEntity, PoliticalParty party, DistrictCampaignType type,
+    PoliticalParty targetParty, CampaignIntensity boostTier, out string error)
         {
             error = null;
 
@@ -546,7 +546,7 @@ namespace CityCouncil
 
             int activeCount = CountActiveDistrictCampaignsForParty(party);
             int maxAllowed = GetMaxDistrictCampaignsForParty(party);
-            if (activeCount >= DistrictCampaignCatalog.MaxActiveCampaignsPerParty)
+            if (activeCount >= maxAllowed) 
             {
                 error = $"Nombre maximum de campagnes de district atteint ({maxAllowed}).";
                 return false;

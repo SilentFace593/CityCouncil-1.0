@@ -375,13 +375,13 @@ export function YourPartyTab() {
   <div style={{ display: "flex", gap: "10rem" }}>
     <StructureCheckboxOption
       label={t("CityCouncil.YourPartyTab.STRUCTURE_CADRES", "Parti de cadres")}
-      description={t("CityCouncil.YourPartyTab.STRUCTURE_CADRES_DESC", "+1 adhérent par siège gagné, cotisation de 450 crédits/adhérent.")}
+      description={t("CityCouncil.YourPartyTab.STRUCTURE_CADRES_DESC", "+10 adhérent par siège gagné, cotisation de 45 crédits/adhérent.")}
       checked={structureType === "Cadres"}
       onSelect={() => setStructureType("Cadres")}
     />
     <StructureCheckboxOption
       label={t("CityCouncil.YourPartyTab.STRUCTURE_MASSE", "Parti de masse")}
-      description={t("CityCouncil.YourPartyTab.STRUCTURE_MASSE_DESC", "+3 adhérents par siège gagné, cotisation de 100 crédits/adhérent.")}
+      description={t("CityCouncil.YourPartyTab.STRUCTURE_MASSE_DESC", "+30 adhérents par siège gagné, cotisation de 10 crédits/adhérent.")}
       checked={structureType === "Masse"}
       onSelect={() => setStructureType("Masse")}
     />
