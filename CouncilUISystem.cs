@@ -58,6 +58,7 @@ namespace CityCouncil.Systems
         private ValueBinding<string> m_AdminBastionStreakPartyBinding; // nom du parti en série, ou "" si aucune série
         private ValueBinding<int> m_AdminBastionStreakCountBinding;    // 0..3
         private ValueBinding<bool> m_AdminBastionActiveBinding;        // true si Bastion effectivement acquis
+        private ValueBinding<bool> m_AdminBastionReinforcedActiveBinding;
 
         // --- Panneau hémicycle (ville entière) ---
         private ValueBinding<string> m_HemicycleSeatsBinding; // agrégat tous districts confondus, sérialisé en JSON
@@ -178,6 +179,12 @@ namespace CityCouncil.Systems
         private string m_LastPushedVotingInstructionDistrictsJson;
         private bool m_HasLastPushedVotingInstructionDistricts;
 
+        //Bastion Renforcé
+        private CityCouncil.CouncilReinforcedBastionSystem m_ReinforcedBastionSystem; // AJOUT
+        private ValueBinding<string> m_ReinforcedBastionEligibleDistrictsJsonBinding; // AJOUT
+        private string m_LastPushedReinforcedBastionEligibleJson; // AJOUT
+        private bool m_HasLastPushedReinforcedBastionEligible; // AJOUT
+
         //Onglet DEBUG
         private ValueBinding<bool> m_ShowDebugTabBinding;
         private bool m_LastPushedShowDebugTab;
@@ -208,6 +215,7 @@ namespace CityCouncil.Systems
             m_TaxSystem = World.GetOrCreateSystemManaged<CityCouncil.CouncilTaxSystem>();
             m_InstitutionSystem = World.GetOrCreateSystemManaged<CityCouncil.CouncilInstitutionSystem>();
             m_VotingInstructionSystem = World.GetOrCreateSystemManaged<CityCouncil.CouncilVotingInstructionSystem>();
+            m_ReinforcedBastionSystem = World.GetOrCreateSystemManaged<CityCouncil.CouncilReinforcedBastionSystem>(); // AJOUT
 
 
 
@@ -239,6 +247,7 @@ namespace CityCouncil.Systems
             m_AdminBastionStreakPartyBinding = new ValueBinding<string>(kGroup, "adminBastionStreakParty", "");
             m_AdminBastionStreakCountBinding = new ValueBinding<int>(kGroup, "adminBastionStreakCount", 0);
             m_AdminBastionActiveBinding = new ValueBinding<bool>(kGroup, "adminBastionActive", false);
+            m_AdminBastionReinforcedActiveBinding = new ValueBinding<bool>(kGroup, "adminBastionReinforcedActive", false); // AJOUT
             m_AdminLeadingPartyBonusBinding = new ValueBinding<string>(kGroup, "adminLeadingPartyBonus", "None");
             m_PartyBonusesJsonBinding = new ValueBinding<string>(kGroup, "partyBonusesJson", "[]");
             m_PlayerBonusChoicePendingBinding = new ValueBinding<bool>(kGroup, "playerBonusChoicePending", false);
@@ -270,6 +279,8 @@ namespace CityCouncil.Systems
             m_DemocratDigitalBonusActiveBinding = new ValueBinding<bool>(kGroup, "democratDigitalBonusActive", false);
             m_SatelliteUplinkPresentBinding = new ValueBinding<bool>(kGroup, "satelliteUplinkPresent", false);
             m_VotingInstructionDistrictsJsonBinding = new ValueBinding<string>(kGroup, "votingInstructionDistrictsJson", "[]");
+            m_ReinforcedBastionEligibleDistrictsJsonBinding = new ValueBinding<string>(kGroup, "reinforcedBastionEligibleDistrictsJson", "[]"); // AJOUT
+
 
 
             AddBinding(m_AdminVisibleBinding);
@@ -299,6 +310,7 @@ namespace CityCouncil.Systems
             AddBinding(m_AdminBastionStreakPartyBinding);
             AddBinding(m_AdminBastionStreakCountBinding);
             AddBinding(m_AdminBastionActiveBinding);
+            AddBinding(m_AdminBastionReinforcedActiveBinding);
             AddBinding(m_AdminLeadingPartyBonusBinding);
             AddBinding(m_PartyBonusesJsonBinding);
             AddBinding(m_PlayerBonusChoicePendingBinding);
@@ -330,6 +342,22 @@ namespace CityCouncil.Systems
             AddBinding(m_DemocratDigitalBonusActiveBinding);
             AddBinding(m_SatelliteUplinkPresentBinding);
             AddBinding(m_VotingInstructionDistrictsJsonBinding);
+            AddBinding(m_ReinforcedBastionEligibleDistrictsJsonBinding); // AJOUT
+
+            AddBinding(new TriggerBinding<string>(kGroup, "chooseReinforcedBastion",
+    (districtIdStr) =>
+    {
+        if (!int.TryParse(districtIdStr, out int districtId)) return;
+        var districtEntity = FindDistrictByIndex(districtId);
+        if (districtEntity == Entity.Null) return;
+
+        var custom = m_CustomPartySystem.GetData();
+        if (!custom.m_Exists || !custom.m_SubstitutionActive) return;
+
+        var (seniors, adults, _) = m_ElectionSystem.GetDistrictDemographicsForPoll(districtEntity); // AJOUT
+        m_ReinforcedBastionSystem.TryChooseReinforcedBastion(custom.m_ActiveSpace, districtEntity, seniors + adults, out _); // MODIFIÉ
+        UpdateReinforcedBastionEligibleBinding(force: true);
+    }));
 
             AddBinding(new TriggerBinding<string>(kGroup, "submitVotingInstructions",
     (choicesStr) =>
@@ -599,6 +627,7 @@ namespace CityCouncil.Systems
             UpdateUniversityBonusBindingIfChanged();
             UpdateDigitalBonusBindingIfChanged();
             UpdateVotingInstructionDistrictsBinding();
+            UpdateReinforcedBastionEligibleBinding(); // AJOUT
 
 
             Entity selected = m_ToolSystem.selected;
@@ -636,7 +665,7 @@ namespace CityCouncil.Systems
             if (!selectionChanged && m_HasLastPushedData && DataEquals(data, m_LastPushedData))
                 return;
 
-            PushAdminData(data);
+            PushAdminData(selected, data);
             m_LastPushedData = data;
             m_HasLastPushedData = true;
 
@@ -657,6 +686,35 @@ namespace CityCouncil.Systems
             m_HasLastPushedShowDebugTab = true;
         }
 
+
+        private void UpdateReinforcedBastionEligibleBinding(bool force = false)
+        {
+            var custom = m_CustomPartySystem.GetData();
+            var dtos = new List<ReinforcedBastionDistrictDto>();
+
+            if (custom.m_Exists && custom.m_SubstitutionActive)
+            {
+                var playerParty = custom.m_ActiveSpace;
+                var eligible = m_ReinforcedBastionSystem.GetEligibleDistricts(playerParty);
+                foreach (var d in eligible)
+                {
+                    var (seniors, adults, _) = m_ElectionSystem.GetDistrictDemographicsForPoll(d); // AJOUT
+                    dtos.Add(new ReinforcedBastionDistrictDto
+                    {
+                        districtId = d.Index,
+                        districtName = GetDistrictDisplayName(d),
+                        population = seniors + adults // AJOUT
+                    });
+                }
+            }
+
+            string json = ReinforcedBastionDistrictDto.ToJsonArray(dtos);
+            if (!force && m_HasLastPushedReinforcedBastionEligible && json == m_LastPushedReinforcedBastionEligibleJson) return;
+
+            m_ReinforcedBastionEligibleDistrictsJsonBinding.Update(json);
+            m_LastPushedReinforcedBastionEligibleJson = json;
+            m_HasLastPushedReinforcedBastionEligible = true;
+        }
 
         private void UpdateVotingInstructionDistrictsBinding(bool force = false)
         {
@@ -1236,7 +1294,7 @@ namespace CityCouncil.Systems
             m_HasLastPushedCustomParty = true;
         }
 
-        private void PushAdminData(CouncilDistrictData data)
+        private void PushAdminData(Entity districtEntity, CouncilDistrictData data)
         {
             m_AdminVisibleBinding.Update(true);
             m_AdminPhaseBinding.Update(data.m_Phase.ToString());
@@ -1289,6 +1347,10 @@ namespace CityCouncil.Systems
             m_AdminBastionStreakPartyBinding.Update(data.m_StreakCount > 0 ? data.m_StreakParty.ToString() : "");
             m_AdminBastionStreakCountBinding.Update(data.m_StreakCount);
             m_AdminBastionActiveBinding.Update(data.m_IsBastion);
+
+            bool reinforcedActive = data.m_IsBastion
+    && m_ReinforcedBastionSystem.IsReinforcedBastion(data.m_BastionParty, districtEntity.Index); // AJOUT
+            m_AdminBastionReinforcedActiveBinding.Update(reinforcedActive); // AJOUT
 
             // Bonus permanent du parti leader (icône affichée à côté du logo côté React).
             m_AdminLeadingPartyBonusBinding.Update(
@@ -1435,6 +1497,7 @@ namespace CityCouncil.Systems
         {
             var totals = new System.Collections.Generic.Dictionary<CityCouncil.PoliticalParty, int>();
             var bastionCounts = new System.Collections.Generic.Dictionary<CityCouncil.PoliticalParty, int>();
+            var reinforcedBastionCounts = new System.Collections.Generic.Dictionary<CityCouncil.PoliticalParty, int>(); // AJOUT
             CityCouncil.PoliticalParty leader = default;
             int leaderSeats = -1;
 
@@ -1459,12 +1522,17 @@ namespace CityCouncil.Systems
                         }
                     }
 
-                    // AJOUT — comptage des Bastions, indépendant des sièges : un seul Bastion par
-                    // district (data.m_BastionParty), valide uniquement si data.m_IsBastion.
                     if (data.m_IsBastion)
                     {
-                       bastionCounts.TryGetValue(data.m_BastionParty, out int currentBastions);
-                       bastionCounts[data.m_BastionParty] = currentBastions + 1;
+                        bastionCounts.TryGetValue(data.m_BastionParty, out int currentBastions);
+                        bastionCounts[data.m_BastionParty] = currentBastions + 1;
+
+                        // AJOUT — compte séparément les Bastions Renforcés (sous-ensemble des Bastions classiques).
+                        if (m_ReinforcedBastionSystem.IsReinforcedBastion(data.m_BastionParty, districtEntity.Index))
+                        {
+                            reinforcedBastionCounts.TryGetValue(data.m_BastionParty, out int currentReinforced);
+                            reinforcedBastionCounts[data.m_BastionParty] = currentReinforced + 1;
+                        }
                     }
                 }
             }
@@ -1475,12 +1543,13 @@ namespace CityCouncil.Systems
 
             var seatsDto = totals
                .Select(kv => new PartyResultDto
-                {
-                party = kv.Key.ToString(),
-                seats = kv.Value,
-                voteShare = 0f,
-                bastions = bastionCounts.TryGetValue(kv.Key, out int b) ? b : 0
-                })
+               {
+                   party = kv.Key.ToString(),
+                   seats = kv.Value,
+                   voteShare = 0f,
+                   bastions = bastionCounts.TryGetValue(kv.Key, out int b) ? b : 0,
+                   reinforcedBastions = reinforcedBastionCounts.TryGetValue(kv.Key, out int rb) ? rb : 0 // AJOUT
+               })
                 .Select(DecorateWithCustomParty)
                 .OrderByDescending(r => r.seats)
                 .ToArray();
@@ -1568,6 +1637,7 @@ private static bool DataEquals(in CouncilDistrictData a, in CouncilDistrictData 
         public string displayName;
         public string displayColor;
         public int bastions;
+        public int reinforcedBastions;
 
         public static PartyResultDto From(PartyResult r) => new PartyResultDto
         {
@@ -1576,7 +1646,8 @@ private static bool DataEquals(in CouncilDistrictData a, in CouncilDistrictData 
             voteShare = r.m_VoteShare,
             displayName = "",
             displayColor = "",
-            bastions = 0
+            bastions = 0,
+            reinforcedBastions = 0
         };
 
         /// <summary>
@@ -1600,7 +1671,8 @@ private static bool DataEquals(in CouncilDistrictData a, in CouncilDistrictData 
                 sb.Append("\"voteShare\":").Append(r.voteShare.ToString(System.Globalization.CultureInfo.InvariantCulture)).Append(',');
                 sb.Append("\"displayName\":\"").Append(EscapeJson(r.displayName ?? "")).Append("\",");
                 sb.Append("\"displayColor\":\"").Append(r.displayColor ?? "").Append("\",");
-                sb.Append("\"bastions\":").Append(r.bastions.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                sb.Append("\"bastions\":").Append(r.bastions.ToString(System.Globalization.CultureInfo.InvariantCulture)).Append(','); // MODIFIÉ — ajout virgule
+                sb.Append("\"reinforcedBastions\":").Append(r.reinforcedBastions.ToString(System.Globalization.CultureInfo.InvariantCulture)); // AJOUT
                 sb.Append('}');
             }
             sb.Append(']');
@@ -1961,5 +2033,31 @@ private static bool DataEquals(in CouncilDistrictData a, in CouncilDistrictData 
         private static string EscapeJson(string s) => (s ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"");
     }
 
+    public struct ReinforcedBastionDistrictDto
+    {
+        public int districtId;
+        public string districtName;
+        public int population; // AJOUT
+
+        public static string ToJsonArray(System.Collections.Generic.IEnumerable<ReinforcedBastionDistrictDto> items)
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.Append('[');
+            bool first = true;
+            foreach (var d in items)
+            {
+                if (!first) sb.Append(',');
+                first = false;
+                sb.Append('{');
+                sb.Append("\"districtId\":").Append(d.districtId).Append(',');
+                sb.Append("\"districtName\":\"").Append(EscapeJson(d.districtName)).Append("\",");
+                sb.Append("\"population\":").Append(d.population); // AJOUT
+                sb.Append('}');
+            }
+            sb.Append(']');
+            return sb.ToString();
+        }
+        private static string EscapeJson(string s) => (s ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"");
+    }
 
 }

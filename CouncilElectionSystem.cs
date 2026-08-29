@@ -40,6 +40,7 @@ namespace CityCouncil
         private CouncilPartyMembershipSystem m_MembershipSystem;
         private CouncilFundingSystem m_FundingSystem;
         private CouncilBonusSystem m_BonusSystem;
+        private CouncilReinforcedBastionSystem m_ReinforcedBastionSystem;
         private CouncilPropagandaSystem m_PropagandaSystem;
         private CouncilElectoralCommissionSystem m_CommissionSystem;
         private CouncilScoreSystem m_ScoreSystem;
@@ -65,6 +66,7 @@ namespace CityCouncil
             m_EconomySystem = World.GetOrCreateSystemManaged<CouncilEconomySystem>();
             m_TaxSystem = World.GetOrCreateSystemManaged<CouncilTaxSystem>();
             m_VotingInstructionSystem = World.GetOrCreateSystemManaged<CouncilVotingInstructionSystem>();
+            m_ReinforcedBastionSystem = World.GetOrCreateSystemManaged<CouncilReinforcedBastionSystem>();
 
 
             m_DistrictQuery = GetEntityQuery(new EntityQueryDesc
@@ -226,6 +228,8 @@ namespace CityCouncil
             m_CustomPartySystem.ApplyPendingChangesForNewElection(); // AJOUT
             data = EntityManager.GetComponentData<CouncilDistrictData>(districtEntity);
 
+            data.m_ReinforcedBastionEligiblePending = false;
+
             // Seed dérivée du district + jour courant : varie par district et par élection,
             // tout en restant reproductible pour une même combinaison (utile en debug).
             int seed = districtEntity.Index ^ (int)(GetCurrentSimulationDay() * 1000.0);
@@ -250,6 +254,13 @@ namespace CityCouncil
                 citySanctions.AddRange(m_CommissionSystem.GetActiveSanctionsForParty(p, GetCurrentSimulationDay()));
 
 
+            // AJOUT — identifie le parti joueur actif pour l'exempter des bonus de politiques/fiscalité
+            // (rééquilibrage : le joueur ne doit pas pouvoir manipuler ses propres taxes/politiques à son avantage).
+            var customDataForRebalance = m_CustomPartySystem.GetData();
+            PoliticalParty? playerParty = (customDataForRebalance.m_Exists && customDataForRebalance.m_SubstitutionActive)
+                ? customDataForRebalance.m_ActiveSpace
+                : (PoliticalParty?)null;
+
             // AJOUT — l'état Bastion utilisé ici est celui d'AVANT cette élection (m_IsBastion/
             // m_BastionParty ne sont mis à jour qu'après, dans FinalizeResults), donc le bonus profite
             // bien au détenteur actuel pour DÉFENDRE son district, pas à un futur vainqueur.
@@ -257,6 +268,7 @@ namespace CityCouncil
             seniors, adults, wealth, seed, activePolicies,
             activeEvent?.Effects, cityLeadingParty,
             data.m_IsBastion, data.m_BastionParty,
+             m_ReinforcedBastionSystem.IsReinforcedBastion(data.m_BastionParty, districtEntity.Index),
             offensiveHolders,
             activeCampaigns,
             districtCampaigns,
@@ -265,7 +277,8 @@ namespace CityCouncil
             unemploymentCrisis,
             taxDiscontentPopuliste,
             taxDiscontentGauche,
-            ecologistNuclearBonus);
+            ecologistNuclearBonus,
+            playerParty);
 
             data.m_VotersRound1 = result.m_Voters;
             data.m_AbstentionRound1 = result.m_Abstention;
@@ -292,7 +305,7 @@ namespace CityCouncil
 
                 data.m_WonInRound1 = true;
                 data.m_LeadingParty = result.m_Leader;
-                FinalizeResults(ref data, result.m_VoteShares, seatCount, isNewConquest: !wasAlreadyLeading);
+                FinalizeResults(ref data, districtEntity, seniors + adults, result.m_VoteShares, seatCount, isNewConquest: !wasAlreadyLeading); // MODIFIÉ
                 data.m_Phase = ElectionPhase.Completed;
                 data.m_NextRound1Day = data.m_Round1CompletedDay + ElectionCycleDays;
 
@@ -388,7 +401,7 @@ namespace CityCouncil
 
             bool isNewConquest = previousLeader != result.m_Leader;
 
-            FinalizeResults(ref data, result.m_VoteShares, data.m_TotalSeats, isNewConquest);
+            FinalizeResults(ref data, districtEntity, totalPopulation, result.m_VoteShares, data.m_TotalSeats, isNewConquest); // MODIFIÉ
 
             data.m_Phase = ElectionPhase.Completed;
             data.m_NextRound1Day = GetCurrentSimulationDay() + ElectionCycleDays;
@@ -396,7 +409,7 @@ namespace CityCouncil
             s_Log.Info($"District {districtEntity.Index}: 2e tour terminé, vainqueur {data.m_LeadingParty}.");
         }
 
-        private void FinalizeResults(ref CouncilDistrictData data, Dictionary<PoliticalParty, float> shares, int seatCount, bool isNewConquest)
+        private void FinalizeResults(ref CouncilDistrictData data, Entity districtEntity, int totalPopulation, Dictionary<PoliticalParty, float> shares, int seatCount, bool isNewConquest)
         {
             var oldResultsRaw = data.m_FinalResults.ToArray();
             var oldResults = new Dictionary<PoliticalParty, PartyResult>();
@@ -415,7 +428,7 @@ namespace CityCouncil
 
             m_FundingSystem.DistributeForFinalizedDistrict(allocated);
 
-            UpdateBastionStreak(ref data); // inchangé, plus aucun appel au score system dedans
+            UpdateBastionStreak(ref data, districtEntity, totalPopulation);
         }
 
         /// <summary>
@@ -425,9 +438,23 @@ namespace CityCouncil
         /// parti remporte le district (la série repart à 1 pour le nouveau vainqueur, comme demandé :
         /// "si le parti perd une élection le compteur est remis à zéro et perd le bonus").
         /// </summary>
-        private void UpdateBastionStreak(ref CouncilDistrictData data)
+        private void UpdateBastionStreak(ref CouncilDistrictData data, Entity districtEntity, int totalPopulation)
         {
             var winner = data.m_LeadingParty;
+
+            // AJOUT — Bastion Renforcé : absorbe intégralement une perte, sans toucher au streak/Bastion
+            // classique. Priorité sur le bonus Défensif (qui ne reprend la main qu'une fois le RB consommé).
+            bool wasReinforcedHere = data.m_StreakCount > 0
+                && data.m_StreakParty != winner
+                && m_ReinforcedBastionSystem.IsReinforcedBastion(data.m_StreakParty, districtEntity.Index);
+
+            if (wasReinforcedHere)
+            {
+                m_ReinforcedBastionSystem.ClearReinforcedBastion(data.m_StreakParty);
+                s_Log.Info($"[CouncilElectionSystem] Bastion Renforcé de {data.m_StreakParty} perdu (protection consommée) " +
+                           $"sur district {districtEntity.Index} — Bastion classique 3/3 conservé.");
+                return;
+            }
 
             bool defenderLosing = data.m_StreakCount > 0
                 && data.m_StreakParty != winner
@@ -446,13 +473,25 @@ namespace CityCouncil
 
             if (data.m_StreakCount > 0 && data.m_StreakParty == winner)
             {
+
+                if (data.m_IsBastion)
+                {
+                    data.m_ReinforcedBastionEligiblePending = true;
+                    var custom = m_CustomPartySystem.GetData();
+                    bool isPlayerParty = custom.m_Exists && custom.m_SubstitutionActive && custom.m_ActiveSpace == winner;
+                    if (!isPlayerParty)
+                    {
+                        m_ReinforcedBastionSystem.ConsiderAiChoice(winner, districtEntity, totalPopulation);
+                        data.m_ReinforcedBastionEligiblePending = false; // résolu tout de suite, pas de fenêtre pour l'IA
+                    }
+
+                    s_Log.Info($"[CouncilElectionSystem] District {districtEntity.Index} : Bastion prolongé, " +
+                               $"éligible au Bastion Renforcé pour {winner} jusqu'au prochain scrutin.");
+                }
                 data.m_StreakCount = System.Math.Min(3, data.m_StreakCount + 1);
             }
             else
             {
-                // Le parti en série change : s'il détenait le Bastion, il le perd ici (m_IsBastion
-                // repassé à false ci-dessous, inconditionnellement — toujours correct qu'il y ait eu
-                // Bastion ou non avant ce changement de vainqueur).
                 data.m_StreakParty = winner;
                 data.m_StreakCount = 1;
                 data.m_IsBastion = false;
@@ -465,6 +504,7 @@ namespace CityCouncil
                 s_Log.Info($"[CouncilElectionSystem] Bastion : {winner} détient désormais ce district (3 victoires consécutives).");
             }
         }
+        
 
         private void SetData(Entity districtEntity, CouncilDistrictData data)
         {

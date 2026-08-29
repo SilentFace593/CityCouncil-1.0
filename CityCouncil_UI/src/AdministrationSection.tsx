@@ -1,4 +1,4 @@
-import { Component, useMemo } from "react";
+import { Component, useMemo, useState, useEffect } from "react";
 import { bindValue, useValue } from "cs2/api";
 import { useLocalization } from "cs2/l10n";
 import {
@@ -30,6 +30,7 @@ const cityEventHeadline$ = bindValue<string>("cityCouncil", "cityEventHeadline")
 const adminBastionStreakParty$ = bindValue<string>("cityCouncil", "adminBastionStreakParty");
 const adminBastionStreakCount$ = bindValue<number>("cityCouncil", "adminBastionStreakCount");
 const adminBastionActive$ = bindValue<boolean>("cityCouncil", "adminBastionActive");
+const adminBastionReinforcedActive$ = bindValue<boolean>("cityCouncil", "adminBastionReinforcedActive"); // AJOUT
 const adminLeadingPartyBonus$ = bindValue<string>("cityCouncil", "adminLeadingPartyBonus");
 
 function partyBadgeSrc(party: string): string | null {
@@ -117,26 +118,39 @@ function PartyBadge({ result, bonus }: { result: PartyResultDto; bonus?: string 
     : t("CityCouncil.Admin.SEATS_SINGULAR", "siège");
   const seatsLine = `${result.seats} ${seatsWord}`;
 
+  // MODIFIÉ — tooltips enrichis avec la description complète de l'effet du bonus.
   const bonusTooltip = bonus === "Defensif"
-    ? t("CityCouncil.Admin.BONUS_DEFENSIF_TOOLTIP", "Bonus permanent Défensif")
+    ? t("CityCouncil.Admin.BONUS_DEFENSIF_TOOLTIP", "Bonus Défensif permanent (protège une case de barre de Bastion)")
     : bonus === "Offensif"
-    ? t("CityCouncil.Admin.BONUS_OFFENSIF_TOOLTIP", "Bonus permanent Offensif")
+    ? t("CityCouncil.Admin.BONUS_OFFENSIF_TOOLTIP", "Bonus Offensif permanent (+3% d'intention de vote dans les bastions adverses)")
     : "";
 
   return (
     <div style={{ display: "flex", alignItems: "center" }}>
       <div style={{ marginRight: "8rem" }}>
-<PartyLogo party={result.party} color={color} isCustom={isCustom} sizeRem={36} />
+        <PartyLogo party={result.party} color={color} isCustom={isCustom} sizeRem={36} />
       </div>
       <div style={{ minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center" }}>
+        {/* MODIFIÉ — hauteur fixe (celle du texte seul) : le badge, en position absolue, ne
+            peut plus étirer cette ligne ni repousser seatsLine en dessous. */}
+        <div style={{ position: "relative", display: "flex", alignItems: "center", height: "18rem" }}>
           <span style={{ color: "white", fontSize: "15rem", fontWeight: 600, whiteSpace: "nowrap", wordBreak: "keep-all", overflowWrap: "normal" }}>
             {label}
           </span>
 
-                     {bonus && bonus !== "None" && (
-              <span title={bonusTooltip} style={{ marginLeft: "6rem" }}>
-                <BonusBadgeIcon bonus={bonus} widthRem={35} />
+          {bonus && bonus !== "None" && (
+              <span
+                style={{
+                  position: "absolute",
+                  left: "100%",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  marginLeft: "40rem", // MODIFIÉ — décalé un peu plus vers la droite (était 6rem)
+                  zIndex: 2,
+                  display: "inline-block", // AJOUT — force une boîte dimensionnée pour le survol
+                }}
+              >
+                <BonusBadgeIcon bonus={bonus} widthRem={35} title={bonusTooltip} /> {/* MODIFIÉ — title passé directement à l'img */}
               </span>
             )}
         </div>
@@ -202,11 +216,13 @@ function BastionProgressBar({
   streakParty,
   streakCount,
   active,
+  reinforced,
   translate,
 }: {
   streakParty: string;
   streakCount: number;
   active: boolean;
+reinforced: boolean;
   translate: (key: string, fallback: string | null) => string | null;
 }) {
   const t = (key: string, fallback: string): string => translate(key, fallback) ?? fallback;
@@ -217,8 +233,14 @@ function BastionProgressBar({
   const partyLabel = translatePartyName(streakParty, translate);
 
   // Une seule chaîne (contrainte du moteur) : label + nom de parti, plus suffixe si Bastion actif.
-  const bastionLabelPrefix = t("CityCouncil.Admin.BASTION_LABEL", "Bastion : ");
-  const bastionActiveSuffix = active ? t("CityCouncil.Admin.BASTION_ACTIVE_SUFFIX", " — Bonus actif (+4%)") : "";
+  const bastionLabelPrefix = reinforced
+    ? t("CityCouncil.Admin.BASTION_REINFORCED_LABEL", "Bastion Renforcé : ")
+    : t("CityCouncil.Admin.BASTION_LABEL", "Bastion : ");
+  const bastionActiveSuffix = active
+    ? (reinforced
+        ? t("CityCouncil.Admin.BASTION_REINFORCED_ACTIVE_SUFFIX", " — Bonus actif (+5%)")
+        : t("CityCouncil.Admin.BASTION_ACTIVE_SUFFIX", " — Bonus actif (+4%)"))
+    : "";
   const bastionLine = `${bastionLabelPrefix}${partyLabel}${bastionActiveSuffix}`;
 
   return (
@@ -253,6 +275,31 @@ function BastionProgressBar({
   );
 }
 
+// AJOUT — état global partagé (pas useState local) : InfoSection remonte le composant à
+// chaque changement de district sélectionné, un state local reviendrait donc à "déplié" à
+// chaque clic. Même pattern déjà utilisé sur un autre mod pour ce cas précis.
+let collapsedState = false;
+const collapsedListeners: Array<(v: boolean) => void> = [];
+
+function setGlobalCollapsed(value: boolean) {
+  collapsedState = value;
+  collapsedListeners.forEach((listener) => listener(value));
+}
+
+function useGlobalCollapsed(): [boolean, (value: boolean) => void] {
+  const [value, setValue] = useState(collapsedState);
+
+  useEffect(() => {
+    collapsedListeners.push(setValue);
+    return () => {
+      const idx = collapsedListeners.indexOf(setValue);
+      if (idx !== -1) collapsedListeners.splice(idx, 1);
+    };
+  }, []);
+
+  return [value, setGlobalCollapsed];
+}
+
 const AdministrationSectionInner = ({ InfoSection }: { InfoSection: any }) => {
   const { translate } = useLocalization();
   const t = (key: string, fallback: string): string => translate(key, fallback) ?? fallback;
@@ -270,7 +317,9 @@ const AdministrationSectionInner = ({ InfoSection }: { InfoSection: any }) => {
   const bastionStreakParty = useValue(adminBastionStreakParty$);
   const bastionStreakCount = useValue(adminBastionStreakCount$);
   const bastionActive = useValue(adminBastionActive$);
+  const bastionReinforcedActive = useValue(adminBastionReinforcedActive$);
   const leadingPartyBonus = useValue(adminLeadingPartyBonus$);
+  const [collapsed, setCollapsed] = useGlobalCollapsed();
 const results: PartyResultDto[] = useMemo(() => {
   try {
     const parsed = JSON.parse(resultsJson ?? "[]"); // GARDE
@@ -313,28 +362,39 @@ const round1Results: Round1ResultDto[] = useMemo(() => {
   const round1PendingLine = `${round1PendingPrefix}${finalist1Label}${round1PendingMiddle}${finalist2Label}${round1PendingSuffix}`;
 
   return (
-    <InfoSection focusKey="cityCouncilAdmin" disableFoldout={true}>
-      <div style={{ padding: "4rem 0" }}>
-        <div
-          style={{
-            color: "rgba(255,255,255,0.7)",
-            fontSize: "14rem",
-            textTransform: "uppercase",
-            marginBottom: "8rem",
-            whiteSpace: "nowrap", wordBreak: "keep-all", overflowWrap: "normal",
-          }}
-        >
-          {t("CityCouncil.Admin.HEADER", "Administration")}
-        </div>
-
-        {phase === "NoElection" && (
-          <div style={{ color: "rgba(255,255,255,0.85)", fontSize: "14rem" }}>
-            {t("CityCouncil.Admin.NO_ELECTION_DESC", "Pas d'élections dans ce District car aucun habitant. Il est géré par une Commission Spéciale.")}
+    <InfoSection focusKey="cityCouncilAdmin" disableFoldout={true}> {/* MODIFIÉ — repliage géré manuellement */}
+        <div style={{ padding: "4rem 8rem", width: "100%", boxSizing: "border-box" }}>
+          {/* MODIFIÉ — header devient cliquable, avec chevron indicateur */}
+          <div
+            onClick={() => setCollapsed(!collapsed)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              cursor: "pointer",
+              color: "rgba(255,255,255,0.7)",
+              fontSize: "14rem",
+              textTransform: "uppercase",
+              marginBottom: collapsed ? 0 : "8rem",
+              whiteSpace: "nowrap", wordBreak: "keep-all", overflowWrap: "normal",
+            }}
+          >
+            <span>{t("CityCouncil.Admin.HEADER", "Administration")}</span>
+            <span style={{ fontSize: "11rem", flexShrink: 0, marginLeft: "8rem" }}>
+              {collapsed ? "▼" : "▲"}
+            </span>
           </div>
+
+      {!collapsed && (
+        <>
+          {phase === "NoElection" && (
+                  <div style={{ color: "rgba(255,255,255,0.85)", fontSize: "14rem", lineHeight: "18rem" }}> {/* MODIFIÉ — retrait nowrap, ajout lineHeight */}
+          {t("CityCouncil.Admin.NO_ELECTION_DESC", "Pas d'élections dans ce District car aucun habitant. Il est géré par une Commission Spéciale.")}
+                    </div>
         )}
 
         {phase === "Round1Done" && (
-          <div style={{ color: "rgba(255,255,255,0.85)", fontSize: "14rem" }}>
+          <div style={{ color: "rgba(255,255,255,0.85)", fontSize: "14rem", lineHeight: "18rem" }}> {/* MODIFIÉ — retrait nowrap */}
             {leadingParty
               ? round1WonLine
               : finalist1 && finalist2
@@ -355,17 +415,17 @@ const round1Results: Round1ResultDto[] = useMemo(() => {
           <div>
             <PartyBadge result={leadingResult ?? { party: leadingParty, seats, voteShare: 0 }} bonus={leadingPartyBonus} />
 
-            <div style={{ marginTop: "10rem" }}>
-              <div style={{ marginBottom: "6rem" }}>
-                <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "12rem", whiteSpace: "nowrap", wordBreak: "keep-all", overflowWrap: "normal" }}>
+                        <div style={{ marginTop: "10rem" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6rem" }}>
+                <div style={{ color: "white", fontWeight: 400, fontSize: "15rem", whiteSpace: "nowrap", wordBreak: "keep-all", overflowWrap: "normal" }}>
                   {t("CityCouncil.Admin.VOTERS_LABEL", "Votants")}
                 </div>
                 <div style={{ color: "white", fontSize: "15rem", whiteSpace: "nowrap", wordBreak: "keep-all", overflowWrap: "normal" }}>
                   {voters.toLocaleString()}
                 </div>
               </div>
-              <div>
-                <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "12rem", whiteSpace: "nowrap", wordBreak: "keep-all", overflowWrap: "normal" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ color: "white", fontWeight: 400, fontSize: "15rem", whiteSpace: "nowrap", wordBreak: "keep-all", overflowWrap: "normal" }}>
                   {t("CityCouncil.Admin.ABSTENTION_LABEL", "Abstention")}
                 </div>
                 <div style={{ color: "white", fontSize: "15rem", whiteSpace: "nowrap", wordBreak: "keep-all", overflowWrap: "normal" }}>
@@ -413,6 +473,7 @@ const round1Results: Round1ResultDto[] = useMemo(() => {
       streakParty={bastionStreakParty}
       streakCount={bastionStreakCount}
       active={bastionActive}
+      reinforced={bastionReinforcedActive}
       translate={translate}
     />
 
@@ -432,6 +493,8 @@ const round1Results: Round1ResultDto[] = useMemo(() => {
           >
             {t(cityEventHeadline, cityEventHeadline)}
           </div>
+          )}
+          </>
         )}
       </div>
     </InfoSection>

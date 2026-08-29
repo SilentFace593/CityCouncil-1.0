@@ -232,6 +232,12 @@ namespace CityCouncil
             {
                 int seedBase = (int)(currentDay * 1000.0) ^ 0x504F4C4C;
 
+                // AJOUT — même exemption que pour les élections réelles (cf. CouncilElectionSystem.RunRound1).
+                var customForRebalance = m_CustomPartySystem.GetData();
+                PoliticalParty? playerParty = (customForRebalance.m_Exists && customForRebalance.m_SubstitutionActive)
+                    ? customForRebalance.m_ActiveSpace
+                    : (PoliticalParty?)null;
+
                 foreach (var d in districts)
                 {
                     var (seniors, adults, wealth) = m_ElectionSystem.GetDistrictDemographicsForPoll(d);
@@ -253,7 +259,8 @@ namespace CityCouncil
                         unemploymentCrisisActive: m_EconomySystem.IsUnemploymentCrisisActive(),
                         taxDiscontentBonusPopuliste: pollTaxPopuliste,
                         taxDiscontentBonusGaucheRadicale: pollTaxGauche,
-                        ecologistNuclearBonusActive: ecologistNuclearBonus);
+                        ecologistNuclearBonusActive: ecologistNuclearBonus,
+                        playerParty: playerParty);
 
                     foreach (var kv in result.m_VoteShares)
                         totals[kv.Key] += kv.Value * result.m_Voters;

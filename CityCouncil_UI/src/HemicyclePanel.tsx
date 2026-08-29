@@ -16,6 +16,7 @@ import { DebugTab } from "./DebugTab";
 import { centeredTabWrapperStyle, centeredTabContentStyle } from "./layoutConstants";
 import { VotingInstructionsCard } from "./VotingInstructionsCard";
 import { BonusBadgeIcon } from "./PartyResultDto";
+import { ReinforcedBastionCard } from "./ReinforcedBastionCard"; // AJOUT
 
 // --- Bindings exposés par CouncilUISystem.cs (group "cityCouncil") ---
 const hemicycleSeatsJson$ = bindValue<string>("cityCouncil", "hemicycleSeatsJson");
@@ -280,7 +281,13 @@ function HemicycleResultsContent() {
       ? t("CityCouncil.Hemicycle.LEGEND_BASTIONS_PLURAL", "bastions")
       : t("CityCouncil.Hemicycle.LEGEND_BASTIONS_SINGULAR", "bastion");
     const bastionSuffix = bastionCount > 0 ? ` — ${bastionCount} ${bastionWord}` : "";
-    const legendLine = `${resolvePartyLabel(r, translate)} : ${r.seats} ${seatsWord}${bastionSuffix}`;
+    const reinforcedCount = r.reinforcedBastions ?? 0;
+    const reinforcedWord = reinforcedCount > 1
+      ? t("CityCouncil.Hemicycle.LEGEND_REINFORCED_BASTIONS_PLURAL", "bastions renforcés")
+      : t("CityCouncil.Hemicycle.LEGEND_REINFORCED_BASTIONS_SINGULAR", "bastion renforcé");
+    const reinforcedSuffix = reinforcedCount > 0 ? ` (dont ${reinforcedCount} ${reinforcedWord})` : "";
+
+    const legendLine = `${resolvePartyLabel(r, translate)} : ${r.seats} ${seatsWord}${bastionSuffix}${reinforcedSuffix}`;
  
 
     return (
@@ -314,6 +321,7 @@ function HemicycleResultsContent() {
 
        <BonusChoicePrompt />
        <VotingInstructionsCard />
+       <ReinforcedBastionCard />
 
     </div>
     </div>

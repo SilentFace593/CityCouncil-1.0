@@ -13,6 +13,7 @@ export interface PartyResultDto {
   displayName?: string;
   displayColor?: string;
   bastions?: number;
+  reinforcedBastions?: number;
 }
 
 // Fallback français, utilisé si translate() ne trouve rien (comportement identique au reste
@@ -115,9 +116,11 @@ const BONUS_BADGE_ASPECT_RATIO = 175 / 248;
 export function BonusBadgeIcon({
   bonus,
   widthRem,
+  title,
 }: {
   bonus: string;
   widthRem: number;
+  title?: string;
 }) {
   const src = BONUS_BADGE_IMAGES[bonus];
   if (!src) return null;
@@ -125,6 +128,7 @@ export function BonusBadgeIcon({
   return (
     <img
       src={src}
+      title={title} // AJOUT — le tooltip natif doit être porté par l'élément survolé lui-même
       style={{
         width: `${widthRem}rem`,
         height: `${widthRem / BONUS_BADGE_ASPECT_RATIO}rem`,

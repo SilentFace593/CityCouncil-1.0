@@ -45,6 +45,8 @@ namespace CityCouncil
                 { LocaleKeys.VotingInstruction_Header, "Consignes de vote" },
                 { LocaleKeys.VotingInstruction_Intro, "Vous pouvez donner une consigne de vote dans les districts suivants, toutefois il est possible que vos partisans ne la respectent pas..." },
                 { LocaleKeys.VotingInstruction_ValidateButton, "Valider" },
+                { LocaleKeys.Hemicycle_LegendReinforcedBastionsPlural, "bastions renforcés" },
+                { LocaleKeys.Hemicycle_LegendReinforcedBastionsSingular, "bastion renforcé" },
 
                 // AdministrationSection
                 { LocaleKeys.Admin_Header, "Administration" },
@@ -119,12 +121,17 @@ namespace CityCouncil
                 // Bastion
                 { LocaleKeys.Admin_BastionLabel, "Bastion : " },            
                 { LocaleKeys.Admin_BastionActiveSuffix, " — Bonus actif (+4%)" },
+                { LocaleKeys.ReinforcedBastion_Header, "Bastion Renforcé" },
+                { LocaleKeys.ReinforcedBastion_Intro, "Vous pouvez, ou non, choisir un Bastion Renforcé éligible - Bonus +5% d'intention de vote dans ce District. Vous n'en avez droit qu'à un seul, mais vous pourrez en changer au prochain scrutin s'il y a de nouveau un District éligible." },
+                { LocaleKeys.ReinforcedBastion_ValidateButton, "Valider" },
+                { LocaleKeys.Admin_BastionReinforcedLabel, "Bastion Renforcé : " },
+                { LocaleKeys.Admin_BastionReinforcedActiveSuffix, " — Bonus actif (+5%)" },
 
                 // Bonus permanent
                 { LocaleKeys.Forces_BonusDefensifLabel, "Bonus permanent : Défensif" },
                 { LocaleKeys.Forces_BonusOffensifLabel, "Bonus permanent : Offensif" },
-                { LocaleKeys.Admin_BonusDefensifTooltip, "Bonus permanent Défensif" },
-                { LocaleKeys.Admin_BonusOffensifTooltip, "Bonus permanent Offensif" },
+                { LocaleKeys.Admin_BonusDefensifTooltip, "Bonus Défensif permanent (protège une case de barre de Bastion)" }, // MODIFIÉ
+                { LocaleKeys.Admin_BonusOffensifTooltip, "Bonus Offensif permanent (+3% d'intention de vote dans les bastions adverses)" }, // MODIFIÉ
                 { LocaleKeys.Hemicycle_BonusChoiceTitle, "Bonus permanent obtenu !" },
                 { LocaleKeys.Hemicycle_BonusChoiceDesc, "Votre parti a remporté la majorité au conseil municipal plusieurs fois de suite. Choisissez votre bonus permanent :" },
                 { LocaleKeys.Hemicycle_BonusChoiceDefensif, "Défensif" },

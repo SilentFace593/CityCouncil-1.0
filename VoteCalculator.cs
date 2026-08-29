@@ -221,13 +221,17 @@ namespace CityCouncil
             ["Bicycle Traffic Restriction"] = new[] { (PoliticalParty.Populiste, 0.05f), (PoliticalParty.Republicain, 0.05f) },
         };
 
-        private static void ApplyPolicyModifiers(Dictionary<PoliticalParty, float> shares, IEnumerable<string> activePolicies)
+        private static void ApplyPolicyModifiers(Dictionary<PoliticalParty, float> shares, IEnumerable<string> activePolicies, PoliticalParty? playerParty) // MODIFIÉ — ajout playerParty
         {
             foreach (var policyName in activePolicies)
             {
                 if (!PolicyModifiers.TryGetValue(policyName, out var mods)) continue;
                 foreach (var (party, percent) in mods)
+                {
+                    // le parti joueur n'est plus juge et partie sur ses propres politiques de district.
+                    if (playerParty.HasValue && party == playerParty.Value) continue;
                     Boost(shares, party, percent);
+                }
             }
         }
 
@@ -273,6 +277,7 @@ namespace CityCouncil
         private const float MarginOfErrorPct = 0.025f;
         // AJOUT — bonus fixe du système Bastion, appliqué symétriquement chez séniors et adultes.
         private const float BastionBonusPct = 0.04f;
+        private const float ReinforcedBastionBonusPct = 0.05f;
 
         /// <summary>
         /// Calcule le résultat du 1er tour pour un district.
@@ -299,6 +304,7 @@ namespace CityCouncil
     PoliticalParty? cityLeadingParty = null,
     bool isBastion = false,
     PoliticalParty bastionParty = default,
+    bool isReinforcedBastion = false,
     IEnumerable<PoliticalParty> offensiveBonusHolders = null,
     IEnumerable<(PoliticalParty party, CampaignTarget target, float percent)> activeCampaigns = null,
     IEnumerable<DistrictCampaignEntry> districtCampaigns = null,
@@ -307,7 +313,8 @@ namespace CityCouncil
     bool unemploymentCrisisActive = false,
     float taxDiscontentBonusPopuliste = 0f,
     float taxDiscontentBonusGaucheRadicale = 0f,
-    bool ecologistNuclearBonusActive = false)
+    bool ecologistNuclearBonusActive = false,
+    PoliticalParty? playerParty = null)
         {
             var rng = new Random(seed);
             var seniorBaseWithMargin = ApplyMarginOfError(SeniorBase, rng, MarginOfErrorPct);
@@ -331,19 +338,23 @@ namespace CityCouncil
             // AJOUT — mécontentement fiscal (colère populaire ou anti-inégalité, jamais les deux
             // à la fois, cf. CouncilTaxSystem.GetTaxDiscontentBonus), Populiste ET GaucheRadicale,
             // symétrique séniors/adultes, même mécanisme que le bonus chômage ci-dessus.
-            if (taxDiscontentBonusPopuliste > 0f)
+            bool playerIsPopuliste = playerParty.HasValue && playerParty.Value == PoliticalParty.Populiste;
+            bool playerIsGaucheRadicale = playerParty.HasValue && playerParty.Value == PoliticalParty.GaucheRadicale;
+
+            if (taxDiscontentBonusPopuliste > 0f && !playerIsPopuliste)
             {
                 Boost(seniorShares, PoliticalParty.Populiste, taxDiscontentBonusPopuliste);
                 Boost(adultShares, PoliticalParty.Populiste, taxDiscontentBonusPopuliste);
-                            }
-            if (taxDiscontentBonusGaucheRadicale > 0f)
-                            {
+            }
+            if (taxDiscontentBonusGaucheRadicale > 0f && !playerIsGaucheRadicale)
+            {
                 Boost(seniorShares, PoliticalParty.GaucheRadicale, taxDiscontentBonusGaucheRadicale);
                 Boost(adultShares, PoliticalParty.GaucheRadicale, taxDiscontentBonusGaucheRadicale);
             }
 
             if (isBastion)
             {
+                float bastionBonus = isReinforcedBastion ? ReinforcedBastionBonusPct : BastionBonusPct;
                 Boost(seniorShares, bastionParty, BastionBonusPct);
                 Boost(adultShares, bastionParty, BastionBonusPct);
             }
@@ -456,7 +467,7 @@ namespace CityCouncil
                 combined[p] = totalVoters > 0 ? (votesFromSeniors + votesFromAdults) / totalVoters : 0f;
             }
 
-            ApplyPolicyModifiers(combined, activePolicies);
+            ApplyPolicyModifiers(combined, activePolicies, playerParty);
 
             var leader = combined.OrderByDescending(kv => kv.Value).First();
 
@@ -623,5 +634,6 @@ namespace CityCouncil
             if (population <= 0) return 0;
             return 1 + (population - 1) / SeatPopulationThreshold;
         }
+
     }
 }

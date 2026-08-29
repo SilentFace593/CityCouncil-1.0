@@ -21,6 +21,7 @@ namespace CityCouncil
         private Entity m_SingletonEntity = Entity.Null;
         private CouncilPartyMembershipSystem m_MembershipSystem;
         private CouncilScoreSystem m_ScoreSystem;
+        private CouncilReinforcedBastionSystem m_ReinforcedBastionSystem; // AJOUT
 
         protected override void OnCreate()
         {
@@ -29,6 +30,7 @@ namespace CityCouncil
             m_DistrictQuery = GetEntityQuery(ComponentType.ReadOnly<CouncilDistrictData>());
             m_MembershipSystem = World.GetOrCreateSystemManaged<CouncilPartyMembershipSystem>();
             m_ScoreSystem = World.GetOrCreateSystemManaged<CouncilScoreSystem>();
+            m_ReinforcedBastionSystem = World.GetOrCreateSystemManaged<CouncilReinforcedBastionSystem>();
         }
 
         protected override void OnGamePreload(Colossal.Serialization.Entities.Purpose purpose, Game.GameMode mode)
@@ -229,6 +231,7 @@ namespace CityCouncil
                 {
                     var defaultType = PartyStructureCatalog.GetDefaultForSpace(data.m_ActiveSpace);
                     m_MembershipSystem.SetStructureType(data.m_ActiveSpace, defaultType);
+                    m_ReinforcedBastionSystem.ClearReinforcedBastion(data.m_ActiveSpace);
                 }
 
                 data.m_Exists = false;

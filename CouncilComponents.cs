@@ -391,11 +391,12 @@ namespace CityCouncil
         public int m_StreakCount;             // 0..3, remis à 1 dès qu'un autre parti gagne
         public bool m_IsBastion;              // true dès que m_StreakCount atteint 3
         public PoliticalParty m_BastionParty; // parti détenteur (valide seulement si m_IsBastion)
+        public bool m_ReinforcedBastionEligiblePending;
         public FixedList512Bytes<DistrictCampaignEntry> m_DistrictCampaigns;
         public FixedList512Bytes<IllegalCampaignEntry> m_IllegalCampaigns;
 
 
-        private const int kCurrentDataVersion = 4; // bump version
+        private const int kCurrentDataVersion = 5;
 
         public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
         {
@@ -421,6 +422,7 @@ namespace CityCouncil
             writer.Write(m_StreakCount);
             writer.Write(m_IsBastion);
             writer.Write((byte)m_BastionParty);
+            writer.Write(m_ReinforcedBastionEligiblePending);
 
             writer.Write(m_DistrictCampaigns.Length);
             for (int i = 0; i < m_DistrictCampaigns.Length; i++)
@@ -478,6 +480,12 @@ namespace CityCouncil
                 m_StreakCount = 0;
                 m_IsBastion = false;
                 m_BastionParty = default;
+            }
+
+            m_ReinforcedBastionEligiblePending = false;
+            if (dataVersion >= 5)
+            {
+                reader.Read(out m_ReinforcedBastionEligiblePending);
             }
 
             m_DistrictCampaigns = new FixedList64Bytes<DistrictCampaignEntry>();
@@ -1073,6 +1081,67 @@ public struct CouncilPollData : IComponentData, ISerializable
         public const long PointsPerMember = 1;
         public const long PointsGeneralElectionWon = 500;  // trophée, sur changement de majorité générale
         public const long PointsDistrictWon = 150;          // trophée, sur changement de leader d'un district
+    }
+
+    /// <summary>Bastion Renforcé détenu par un parti : un seul district à la fois par parti.</summary>
+    public struct ReinforcedBastionEntry
+    {
+        public PoliticalParty m_Party;
+        public bool m_Active;        // false = pas de Bastion Renforcé actif pour ce parti
+        public int m_DistrictId;     // Entity.Index du district, valide seulement si m_Active
+        public int m_Population;
+    }
+
+    /// <summary>
+    /// Composant SINGLETON (même pattern que CouncilBonusData) portant le Bastion Renforcé des
+    /// 5 partis, géré par CouncilElectionSystem (attribution/perte) et lu par CouncilUISystem
+    /// (liste d'éligibilité) + VoteCalculator (bonus +1% supplémentaire).
+    /// </summary>
+    public struct CouncilReinforcedBastionData : IComponentData, ISerializable
+    {
+        public FixedList512Bytes<ReinforcedBastionEntry> m_Entries;
+
+        private const int kVersion = 2;
+
+        public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
+        {
+            writer.Write(kVersion);
+            writer.Write(m_Entries.Length);
+            for (int i = 0; i < m_Entries.Length; i++)
+            {
+                writer.Write((byte)m_Entries[i].m_Party);
+                writer.Write(m_Entries[i].m_Active);
+                writer.Write(m_Entries[i].m_DistrictId);
+                writer.Write(m_Entries[i].m_Population);
+            }
+        }
+
+        public void Deserialize<TReader>(TReader reader) where TReader : IReader
+        {
+            reader.Read(out int version);
+            reader.Read(out int count);
+            m_Entries = new FixedList512Bytes<ReinforcedBastionEntry>();
+            for (int i = 0; i < count; i++)
+            {
+                reader.Read(out byte party);
+                reader.Read(out bool active);
+                reader.Read(out int districtId);
+
+                int population = 0;
+                if (version >= 2)
+                {
+                    reader.Read(out population);
+                }
+
+                m_Entries.Add(new ReinforcedBastionEntry
+                {
+                    m_Party = (PoliticalParty)party,
+                    m_Active = active,
+                    m_DistrictId = districtId,
+                    m_Population = population
+                });
+            }
+        }
     }
 
 }

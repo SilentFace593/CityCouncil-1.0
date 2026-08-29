@@ -45,6 +45,8 @@ namespace CityCouncil
                 { LocaleKeys.VotingInstruction_Header, "Voting instructions" },
                 { LocaleKeys.VotingInstruction_Intro, "You can give voting instructions in the following districts, though your supporters may not follow them..." },
                 { LocaleKeys.VotingInstruction_ValidateButton, "Confirm" },
+                { LocaleKeys.Hemicycle_LegendReinforcedBastionsPlural, "reinforced strongholds" },
+                { LocaleKeys.Hemicycle_LegendReinforcedBastionsSingular, "reinforced stronghold" },
 
                 // AdministrationSection
                 { LocaleKeys.Admin_Header, "Administration" },
@@ -115,12 +117,17 @@ namespace CityCouncil
                 // Bastion
                 { LocaleKeys.Admin_BastionLabel, "Stronghold: " },
                 { LocaleKeys.Admin_BastionActiveSuffix, " — Bonus active (+4%)" },
+                { LocaleKeys.ReinforcedBastion_Header, "Reinforced Stronghold" },
+                { LocaleKeys.ReinforcedBastion_Intro, "You may optionally choose an eligible Reinforced Stronghold - +5% vote intention bonus in that District. You can only hold one at a time, but you may switch it at the next election if another District becomes eligible." },
+                { LocaleKeys.ReinforcedBastion_ValidateButton, "Confirm" },
+                { LocaleKeys.Admin_BastionReinforcedLabel, "Reinforced Stronghold: " },
+                { LocaleKeys.Admin_BastionReinforcedActiveSuffix, " — Bonus active (+5%)" },
 
                 // Bonus Permanent
                 { LocaleKeys.Forces_BonusDefensifLabel, "Permanent bonus: Defensive" },
                 { LocaleKeys.Forces_BonusOffensifLabel, "Permanent bonus: Offensive" },
-                { LocaleKeys.Admin_BonusDefensifTooltip, "Permanent Defensive bonus" },
-                { LocaleKeys.Admin_BonusOffensifTooltip, "Permanent Offensive bonus" },
+                { LocaleKeys.Admin_BonusDefensifTooltip, "Permanent Defensive bonus (protects one stronghold streak slot)" }, // MODIFIÉ
+                { LocaleKeys.Admin_BonusOffensifTooltip, "Permanent Offensive bonus (+3% vote intention in opposing strongholds)" }, // MODIFIÉ
                 { LocaleKeys.Hemicycle_BonusChoiceTitle, "Permanent bonus earned!" },
                 { LocaleKeys.Hemicycle_BonusChoiceDesc, "Your party has won the city council majority several times in a row. Choose your permanent bonus:" },
                 { LocaleKeys.Hemicycle_BonusChoiceDefensif, "Defensive" },

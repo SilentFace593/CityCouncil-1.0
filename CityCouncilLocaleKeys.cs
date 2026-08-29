@@ -37,6 +37,8 @@
         public const string VotingInstruction_Header = "CityCouncil.VotingInstruction.HEADER";
         public const string VotingInstruction_Intro = "CityCouncil.VotingInstruction.INTRO";
         public const string VotingInstruction_ValidateButton = "CityCouncil.VotingInstruction.VALIDATE_BUTTON";
+        public const string Hemicycle_LegendReinforcedBastionsPlural = "CityCouncil.Hemicycle.LEGEND_REINFORCED_BASTIONS_PLURAL";
+        public const string Hemicycle_LegendReinforcedBastionsSingular = "CityCouncil.Hemicycle.LEGEND_REINFORCED_BASTIONS_SINGULAR";
 
         // --- AdministrationSection ---
         public const string Admin_Header = "CityCouncil.Admin.HEADER";
@@ -117,6 +119,11 @@
         // --- Bastion ---
         public const string Admin_BastionLabel = "CityCouncil.Admin.BASTION_LABEL";
         public const string Admin_BastionActiveSuffix = "CityCouncil.Admin.BASTION_ACTIVE_SUFFIX";
+        public const string ReinforcedBastion_Header = "CityCouncil.ReinforcedBastion.HEADER";
+        public const string ReinforcedBastion_Intro = "CityCouncil.ReinforcedBastion.INTRO";
+        public const string ReinforcedBastion_ValidateButton = "CityCouncil.ReinforcedBastion.VALIDATE_BUTTON";
+        public const string Admin_BastionReinforcedLabel = "CityCouncil.Admin.BASTION_REINFORCED_LABEL";
+        public const string Admin_BastionReinforcedActiveSuffix = "CityCouncil.Admin.BASTION_REINFORCED_ACTIVE_SUFFIX";
 
         // --- Bonus permanents ---
         public const string Forces_BonusDefensifLabel = "CityCouncil.Forces.BONUS_DEFENSIF_LABEL";
