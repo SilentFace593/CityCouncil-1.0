@@ -246,6 +246,7 @@ namespace CityCouncil
             bool unemploymentCrisis = m_EconomySystem.IsUnemploymentCrisisActive();
             var (taxDiscontentPopuliste, taxDiscontentGauche) = m_TaxSystem.GetTaxDiscontentBonus();
             bool ecologistNuclearBonus = m_BonusSystem.IsEcologistNuclearBonusActive();
+            var powerfulDistrictHolder = GetPowerfulDistrictLeadingParty();
 
             // AJOUT — sanctions city-wide : combine celles de tous les partis (rarement plusieurs à la
             // fois), la fonction GetActiveSanctionsForParty filtrant déjà par expiry.
@@ -278,7 +279,8 @@ namespace CityCouncil
             taxDiscontentPopuliste,
             taxDiscontentGauche,
             ecologistNuclearBonus,
-            playerParty);
+            playerParty,
+            powerfulDistrictHolder);
 
             data.m_VotersRound1 = result.m_Voters;
             data.m_AbstentionRound1 = result.m_Abstention;
@@ -559,6 +561,43 @@ namespace CityCouncil
             });
         }
 
+        /// <summary>
+        /// Détermine le parti dirigeant actuellement le district ayant le plus grand nombre de
+        /// personnes en âge de voter (adultes + séniors), c'est-à-dire m_VotersRound1 + m_AbstentionRound1
+        /// du dernier scrutin de ce district (= population totale au moment du 1er tour, indépendamment
+        /// de qui s'est effectivement déplacé). Recalculé à chaque 1er tour, reflète l'état d'AVANT ce
+        /// cycle (même logique que le Bastion).
+        /// </summary>
+        private PoliticalParty? GetPowerfulDistrictLeadingParty()
+        {
+            Entity best = Entity.Null;
+            int bestPopulation = -1;
+            PoliticalParty bestParty = default;
+
+            var districts = m_DistrictQuery.ToEntityArray(Allocator.Temp);
+            try
+            {
+                foreach (var d in districts)
+                {
+                    if (!EntityManager.HasComponent<CouncilDistrictData>(d)) continue;
+                    var data = EntityManager.GetComponentData<CouncilDistrictData>(d);
+                    if (data.m_Phase != ElectionPhase.Completed) continue;
+
+                    int population = data.m_VotersRound1 + data.m_AbstentionRound1; // adultes + séniors
+
+                    if (population > bestPopulation)
+                    {
+                        bestPopulation = population;
+                        best = d;
+                        bestParty = data.m_LeadingParty;
+                    }
+                }
+            }
+            finally { districts.Dispose(); }
+
+            return best != Entity.Null ? bestParty : (PoliticalParty?)null;
+        }
+
         private (int seniors, int adults, WealthLevel wealth) GetDistrictDemographics(Entity districtEntity)
         {
             int seniors = 0;
@@ -691,4 +730,6 @@ namespace CityCouncil
             => GetActivePolicies(districtEntity);
 
     }
+
+
 }

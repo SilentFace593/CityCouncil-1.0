@@ -180,15 +180,18 @@ namespace CityCouncil.Systems
         private bool m_HasLastPushedVotingInstructionDistricts;
 
         //Bastion Renforcé
-        private CityCouncil.CouncilReinforcedBastionSystem m_ReinforcedBastionSystem; // AJOUT
-        private ValueBinding<string> m_ReinforcedBastionEligibleDistrictsJsonBinding; // AJOUT
-        private string m_LastPushedReinforcedBastionEligibleJson; // AJOUT
-        private bool m_HasLastPushedReinforcedBastionEligible; // AJOUT
+        private CityCouncil.CouncilReinforcedBastionSystem m_ReinforcedBastionSystem;
+        private ValueBinding<string> m_ReinforcedBastionEligibleDistrictsJsonBinding; 
+        private string m_LastPushedReinforcedBastionEligibleJson; 
+        private bool m_HasLastPushedReinforcedBastionEligible; 
 
         //Onglet DEBUG
         private ValueBinding<bool> m_ShowDebugTabBinding;
         private bool m_LastPushedShowDebugTab;
         private bool m_HasLastPushedShowDebugTab;
+
+        //District Puissant
+        private ValueBinding<string> m_PowerfulDistrictJsonBinding;
 
 
 
@@ -280,6 +283,7 @@ namespace CityCouncil.Systems
             m_SatelliteUplinkPresentBinding = new ValueBinding<bool>(kGroup, "satelliteUplinkPresent", false);
             m_VotingInstructionDistrictsJsonBinding = new ValueBinding<string>(kGroup, "votingInstructionDistrictsJson", "[]");
             m_ReinforcedBastionEligibleDistrictsJsonBinding = new ValueBinding<string>(kGroup, "reinforcedBastionEligibleDistrictsJson", "[]"); // AJOUT
+            m_PowerfulDistrictJsonBinding = new ValueBinding<string>(kGroup, "powerfulDistrictJson", "{}");
 
 
 
@@ -342,7 +346,8 @@ namespace CityCouncil.Systems
             AddBinding(m_DemocratDigitalBonusActiveBinding);
             AddBinding(m_SatelliteUplinkPresentBinding);
             AddBinding(m_VotingInstructionDistrictsJsonBinding);
-            AddBinding(m_ReinforcedBastionEligibleDistrictsJsonBinding); // AJOUT
+            AddBinding(m_ReinforcedBastionEligibleDistrictsJsonBinding);
+            AddBinding(m_PowerfulDistrictJsonBinding);
 
             AddBinding(new TriggerBinding<string>(kGroup, "chooseReinforcedBastion",
     (districtIdStr) =>
@@ -1497,9 +1502,14 @@ namespace CityCouncil.Systems
         {
             var totals = new System.Collections.Generic.Dictionary<CityCouncil.PoliticalParty, int>();
             var bastionCounts = new System.Collections.Generic.Dictionary<CityCouncil.PoliticalParty, int>();
-            var reinforcedBastionCounts = new System.Collections.Generic.Dictionary<CityCouncil.PoliticalParty, int>(); // AJOUT
+            var reinforcedBastionCounts = new System.Collections.Generic.Dictionary<CityCouncil.PoliticalParty, int>();
             CityCouncil.PoliticalParty leader = default;
             int leaderSeats = -1;
+
+            // AJOUT — suivi du district le plus puissant (le plus de votants)
+            Entity powerfulDistrict = Entity.Null;
+            int powerfulPopulation = -1;
+            int totalSeatsAllDistricts = 0;
 
             var districts = m_DistrictQuery.ToEntityArray(Unity.Collections.Allocator.Temp);
             try
@@ -1508,6 +1518,15 @@ namespace CityCouncil.Systems
                 {
                     var data = m_EntityManager.GetComponentData<CouncilDistrictData>(districtEntity);
                     if (data.m_Phase != ElectionPhase.Completed) continue;
+
+                    totalSeatsAllDistricts += data.m_TotalSeats; // AJOUT
+
+                    int districtPopulation = data.m_VotersRound1 + data.m_AbstentionRound1; // MODIFIÉ — adultes + séniors, pas seulement les votants
+                    if (districtPopulation > powerfulPopulation)
+                    {
+                        powerfulPopulation = districtPopulation;
+                        powerfulDistrict = districtEntity;
+                    }
 
                     foreach (var result in data.m_FinalResults)
                     {
@@ -1527,7 +1546,6 @@ namespace CityCouncil.Systems
                         bastionCounts.TryGetValue(data.m_BastionParty, out int currentBastions);
                         bastionCounts[data.m_BastionParty] = currentBastions + 1;
 
-                        // AJOUT — compte séparément les Bastions Renforcés (sous-ensemble des Bastions classiques).
                         if (m_ReinforcedBastionSystem.IsReinforcedBastion(data.m_BastionParty, districtEntity.Index))
                         {
                             reinforcedBastionCounts.TryGetValue(data.m_BastionParty, out int currentReinforced);
@@ -1548,7 +1566,7 @@ namespace CityCouncil.Systems
                    seats = kv.Value,
                    voteShare = 0f,
                    bastions = bastionCounts.TryGetValue(kv.Key, out int b) ? b : 0,
-                   reinforcedBastions = reinforcedBastionCounts.TryGetValue(kv.Key, out int rb) ? rb : 0 // AJOUT
+                   reinforcedBastions = reinforcedBastionCounts.TryGetValue(kv.Key, out int rb) ? rb : 0
                })
                 .Select(DecorateWithCustomParty)
                 .OrderByDescending(r => r.seats)
@@ -1556,6 +1574,37 @@ namespace CityCouncil.Systems
 
             m_HemicycleSeatsBinding.Update(PartyResultDto.ToJsonArray(seatsDto));
             m_HemicycleLeaderBinding.Update(leaderSeats > 0 ? leader.ToString() : "");
+
+            // AJOUT — pousse le DTO du district le plus puissant
+            string powerfulJson = "{}";
+            if (powerfulDistrict != Entity.Null)
+            {
+                var bestData = m_EntityManager.GetComponentData<CouncilDistrictData>(powerfulDistrict);
+                float percent = totalSeatsAllDistricts > 0
+                    ? (bestData.m_TotalSeats * 100f / totalSeatsAllDistricts)
+                    : 0f;
+
+                var dto = new PowerfulDistrictDto
+                {
+                    districtName = GetDistrictDisplayName(powerfulDistrict),
+                    voters = powerfulPopulation,
+                    seats = bestData.m_TotalSeats,
+                    percentOfCouncil = percent,
+                    leadingParty = bestData.m_LeadingParty.ToString(),
+                    displayName = "",
+                    displayColor = ""
+                };
+
+                var custom = m_CustomPartySystem.GetData();
+                if (custom.m_Exists && custom.m_SubstitutionActive && custom.m_ActiveSpace.ToString() == dto.leadingParty)
+                {
+                    dto.displayName = custom.m_Name.ToString();
+                    dto.displayColor = custom.m_Color.ToString();
+                }
+
+                powerfulJson = dto.ToJson();
+            }
+            m_PowerfulDistrictJsonBinding.Update(powerfulJson);
         }
 
         /// <summary>
@@ -2057,6 +2106,34 @@ private static bool DataEquals(in CouncilDistrictData a, in CouncilDistrictData 
             sb.Append(']');
             return sb.ToString();
         }
+        private static string EscapeJson(string s) => (s ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"");
+    }
+
+    public struct PowerfulDistrictDto
+    {
+        public string districtName;
+        public int voters;
+        public int seats;
+        public float percentOfCouncil;
+        public string leadingParty;
+        public string displayName;
+        public string displayColor;
+
+        public string ToJson()
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.Append('{');
+            sb.Append("\"districtName\":\"").Append(EscapeJson(districtName)).Append("\",");
+            sb.Append("\"voters\":").Append(voters).Append(',');
+            sb.Append("\"seats\":").Append(seats).Append(',');
+            sb.Append("\"percentOfCouncil\":").Append(percentOfCouncil.ToString(System.Globalization.CultureInfo.InvariantCulture)).Append(',');
+            sb.Append("\"leadingParty\":\"").Append(leadingParty).Append("\",");
+            sb.Append("\"displayName\":\"").Append(EscapeJson(displayName ?? "")).Append("\",");
+            sb.Append("\"displayColor\":\"").Append(displayColor ?? "").Append("\"");
+            sb.Append('}');
+            return sb.ToString();
+        }
+
         private static string EscapeJson(string s) => (s ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"");
     }
 

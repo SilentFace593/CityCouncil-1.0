@@ -39,7 +39,12 @@
         public const string VotingInstruction_ValidateButton = "CityCouncil.VotingInstruction.VALIDATE_BUTTON";
         public const string Hemicycle_LegendReinforcedBastionsPlural = "CityCouncil.Hemicycle.LEGEND_REINFORCED_BASTIONS_PLURAL";
         public const string Hemicycle_LegendReinforcedBastionsSingular = "CityCouncil.Hemicycle.LEGEND_REINFORCED_BASTIONS_SINGULAR";
-
+        public const string Hemicycle_PowerfulDistrictPrefix = "CityCouncil.Hemicycle.POWERFUL_DISTRICT_PREFIX";
+        public const string Hemicycle_PowerfulDistrictVoters = "CityCouncil.Hemicycle.POWERFUL_DISTRICT_VOTERS";
+        public const string Hemicycle_PowerfulDistrictCouncilSuffix = "CityCouncil.Hemicycle.POWERFUL_DISTRICT_COUNCIL_SUFFIX";
+        public const string Hemicycle_PowerfulDistrictLedBy = "CityCouncil.Hemicycle.POWERFUL_DISTRICT_LED_BY";
+        public const string Hemicycle_PowerfulDistrictBonusHint = "CityCouncil.Hemicycle.POWERFUL_DISTRICT_BONUS_HINT";
+        
         // --- AdministrationSection ---
         public const string Admin_Header = "CityCouncil.Admin.HEADER";
         public const string Admin_NoElectionDesc = "CityCouncil.Admin.NO_ELECTION_DESC";

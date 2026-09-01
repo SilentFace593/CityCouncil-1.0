@@ -13,6 +13,7 @@ namespace CityCouncil
         public int m_Abstention;
         public bool m_MajorityReached; // >= 50% dès ce tour
         public PoliticalParty m_Leader;
+       
     }
 
     public static class VoteCalculator
@@ -296,6 +297,7 @@ namespace CityCouncil
         private const float EcologistNuclearSeniorBonusPct = 0.04f; // ville entière, séniors uniquement
         public const float VotingInstructionComplianceMin = 0.30f;
         public const float VotingInstructionComplianceMax = 0.70f;
+        private const float PowerfulDistrictBonusPct = 0.01f;
 
         public static RoundResult ComputeRound1(
     int seniors, int adults, WealthLevel wealth, int seed,
@@ -314,7 +316,9 @@ namespace CityCouncil
     float taxDiscontentBonusPopuliste = 0f,
     float taxDiscontentBonusGaucheRadicale = 0f,
     bool ecologistNuclearBonusActive = false,
-    PoliticalParty? playerParty = null)
+    PoliticalParty? playerParty = null,
+    PoliticalParty? powerfulDistrictBonusHolder = null)
+
         {
             var rng = new Random(seed);
             var seniorBaseWithMargin = ApplyMarginOfError(SeniorBase, rng, MarginOfErrorPct);
@@ -377,6 +381,14 @@ namespace CityCouncil
                     Boost(seniorShares, party, OffensiveBonusPct);
                     Boost(adultShares, party, OffensiveBonusPct);
                 }
+            }
+
+            // AJOUT — bonus "district le plus puissant" : +1% city-wide pour le parti qui dirige
+            // actuellement le district avec le plus de votants.
+            if (powerfulDistrictBonusHolder.HasValue)
+            {
+                Boost(seniorShares, powerfulDistrictBonusHolder.Value, PowerfulDistrictBonusPct);
+                Boost(adultShares, powerfulDistrictBonusHolder.Value, PowerfulDistrictBonusPct);
             }
 
             // AJOUT — bonus de campagne de propagande, ciblé par tranche d'âge, city-wide (identique

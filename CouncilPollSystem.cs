@@ -260,7 +260,8 @@ namespace CityCouncil
                         taxDiscontentBonusPopuliste: pollTaxPopuliste,
                         taxDiscontentBonusGaucheRadicale: pollTaxGauche,
                         ecologistNuclearBonusActive: ecologistNuclearBonus,
-                        playerParty: playerParty);
+                        playerParty: playerParty,
+                        powerfulDistrictBonusHolder: GetPowerfulDistrictLeadingPartyForPoll());
 
                     foreach (var kv in result.m_VoteShares)
                         totals[kv.Key] += kv.Value * result.m_Voters;
@@ -301,5 +302,36 @@ namespace CityCouncil
             if (totals.Count == 0) return null;
             return totals.OrderByDescending(kv => kv.Value).First().Key;
         }
+
+        private PoliticalParty? GetPowerfulDistrictLeadingPartyForPoll()
+        {
+            Entity best = Entity.Null;
+            int bestPopulation = -1;
+            PoliticalParty bestParty = default;
+
+            var districts = m_DistrictQuery.ToEntityArray(Allocator.Temp);
+            try
+            {
+                foreach (var d in districts)
+                {
+                    if (!EntityManager.HasComponent<CouncilDistrictData>(d)) continue;
+                    var data = EntityManager.GetComponentData<CouncilDistrictData>(d);
+                    if (data.m_Phase != ElectionPhase.Completed) continue;
+
+                    int population = data.m_VotersRound1 + data.m_AbstentionRound1;
+
+                    if (population > bestPopulation)
+                    {
+                        bestPopulation = population;
+                        best = d;
+                        bestParty = data.m_LeadingParty;
+                    }
+                }
+            }
+            finally { districts.Dispose(); }
+
+            return best != Entity.Null ? bestParty : (PoliticalParty?)null;
+        }
+
     }
 }

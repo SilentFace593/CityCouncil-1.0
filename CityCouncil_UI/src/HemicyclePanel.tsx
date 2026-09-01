@@ -24,6 +24,7 @@ const hemicycleLeader$ = bindValue<string>("cityCouncil", "hemicycleLeader");
 const playerBonusChoicePending$ = bindValue<boolean>("cityCouncil", "playerBonusChoicePending");
 const playerBonusChoiceSpace$ = bindValue<string>("cityCouncil", "playerBonusChoiceSpace");
 const showDebugTab$ = bindValue<boolean>("cityCouncil", "showDebugTab");
+const powerfulDistrictJson$ = bindValue<string>("cityCouncil", "powerfulDistrictJson");
 
 const scrollbarStyle = `
   .cc-scrollable::-webkit-scrollbar {
@@ -223,6 +224,62 @@ function BonusChoicePrompt() {
   );
 }
 
+interface PowerfulDistrictDto {
+  districtName: string;
+  voters: number;
+  seats: number;
+  percentOfCouncil: number;
+  leadingParty: string;
+  displayName?: string;
+  displayColor?: string;
+}
+
+function PowerfulDistrictLine() {
+  const { translate } = useLocalization();
+  const t = (key: string, fallback: string): string => translate(key, fallback) ?? fallback;
+
+  const json = useValue(powerfulDistrictJson$);
+  const dto: PowerfulDistrictDto | null = useMemo(() => {
+    try {
+      const p = JSON.parse(json ?? "{}");
+      return p && typeof p.districtName === "string" ? p : null;
+    } catch {
+      return null;
+    }
+  }, [json]);
+
+  if (!dto) return null;
+
+  const partyLabel = dto.displayName && dto.displayName.length > 0
+    ? dto.displayName
+    : translatePartyName(dto.leadingParty, translate);
+
+  const pct = Math.round(dto.percentOfCouncil * 10) / 10;
+
+  const votersWord = t("CityCouncil.Hemicycle.POWERFUL_DISTRICT_VOTERS", "personnes en âge de voter");
+  const seatsWord = dto.seats > 1
+    ? t("CityCouncil.Hemicycle.LEGEND_SEATS_PLURAL", "sièges")
+    : t("CityCouncil.Hemicycle.LEGEND_SEATS_SINGULAR", "siège");
+
+  const prefix = t("CityCouncil.Hemicycle.POWERFUL_DISTRICT_PREFIX", "District le plus puissant : ");
+  const councilSuffix = t("CityCouncil.Hemicycle.POWERFUL_DISTRICT_COUNCIL_SUFFIX", "du Conseil Municipal");
+  const ledBy = t("CityCouncil.Hemicycle.POWERFUL_DISTRICT_LED_BY", "Dirigé par ");
+  const bonusHint = t("CityCouncil.Hemicycle.POWERFUL_DISTRICT_BONUS_HINT", "+1% d'intention de vote sur toute la ville pour ce parti.");
+
+  const line = `${prefix}« ${dto.districtName} » (${dto.voters.toLocaleString()} ${votersWord}, ${dto.seats} ${seatsWord}, ${pct}% ${councilSuffix}). ${ledBy}« ${partyLabel} ».`;
+
+  return (
+    <div style={{ marginTop: "12rem", textAlign: "center" }}>
+      <div style={{ color: "rgba(255,255,255,0.85)", fontSize: "13rem", lineHeight: "18rem" }}>
+        {line}
+      </div>
+      <div style={{ color: "rgba(150,190,255,0.8)", fontSize: "11rem", marginTop: "4rem" }}>
+        {bonusHint}
+      </div>
+    </div>
+  );
+}
+
 function HemicycleResultsContent() {
   const { translate } = useLocalization();
   const t = (key: string, fallback: string): string => translate(key, fallback) ?? fallback;
@@ -318,6 +375,8 @@ function HemicycleResultsContent() {
     );
   })}
 </div>
+
+<PowerfulDistrictLine />
 
        <BonusChoicePrompt />
        <VotingInstructionsCard />

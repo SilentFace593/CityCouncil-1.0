@@ -47,6 +47,11 @@ namespace CityCouncil
                 { LocaleKeys.VotingInstruction_ValidateButton, "Valider" },
                 { LocaleKeys.Hemicycle_LegendReinforcedBastionsPlural, "bastions renforcés" },
                 { LocaleKeys.Hemicycle_LegendReinforcedBastionsSingular, "bastion renforcé" },
+                { LocaleKeys.Hemicycle_PowerfulDistrictPrefix, "District le plus puissant : " }, 
+                { LocaleKeys.Hemicycle_PowerfulDistrictVoters, "personnes en âge de voter" },                       
+                { LocaleKeys.Hemicycle_PowerfulDistrictCouncilSuffix, "du Conseil Municipal" }, 
+                { LocaleKeys.Hemicycle_PowerfulDistrictLedBy, "Dirigé par " },                   
+                { LocaleKeys.Hemicycle_PowerfulDistrictBonusHint, "+1% d'intention de vote sur toute la ville pour ce parti." },
 
                 // AdministrationSection
                 { LocaleKeys.Admin_Header, "Administration" },
