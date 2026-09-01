@@ -106,6 +106,47 @@ class SafeBoundary extends Component<{ children: any }, { crashed: boolean }> {
   }
 }
 
+
+// Remplace title="" sur <img>, non fiable en cohtml (même contrainte que :hover CSS).
+// Tooltip géré manuellement via onMouseEnter/onMouseLeave + état local, positionné en absolu.
+function HoverTooltip({ text, children }: { text: string; children: any }) {
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <span
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{ position: "relative", display: "inline-block" }}
+    >
+      {children}
+      {hovered && text && (
+        <div
+          style={{
+            position: "absolute",
+            bottom: "100%",
+            left: "50%",
+            transform: "translateX(-50%)",
+            marginBottom: "6rem",
+            background: "rgba(20,20,28,0.97)",
+            border: "1rem solid rgba(255,255,255,0.15)",
+            borderRadius: "4rem",
+            padding: "6rem 8rem",
+            color: "white",
+            fontSize: "11rem",
+            lineHeight: "15rem",
+            whiteSpace: "nowrap",
+            zIndex: 10,
+            pointerEvents: "none",
+          }}
+        >
+          {text}
+        </div>
+      )}
+    </span>
+  );
+}
+
+
 function PartyBadge({ result, bonus }: { result: PartyResultDto; bonus?: string }) {
   const { translate } = useLocalization();
   const t = (key: string, fallback: string): string => translate(key, fallback) ?? fallback;
@@ -138,19 +179,21 @@ function PartyBadge({ result, bonus }: { result: PartyResultDto; bonus?: string 
             {label}
           </span>
 
-          {bonus && bonus !== "None" && (
+            {bonus && bonus !== "None" && (
               <span
                 style={{
                   position: "absolute",
-                  left: "100%",
+                  left: "125%",
                   top: "50%",
-                  transform: "translateY(-50%)",
-                  marginLeft: "40rem", // MODIFIÉ — décalé un peu plus vers la droite (était 6rem)
+                  transform: "translateY(-25%)",
+                  marginLeft: "14rem",
                   zIndex: 2,
-                  display: "inline-block", // AJOUT — force une boîte dimensionnée pour le survol
+                  display: "inline-block",
                 }}
               >
-                <BonusBadgeIcon bonus={bonus} widthRem={35} title={bonusTooltip} /> {/* MODIFIÉ — title passé directement à l'img */}
+                <HoverTooltip text={bonusTooltip}> {/* MODIFIÉ — enveloppe le badge avec le tooltip custom */}
+                  <BonusBadgeIcon bonus={bonus} widthRem={35} />
+                </HoverTooltip>
               </span>
             )}
         </div>
@@ -363,8 +406,7 @@ const round1Results: Round1ResultDto[] = useMemo(() => {
 
   return (
     <InfoSection focusKey="cityCouncilAdmin" disableFoldout={true}> {/* MODIFIÉ — repliage géré manuellement */}
-        <div style={{ padding: "4rem 8rem", width: "100%", boxSizing: "border-box" }}>
-          {/* MODIFIÉ — header devient cliquable, avec chevron indicateur */}
+       <div style={{ padding: "4rem 8rem", marginTop: "-25rem", width: "100%", boxSizing: "border-box" }}>
           <div
             onClick={() => setCollapsed(!collapsed)}
             style={{
@@ -375,7 +417,7 @@ const round1Results: Round1ResultDto[] = useMemo(() => {
               color: "rgba(255,255,255,0.7)",
               fontSize: "14rem",
               textTransform: "uppercase",
-              marginBottom: collapsed ? 0 : "8rem",
+              marginBottom: collapsed ? 0 : "16rem",
               whiteSpace: "nowrap", wordBreak: "keep-all", overflowWrap: "normal",
             }}
           >
