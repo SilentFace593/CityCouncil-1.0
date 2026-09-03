@@ -19,6 +19,7 @@ interface ScoreDto {
   seatsHeld: number;
   districtsHeld: number;
   bastionsHeld: number;
+  reinforcedBastionsHeld: number;
   membersCount: number;
   possessionScore: number;
 }
@@ -148,6 +149,12 @@ export function ScoreTab() {
                     label={`${t("CityCouncil.Score.DETAIL_BASTIONS", "Bastions détenus")} (${s.bastionsHeld} × 600)`}
                     value={(s.bastionsHeld * 600).toLocaleString()}
                   />
+                    {s.reinforcedBastionsHeld > 0 && (
+                      <DetailRow
+                        label={`${t("CityCouncil.Score.DETAIL_REINFORCED_BASTIONS", "Bastions renforcés")} (${s.reinforcedBastionsHeld} × 800)`}
+                        value={(s.reinforcedBastionsHeld * 800).toLocaleString()}
+                      />
+                    )}
                     <DetailRow
                       label={`${t("CityCouncil.Score.DETAIL_MEMBERS", "Adhérents")} (${s.membersCount} × 1)`}
                       value={s.membersCount.toLocaleString()}

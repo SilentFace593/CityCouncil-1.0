@@ -68,6 +68,11 @@ export function FundingTab() {
 
   // Toutes les phrases mêlant texte + variable sont construites en une seule chaîne
   // (même contrainte que sur YourPartyTab / AdministrationSection).
+  const tabTitle = t("CityCouncil.Funding.TAB_TITLE", "Financement");
+const tabIntro = t(
+  "CityCouncil.Funding.TAB_INTRO",
+  "Le financement public provient du budget de la ville. Il comprend une part fixe, paramétrable et reconduite automatiquement si vous le souhaitez, ainsi qu'une part variable versée selon le nombre de sièges remportés à chaque cycle électoral."
+);
   const fixedAmountLabel = t("CityCouncil.Funding.FIXED_AMOUNT_LABEL", "Part fixe (par cycle)");
   const fixedAmountHint = t("CityCouncil.Funding.FIXED_AMOUNT_HINT", "Répartie à parts égales entre les 5 partis à la fin du cycle électoral.");
   const validateLabel = t("CityCouncil.Funding.VALIDATE_BUTTON", "Valider le montant");
@@ -78,14 +83,23 @@ export function FundingTab() {
   return (
   <div style={{ ...centeredTabWrapperStyle, position: "relative", minHeight: "100%" }}>
    <div style={centeredTabContentStyle}>
-      <div
-        style={{
-          marginBottom: "14rem",
-          padding: "10rem",
-          background: "rgba(255,255,255,0.06)",
-          borderRadius: "6rem",
-        }}
-      >
+
+            <div style={{ color: "white", text-align: "center", fontSize: "22rem", fontWeight: 700, marginBottom: "8rem" }}>
+            {tabTitle}
+          </div>
+          <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "12rem", lineHeight: "17rem", marginBottom: "16rem" }}>
+            {tabIntro}
+          </div>
+
+          <div
+            style={{
+              marginBottom: "14rem",
+              padding: "10rem",
+              background: "rgba(255,255,255,0.06)",
+              borderRadius: "6rem",
+            }}
+          >
+
         <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "11rem", marginBottom: "6rem", textTransform: "uppercase" }}>
           {fixedAmountLabel}
         </div>

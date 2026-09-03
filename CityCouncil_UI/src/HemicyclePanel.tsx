@@ -20,6 +20,7 @@ import { ReinforcedBastionCard } from "./ReinforcedBastionCard";
 import doodleResultatsImg from "./images/doodle_resultats.png";
 
 const TAB_IMAGES = { doodleResultats: doodleResultatsImg };
+const RESULTS_FAN_MAX_WIDTH = "760rem";
 
 // --- Bindings exposés par CouncilUISystem.cs (group "cityCouncil") ---
 const hemicycleSeatsJson$ = bindValue<string>("cityCouncil", "hemicycleSeatsJson");
@@ -311,8 +312,11 @@ function HemicycleResultsContent() {
     statusLine = `${leaderPrefix}${leaderName} — ${totalSeats}${seatsSuffix}`;
   }
 
-  return (
-    <div style={{ ...centeredTabWrapperStyle, position: "relative", minHeight: "100%" }}>
+    return (
+    <div style={{ position: "relative", width: "100%", boxSizing: "border-box", minHeight: "100%" }}>
+
+      {/* Bloc étroit : statut + logo du leader */}
+      <div style={centeredTabWrapperStyle}>
         <div style={centeredTabContentStyle}>
           <div style={{ color: "rgba(255,255,255,0.8)", fontSize: "18rem", marginBottom: "10rem", textAlign: "center" }}>
             {statusLine}
@@ -328,27 +332,34 @@ function HemicycleResultsContent() {
               />
             </div>
           )}
+        </div>
+      </div>
 
+      {/* AJOUT — Bloc élargi : graphique + légende, déborde de centeredTabContentStyle */}
+      <div style={{ display: "flex", justifyContent: "center", width: "100%", boxSizing: "border-box" }}>
+        <div style={{ width: "100%", maxWidth: RESULTS_FAN_MAX_WIDTH, boxSizing: "border-box", padding: "0 10rem" }}>
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <div style={{ flex: "1 1 auto", minWidth: 0 }}>
               <HemicycleFan results={results} />
+            </div>
 
-              <div style={{ display: "flex", flexDirection: "column", marginTop: "10rem" }}>
-          {results.map((r) => {
-            const seatsWord = r.seats > 1
-              ? t("CityCouncil.Hemicycle.LEGEND_SEATS_PLURAL", "sièges")
-              : t("CityCouncil.Hemicycle.LEGEND_SEATS_SINGULAR", "siège");
-            const bastionCount = r.bastions ?? 0;
-            const bastionWord = bastionCount > 1
-              ? t("CityCouncil.Hemicycle.LEGEND_BASTIONS_PLURAL", "bastions")
-              : t("CityCouncil.Hemicycle.LEGEND_BASTIONS_SINGULAR", "bastion");
-            const bastionSuffix = bastionCount > 0 ? ` — ${bastionCount} ${bastionWord}` : "";
-            const reinforcedCount = r.reinforcedBastions ?? 0;
-            const reinforcedWord = reinforcedCount > 1
-              ? t("CityCouncil.Hemicycle.LEGEND_REINFORCED_BASTIONS_PLURAL", "bastions renforcés")
-              : t("CityCouncil.Hemicycle.LEGEND_REINFORCED_BASTIONS_SINGULAR", "bastion renforcé");
-            const reinforcedSuffix = reinforcedCount > 0 ? ` (dont ${reinforcedCount} ${reinforcedWord})` : "";
+            <div style={{ flex: "0 0 auto", maxWidth: "220rem", display: "flex", flexDirection: "column", marginLeft: "16rem" }}>
+              {results.map((r) => {
+                const seatsWord = r.seats > 1
+                  ? t("CityCouncil.Hemicycle.LEGEND_SEATS_PLURAL", "sièges")
+                  : t("CityCouncil.Hemicycle.LEGEND_SEATS_SINGULAR", "siège");
+                const bastionCount = r.bastions ?? 0;
+                const bastionWord = bastionCount > 1
+                  ? t("CityCouncil.Hemicycle.LEGEND_BASTIONS_PLURAL", "bastions")
+                  : t("CityCouncil.Hemicycle.LEGEND_BASTIONS_SINGULAR", "bastion");
+                const bastionSuffix = bastionCount > 0 ? ` — ${bastionCount} ${bastionWord}` : "";
+                const reinforcedCount = r.reinforcedBastions ?? 0;
+                const reinforcedWord = reinforcedCount > 1
+                  ? t("CityCouncil.Hemicycle.LEGEND_REINFORCED_BASTIONS_PLURAL", "bastions renforcés")
+                  : t("CityCouncil.Hemicycle.LEGEND_REINFORCED_BASTIONS_SINGULAR", "bastion renforcé");
+                const reinforcedSuffix = reinforcedCount > 0 ? ` (dont ${reinforcedCount} ${reinforcedWord})` : "";
 
-            const legendLine = `${resolvePartyLabel(r, translate)} : ${r.seats} ${seatsWord}${bastionSuffix}${reinforcedSuffix}`;
- 
+                const legendLine = `${resolvePartyLabel(r, translate)} : ${r.seats} ${seatsWord}${bastionSuffix}${reinforcedSuffix}`;
 
                 return (
                   <div
@@ -356,53 +367,58 @@ function HemicycleResultsContent() {
                     style={{
                       display: "flex",
                       alignItems: "center",
-                      fontSize: "18rem",
+                      fontSize: "13rem",
+                      lineHeight: "16rem",
                       color: "rgba(255,255,255,0.9)",
-                      marginBottom: "5rem",
+                      marginBottom: "6rem",
                     }}
                   >
                     <div
                       style={{
-                        width: "18rem",
-                        height: "18rem",
+                        width: "12rem",
+                        height: "12rem",
                         borderRadius: "50%",
                         background: resolvePartyColor(r),
                         flexShrink: 0,
-                        marginRight: "8rem",
+                        marginRight: "6rem",
                       }}
                     />
-                    <span style={{ whiteSpace: "nowrap", wordBreak: "keep-all", overflowWrap: "normal" }}>
+                    <span style={{ minWidth: 0, wordBreak: "break-word", overflowWrap: "break-word" }}>
                       {legendLine}
                     </span>
                   </div>
                 );
               })}
             </div>
+          </div>
+        </div>
+      </div>
 
-            <PowerfulDistrictLine />
+      {/* Bloc étroit : contenu annexe, recentré comme avant */}
+      <div style={centeredTabWrapperStyle}>
+        <div style={centeredTabContentStyle}>
+          <PowerfulDistrictLine />
+          <BonusChoicePrompt />
+          <VotingInstructionsCard />
+          <ReinforcedBastionCard />
+        </div>
+      </div>
 
-                   <BonusChoicePrompt />
-                   <VotingInstructionsCard />
-                   <ReinforcedBastionCard />
-
-                </div>
-
-
-                            <div
-              style={{
-                position: "absolute",
-                bottom: "10rem",
-                right: "10rem",
-                width: "120rem", //rapport:1.29
-                height: "154rem",
-                backgroundImage: `url(${TAB_IMAGES.doodleResultats})`,
-                backgroundSize: "contain",
-                backgroundRepeat: "no-repeat",
-                backgroundPosition: "center",
-                pointerEvents: "none",
-                zIndex: 10,
-              }}
-            />
+      <div
+        style={{
+          position: "absolute",
+          bottom: "10rem",
+          right: "10rem",
+          width: "120rem",
+          height: "154rem",
+          backgroundImage: `url(${TAB_IMAGES.doodleResultats})`,
+          backgroundSize: "contain",
+          backgroundRepeat: "no-repeat",
+          backgroundPosition: "center",
+          pointerEvents: "none",
+          zIndex: 10,
+        }}
+      />
 
     </div>
   );

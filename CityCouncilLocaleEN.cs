@@ -118,6 +118,8 @@ namespace CityCouncil
                 { LocaleKeys.Funding_LockedMessage, "Amount locked until the next distribution." },
                 { LocaleKeys.Funding_VariableInfo, "Variable share: 1,000 credits per seat won, paid automatically." },
                 { LocaleKeys.Funding_AutoRenewLabel, "Automatically renew" },
+                { LocaleKeys.Funding_TabTitle, "Funding" },
+{ LocaleKeys.Funding_TabIntro, "Public funding comes from the city budget.\n\nIt consists of a fixed portion—which is configurable and automatically renewed if you wish—and a variable portion paid based on the number of seats won in each election cycle." },
 
                 // Bastion
                 { LocaleKeys.Admin_BastionLabel, "Stronghold: " },
@@ -261,6 +263,7 @@ namespace CityCouncil
                 { LocaleKeys.Score_DetailSeats, "Seats held" },
                 { LocaleKeys.Score_DetailDistricts, "Districts led" },
                 { LocaleKeys.Score_DetailBastions, "Strongholds held" },
+                { LocaleKeys.Score_DetailReinforcedBastions, "Reinforced strongholds" },
                 { LocaleKeys.Score_DetailMembers, "Members" },
                 { LocaleKeys.Score_DetailPossessionTotal, "Possession total" },
                 { LocaleKeys.Score_DetailGrandTotal, "Total score" },

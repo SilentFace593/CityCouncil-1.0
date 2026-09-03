@@ -33,6 +33,7 @@ namespace CityCouncil
         private Entity m_SingletonEntity = Entity.Null;
         private double m_LastCycleDay = -1;
         private CouncilPartyMembershipSystem m_MembershipSystem;
+        private CouncilReinforcedBastionSystem m_ReinforcedBastionSystem;
 
         protected override void OnCreate()
         {
@@ -41,6 +42,7 @@ namespace CityCouncil
             m_DistrictQuery = GetEntityQuery(ComponentType.ReadOnly<CouncilDistrictData>());
             m_SimulationSystem = World.GetOrCreateSystemManaged<SimulationSystem>();
             m_MembershipSystem = World.GetOrCreateSystemManaged<CouncilPartyMembershipSystem>();
+            m_ReinforcedBastionSystem = World.GetOrCreateSystemManaged<CouncilReinforcedBastionSystem>();
         }
 
         protected override void OnGamePreload(Purpose purpose, Game.GameMode mode)
@@ -240,7 +242,11 @@ namespace CityCouncil
 
                     if (data.m_IsBastion)
                         possession[data.m_BastionParty] += ScoreCatalog.PointsPerBastionHeld;
+
+                    if (m_ReinforcedBastionSystem.IsReinforcedBastion(data.m_BastionParty, d.Index))
+                        possession[data.m_BastionParty] += ScoreCatalog.PointsPerReinforcedBastionHeld;
                 }
+            
             }
             finally { districts.Dispose(); }
 
@@ -277,8 +283,8 @@ namespace CityCouncil
         /// </summary>
         public Dictionary<PoliticalParty, PartyScoreBreakdown> GetScoreBreakdowns()
         {
-            var counts = new Dictionary<PoliticalParty, (int seats, int districtsHeld, int bastionsHeld)>();
-            foreach (PoliticalParty p in Enum.GetValues(typeof(PoliticalParty))) counts[p] = (0, 0, 0);
+            var counts = new Dictionary<PoliticalParty, (int seats, int districtsHeld, int bastionsHeld, int reinforcedBastionsHeld)>(); // MODIFIÉ
+            foreach (PoliticalParty p in Enum.GetValues(typeof(PoliticalParty))) counts[p] = (0, 0, 0, 0); // MODIFIÉ
 
             var districts = m_DistrictQuery.ToEntityArray(Allocator.Temp);
             try
@@ -304,13 +310,17 @@ namespace CityCouncil
                     {
                         var bastionCount = counts[data.m_BastionParty];
                         bastionCount.bastionsHeld += 1;
+
+                        if (m_ReinforcedBastionSystem.IsReinforcedBastion(data.m_BastionParty, d.Index))
+                            bastionCount.reinforcedBastionsHeld += 1;
+
                         counts[data.m_BastionParty] = bastionCount;
                     }
                 }
             }
             finally { districts.Dispose(); }
 
-            // AJOUT — nombre d'adhérents par parti, arrondi comme partout ailleurs côté UI.
+          
             var membersCount = new Dictionary<PoliticalParty, int>();
             foreach (PoliticalParty p in Enum.GetValues(typeof(PoliticalParty))) membersCount[p] = 0;
             var membershipData = m_MembershipSystem.GetData();
@@ -330,6 +340,7 @@ namespace CityCouncil
                 long possession = c.seats * ScoreCatalog.PointsPerSeatHeld
                                  + c.districtsHeld * ScoreCatalog.PointsPerDistrictHeld
                                  + c.bastionsHeld * ScoreCatalog.PointsPerBastionHeld
+                                 + c.reinforcedBastionsHeld * ScoreCatalog.PointsPerReinforcedBastionHeld
                                  + members * ScoreCatalog.PointsPerMember;
 
                 result[p] = new PartyScoreBreakdown
@@ -338,6 +349,7 @@ namespace CityCouncil
                     SeatsHeld = c.seats,
                     DistrictsHeld = c.districtsHeld,
                     BastionsHeld = c.bastionsHeld,
+                    ReinforcedBastionsHeld = c.reinforcedBastionsHeld,
                     MembersCount = members,
                     PossessionScore = possession,
                     TotalScore = trophy + possession
@@ -379,6 +391,7 @@ namespace CityCouncil
             public int SeatsHeld;
             public int DistrictsHeld;
             public int BastionsHeld;
+            public int ReinforcedBastionsHeld;
             public int MembersCount;
             public long PossessionScore;
             public long TotalScore;

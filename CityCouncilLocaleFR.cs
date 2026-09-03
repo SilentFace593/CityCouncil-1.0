@@ -122,6 +122,8 @@ namespace CityCouncil
                 { LocaleKeys.Funding_LockedMessage, "Montant verrouillé jusqu'à la prochaine distribution." },
                 { LocaleKeys.Funding_VariableInfo, "Part variable : 1 000 crédits par siège obtenu, versée automatiquement." },
                 { LocaleKeys.Funding_AutoRenewLabel, "Reconduire automatiquement" },
+                { LocaleKeys.Funding_TabTitle, "Financement" },
+                { LocaleKeys.Funding_TabIntro, "Le financement public provient du budget de la ville.\n\n Il comprend une part fixe, paramétrable et reconduite automatiquement si vous le souhaitez, ainsi qu'une part variable versée selon le nombre de sièges remportés à chaque cycle électoral." },
 
                 // Bastion
                 { LocaleKeys.Admin_BastionLabel, "Bastion : " },            
@@ -265,6 +267,7 @@ namespace CityCouncil
                 { LocaleKeys.Score_DetailSeats, "Sièges détenus" },
                 { LocaleKeys.Score_DetailDistricts, "Districts dirigés" },
                 { LocaleKeys.Score_DetailBastions, "Bastions détenus" },
+                { LocaleKeys.Score_DetailReinforcedBastions, "Bastions renforcés" },
                 { LocaleKeys.Score_DetailMembers, "Adhérents" },
                 { LocaleKeys.Score_DetailPossessionTotal, "Total possession" },
                 { LocaleKeys.Score_DetailGrandTotal, "Score total" },

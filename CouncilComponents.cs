@@ -1077,6 +1077,7 @@ public struct CouncilPollData : IComponentData, ISerializable
     {
         public const long PointsPerSeatHeld = 50;
         public const long PointsPerBastionHeld = 600;
+        public const long PointsPerReinforcedBastionHeld = 800;
         public const long PointsPerDistrictHeld = 300;
         public const long PointsPerMember = 1;
         public const long PointsGeneralElectionWon = 500;  // trophée, sur changement de majorité générale

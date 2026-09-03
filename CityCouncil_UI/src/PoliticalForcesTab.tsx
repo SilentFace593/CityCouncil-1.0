@@ -296,7 +296,7 @@ export function PoliticalForcesTab() {
     <div style={{ color: "rgba(150,190,255,0.9)", fontSize: "12rem", fontWeight: 700, marginBottom: "6rem", whiteSpace: "nowrap" }}>
       {bonusLabel}
     </div>
-    {selected.bonus !== "None" && <BonusBadgeIcon bonus={selected.bonus} widthRem={150} />}
+    {selected.bonus !== "None" && <BonusBadgeIcon bonus={selected.bonus} widthRem={100} />}
   </div>
 )}
 

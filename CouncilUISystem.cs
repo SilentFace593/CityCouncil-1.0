@@ -1150,6 +1150,7 @@ namespace CityCouncil.Systems
                     seatsHeld = kv.Value.SeatsHeld,
                     districtsHeld = kv.Value.DistrictsHeld,
                     bastionsHeld = kv.Value.BastionsHeld,
+                    reinforcedBastionsHeld = kv.Value.ReinforcedBastionsHeld,
                     membersCount = kv.Value.MembersCount,
                     possessionScore = kv.Value.PossessionScore
                 })
@@ -1910,6 +1911,7 @@ private static bool DataEquals(in CouncilDistrictData a, in CouncilDistrictData 
         public int seatsHeld;
         public int districtsHeld;
         public int bastionsHeld;
+        public int reinforcedBastionsHeld;
         public int membersCount;
         public long possessionScore;
 
@@ -1931,6 +1933,7 @@ private static bool DataEquals(in CouncilDistrictData a, in CouncilDistrictData 
                 sb.Append("\"seatsHeld\":").Append(d.seatsHeld).Append(',');
                 sb.Append("\"districtsHeld\":").Append(d.districtsHeld).Append(',');
                 sb.Append("\"bastionsHeld\":").Append(d.bastionsHeld).Append(',');
+                sb.Append("\"reinforcedBastionsHeld\":").Append(d.reinforcedBastionsHeld).Append(',');
                 sb.Append("\"membersCount\":").Append(d.membersCount).Append(',');
                 sb.Append("\"possessionScore\":").Append(d.possessionScore);
                 sb.Append('}');

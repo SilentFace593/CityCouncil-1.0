@@ -120,6 +120,8 @@
         public const string Funding_LockedMessage = "CityCouncil.Funding.LOCKED_MESSAGE";
         public const string Funding_VariableInfo = "CityCouncil.Funding.VARIABLE_INFO";
         public const string Funding_AutoRenewLabel = "CityCouncil.Funding.AUTO_RENEW_LABEL";
+        public const string Funding_TabTitle = "CityCouncil.Funding.TAB_TITLE";
+        public const string Funding_TabIntro = "CityCouncil.Funding.TAB_INTRO";
 
         // --- Bastion ---
         public const string Admin_BastionLabel = "CityCouncil.Admin.BASTION_LABEL";
@@ -265,6 +267,7 @@
         public const string Score_DetailPossessionTotal = "CityCouncil.Score.DETAIL_POSSESSION_TOTAL";
         public const string Score_DetailGrandTotal = "CityCouncil.Score.DETAIL_GRAND_TOTAL";
         public const string Score_DetailMembers = "CityCouncil.Score.DETAIL_MEMBERS";
+        public const string Score_DetailReinforcedBastions = "CityCouncil.Score.DETAIL_REINFORCED_BASTIONS";
 
         //Onglet Règles
         public const string Rules_TabLabel = "CityCouncil.Rules.TAB_LABEL";
