@@ -3,8 +3,12 @@ import { bindValue, useValue } from "cs2/api";
 import { useLocalization } from "cs2/l10n";
 import { translatePartyName, PARTY_COLORS, CUSTOM_PARTY_PALETTE_HEX, PartyLogo } from "./PartyResultDto";
 import { centeredTabWrapperStyle, centeredTabContentStyle } from "./layoutConstants";
+import doodleScoreImg from "./images/doodle_score.png";
 
 const scoreJson$ = bindValue<string>("cityCouncil", "scoreJson");
+const TAB_IMAGES = {
+  doodleScore: doodleScoreImg,
+};
 
 interface ScoreDto {
   party: string;
@@ -65,7 +69,7 @@ export function ScoreTab() {
   const rankLabel = (index: number) => `#${index + 1}`;
 
   return (
-    <div style={centeredTabWrapperStyle}>
+    <div style={{ ...centeredTabWrapperStyle, position: "relative", minHeight: "100%" }}>
      <div style={centeredTabContentStyle}>
       <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "12rem", marginBottom: "12rem", textTransform: "uppercase" }}>
         {t("CityCouncil.Score.HEADER", "Classement")}
@@ -133,16 +137,16 @@ export function ScoreTab() {
                     value={s.trophyScore.toLocaleString()}
                   />
                   <DetailRow
-                    label={`${t("CityCouncil.Score.DETAIL_SEATS", "Sièges détenus")} (${s.seatsHeld} × 10)`}
-                    value={(s.seatsHeld * 10).toLocaleString()}
+                    label={`${t("CityCouncil.Score.DETAIL_SEATS", "Sièges détenus")} (${s.seatsHeld} × 50)`}
+                    value={(s.seatsHeld * 50).toLocaleString()}
                   />
                   <DetailRow
                     label={`${t("CityCouncil.Score.DETAIL_DISTRICTS", "Districts dirigés")} (${s.districtsHeld} × 300)`}
                     value={(s.districtsHeld * 300).toLocaleString()}
                   />
                   <DetailRow
-                    label={`${t("CityCouncil.Score.DETAIL_BASTIONS", "Bastions détenus")} (${s.bastionsHeld} × 1000)`}
-                    value={(s.bastionsHeld * 1000).toLocaleString()}
+                    label={`${t("CityCouncil.Score.DETAIL_BASTIONS", "Bastions détenus")} (${s.bastionsHeld} × 600)`}
+                    value={(s.bastionsHeld * 600).toLocaleString()}
                   />
                     <DetailRow
                       label={`${t("CityCouncil.Score.DETAIL_MEMBERS", "Adhérents")} (${s.membersCount} × 1)`}
@@ -168,6 +172,23 @@ export function ScoreTab() {
       </div>
 
     </div>
+
+    <div
+  style={{
+    position: "absolute",
+    bottom: "10rem",
+    right: "10rem",
+    width: "100rem", //rapport:1.44
+    height: "144rem",
+    backgroundImage: `url(${TAB_IMAGES.doodleScore})`,
+    backgroundSize: "contain",
+    backgroundRepeat: "no-repeat",
+    backgroundPosition: "center",
+    pointerEvents: "none",
+    zIndex: 10,
+  }}
+/>
+
     </div>
   );
 }

@@ -1,5 +1,8 @@
 import { trigger } from "cs2/api";
 import { centeredTabWrapperStyle, centeredTabContentStyle } from "./layoutConstants";
+import doodleDebugImg from "./images/doodle_debug.png";
+
+const TAB_IMAGES = { doodleDebug: doodleDebugImg };
 
 interface DebugButtonDef {
   label: string;
@@ -43,27 +46,44 @@ function DebugButton({ label, triggerName }: DebugButtonDef) {
 
 export function DebugTab() {
   return (
-   <div style={centeredTabWrapperStyle}>
-    <div style={centeredTabContentStyle}>
-      <div
-        style={{
-          color: "rgba(255,180,120,0.9)",
-          fontSize: "12rem",
-          lineHeight: "16rem",
-          marginBottom: "14rem",
-          padding: "8rem",
-          background: "rgba(255,180,120,0.08)",
-          borderRadius: "4rem",
-        }}
-      >
-        Ces outils forcent l'exécution immédiate de cycles normalement basés sur le temps de
-        simulation réel. Réservé aux tests — à désactiver dans les Options avant une partie normale.
-      </div>
+     <div style={{ ...centeredTabWrapperStyle, position: "relative", minHeight: "100%" }}>
+        <div style={centeredTabContentStyle}>
+          <div
+            style={{
+              color: "rgba(255,180,120,0.9)",
+              fontSize: "12rem",
+              lineHeight: "16rem",
+              marginBottom: "14rem",
+              padding: "8rem",
+              background: "rgba(255,180,120,0.08)",
+              borderRadius: "4rem",
+            }}
+          >
+            Ces outils forcent l'exécution immédiate de cycles normalement basés sur le temps de
+            simulation réel. Réservé aux tests — à désactiver dans les Options avant une partie normale.
+          </div>
 
-      {DEBUG_BUTTONS.map((b) => (
-        <DebugButton key={b.triggerName} {...b} />
-      ))}
-    </div>
+          {DEBUG_BUTTONS.map((b) => (
+            <DebugButton key={b.triggerName} {...b} />
+          ))}
+        </div>
+
+         <div
+  style={{
+    position: "absolute",
+    bottom: "10rem",
+    right: "10rem",
+    width: "120rem", //rapport : 0.87
+    height: "104rem",
+    backgroundImage: `url(${TAB_IMAGES.doodleDebug})`,
+    backgroundSize: "contain",
+    backgroundRepeat: "no-repeat",
+    backgroundPosition: "center",
+    pointerEvents: "none",
+    zIndex: 10,
+  }}
+/>
+
     </div>
   );
 }

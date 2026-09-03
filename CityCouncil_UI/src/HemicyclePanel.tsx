@@ -16,7 +16,10 @@ import { DebugTab } from "./DebugTab";
 import { centeredTabWrapperStyle, centeredTabContentStyle } from "./layoutConstants";
 import { VotingInstructionsCard } from "./VotingInstructionsCard";
 import { BonusBadgeIcon } from "./PartyResultDto";
-import { ReinforcedBastionCard } from "./ReinforcedBastionCard"; // AJOUT
+import { ReinforcedBastionCard } from "./ReinforcedBastionCard";
+import doodleResultatsImg from "./images/doodle_resultats.png";
+
+const TAB_IMAGES = { doodleResultats: doodleResultatsImg };
 
 // --- Bindings exposés par CouncilUISystem.cs (group "cityCouncil") ---
 const hemicycleSeatsJson$ = bindValue<string>("cityCouncil", "hemicycleSeatsJson");
@@ -309,80 +312,98 @@ function HemicycleResultsContent() {
   }
 
   return (
-  <div style={centeredTabWrapperStyle}>
-    <div style={centeredTabContentStyle}>
-      <div style={{ color: "rgba(255,255,255,0.8)", fontSize: "18rem", marginBottom: "10rem", textAlign: "center" }}>
-        {statusLine}
-      </div>
+    <div style={{ ...centeredTabWrapperStyle, position: "relative", minHeight: "100%" }}>
+        <div style={centeredTabContentStyle}>
+          <div style={{ color: "rgba(255,255,255,0.8)", fontSize: "18rem", marginBottom: "10rem", textAlign: "center" }}>
+            {statusLine}
+          </div>
 
-      {leaderResult && (
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: "14rem" }}>
-          <PartyLogo
-            party={leaderResult.party}
-            color={resolvePartyColor(leaderResult)}
-            isCustom={!!(leaderResult.displayName && leaderResult.displayName.length > 0)}
-            sizeRem={60}
-          />
-        </div>
-      )}
+          {leaderResult && (
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: "14rem" }}>
+              <PartyLogo
+                party={leaderResult.party}
+                color={resolvePartyColor(leaderResult)}
+                isCustom={!!(leaderResult.displayName && leaderResult.displayName.length > 0)}
+                sizeRem={60}
+              />
+            </div>
+          )}
 
-      <HemicycleFan results={results} />
+              <HemicycleFan results={results} />
 
-      <div style={{ display: "flex", flexDirection: "column", marginTop: "10rem" }}>
-  {results.map((r) => {
-    const seatsWord = r.seats > 1
-      ? t("CityCouncil.Hemicycle.LEGEND_SEATS_PLURAL", "sièges")
-      : t("CityCouncil.Hemicycle.LEGEND_SEATS_SINGULAR", "siège");
-    const bastionCount = r.bastions ?? 0;
-    const bastionWord = bastionCount > 1
-      ? t("CityCouncil.Hemicycle.LEGEND_BASTIONS_PLURAL", "bastions")
-      : t("CityCouncil.Hemicycle.LEGEND_BASTIONS_SINGULAR", "bastion");
-    const bastionSuffix = bastionCount > 0 ? ` — ${bastionCount} ${bastionWord}` : "";
-    const reinforcedCount = r.reinforcedBastions ?? 0;
-    const reinforcedWord = reinforcedCount > 1
-      ? t("CityCouncil.Hemicycle.LEGEND_REINFORCED_BASTIONS_PLURAL", "bastions renforcés")
-      : t("CityCouncil.Hemicycle.LEGEND_REINFORCED_BASTIONS_SINGULAR", "bastion renforcé");
-    const reinforcedSuffix = reinforcedCount > 0 ? ` (dont ${reinforcedCount} ${reinforcedWord})` : "";
+              <div style={{ display: "flex", flexDirection: "column", marginTop: "10rem" }}>
+          {results.map((r) => {
+            const seatsWord = r.seats > 1
+              ? t("CityCouncil.Hemicycle.LEGEND_SEATS_PLURAL", "sièges")
+              : t("CityCouncil.Hemicycle.LEGEND_SEATS_SINGULAR", "siège");
+            const bastionCount = r.bastions ?? 0;
+            const bastionWord = bastionCount > 1
+              ? t("CityCouncil.Hemicycle.LEGEND_BASTIONS_PLURAL", "bastions")
+              : t("CityCouncil.Hemicycle.LEGEND_BASTIONS_SINGULAR", "bastion");
+            const bastionSuffix = bastionCount > 0 ? ` — ${bastionCount} ${bastionWord}` : "";
+            const reinforcedCount = r.reinforcedBastions ?? 0;
+            const reinforcedWord = reinforcedCount > 1
+              ? t("CityCouncil.Hemicycle.LEGEND_REINFORCED_BASTIONS_PLURAL", "bastions renforcés")
+              : t("CityCouncil.Hemicycle.LEGEND_REINFORCED_BASTIONS_SINGULAR", "bastion renforcé");
+            const reinforcedSuffix = reinforcedCount > 0 ? ` (dont ${reinforcedCount} ${reinforcedWord})` : "";
 
-    const legendLine = `${resolvePartyLabel(r, translate)} : ${r.seats} ${seatsWord}${bastionSuffix}${reinforcedSuffix}`;
+            const legendLine = `${resolvePartyLabel(r, translate)} : ${r.seats} ${seatsWord}${bastionSuffix}${reinforcedSuffix}`;
  
 
-    return (
-      <div
-        key={r.party}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          fontSize: "18rem",
-          color: "rgba(255,255,255,0.9)",
-          marginBottom: "5rem",
-        }}
-      >
-        <div
-          style={{
-            width: "18rem",
-            height: "18rem",
-            borderRadius: "50%",
-            background: resolvePartyColor(r),
-            flexShrink: 0,
-            marginRight: "8rem",
-          }}
-        />
-        <span style={{ whiteSpace: "nowrap", wordBreak: "keep-all", overflowWrap: "normal" }}>
-          {legendLine}
-        </span>
-      </div>
-    );
-  })}
-</div>
+                return (
+                  <div
+                    key={r.party}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      fontSize: "18rem",
+                      color: "rgba(255,255,255,0.9)",
+                      marginBottom: "5rem",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: "18rem",
+                        height: "18rem",
+                        borderRadius: "50%",
+                        background: resolvePartyColor(r),
+                        flexShrink: 0,
+                        marginRight: "8rem",
+                      }}
+                    />
+                    <span style={{ whiteSpace: "nowrap", wordBreak: "keep-all", overflowWrap: "normal" }}>
+                      {legendLine}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
 
-<PowerfulDistrictLine />
+            <PowerfulDistrictLine />
 
-       <BonusChoicePrompt />
-       <VotingInstructionsCard />
-       <ReinforcedBastionCard />
+                   <BonusChoicePrompt />
+                   <VotingInstructionsCard />
+                   <ReinforcedBastionCard />
 
-    </div>
+                </div>
+
+
+                            <div
+              style={{
+                position: "absolute",
+                bottom: "10rem",
+                right: "10rem",
+                width: "120rem", //rapport:1.29
+                height: "154rem",
+                backgroundImage: `url(${TAB_IMAGES.doodleResultats})`,
+                backgroundSize: "contain",
+                backgroundRepeat: "no-repeat",
+                backgroundPosition: "center",
+                pointerEvents: "none",
+                zIndex: 10,
+              }}
+            />
+
     </div>
   );
 }

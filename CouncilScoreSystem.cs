@@ -330,7 +330,7 @@ namespace CityCouncil
                 long possession = c.seats * ScoreCatalog.PointsPerSeatHeld
                                  + c.districtsHeld * ScoreCatalog.PointsPerDistrictHeld
                                  + c.bastionsHeld * ScoreCatalog.PointsPerBastionHeld
-                                 + members * ScoreCatalog.PointsPerMember; // AJOUT
+                                 + members * ScoreCatalog.PointsPerMember;
 
                 result[p] = new PartyScoreBreakdown
                 {
@@ -338,7 +338,7 @@ namespace CityCouncil
                     SeatsHeld = c.seats,
                     DistrictsHeld = c.districtsHeld,
                     BastionsHeld = c.bastionsHeld,
-                    MembersCount = members, // AJOUT
+                    MembersCount = members,
                     PossessionScore = possession,
                     TotalScore = trophy + possession
                 };

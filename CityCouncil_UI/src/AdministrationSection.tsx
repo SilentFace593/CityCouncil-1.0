@@ -123,9 +123,8 @@ function HoverTooltip({ text, children }: { text: string; children: any }) {
         <div
           style={{
             position: "absolute",
-            bottom: "100%",
+            bottom: "110%",
             left: "50%",
-            transform: "translateX(-50%)",
             marginBottom: "6rem",
             background: "rgba(20,20,28,0.97)",
             border: "1rem solid rgba(255,255,255,0.15)",
@@ -134,7 +133,8 @@ function HoverTooltip({ text, children }: { text: string; children: any }) {
             color: "white",
             fontSize: "11rem",
             lineHeight: "15rem",
-            whiteSpace: "nowrap",
+            whiteSpace: "normal",
+            maxWidth: "200rem",
             zIndex: 10,
             pointerEvents: "none",
           }}

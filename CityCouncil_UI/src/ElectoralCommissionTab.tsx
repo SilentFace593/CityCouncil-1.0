@@ -5,6 +5,9 @@ import { translatePartyName, PARTY_ORDER, PARTY_COLORS } from "./PartyResultDto"
 import eyeClosedIcon from "./images/eye_closed.png";
 import eyeSemiClosedIcon from "./images/eye_semiclosed.png";
 import eyeOpenIcon from "./images/eye_open.png";
+import doodleCommissionImg from "./images/doodle_commission.png";
+
+const TAB_IMAGES = { doodleCommission: doodleCommissionImg };
 
 const commissionReportJson$ = bindValue<string>("cityCouncil", "commissionReportJson");
 const customPartyExists$ = bindValue<boolean>("cityCouncil", "customPartyExists");
@@ -73,7 +76,7 @@ export function ElectoralCommissionTab() {
   };
 
   return (
-    <div style={{ display: "flex", width: "100%", height: "100%", boxSizing: "border-box" }}>
+    <div style={{ display: "flex", position: "relative", width: "100%", height: "100%", boxSizing: "border-box" }}>
       {/* Colonne gauche : liste des partis, cliquable */}
       <div style={{ width: "150rem", flexShrink: 0, borderRight: "1rem solid rgba(255,255,255,0.12)", overflowY: "auto" }}>
         {orderedReport.map((r) => {
@@ -106,7 +109,7 @@ export function ElectoralCommissionTab() {
               <VigilanceIcon level={selected.vigilanceLevel} />
               <div style={{ marginLeft: "10rem" }}>
                 <div style={{ color: "white", fontSize: "16rem", fontWeight: 700 }}>
-  {partyLabel(selected.party)}
+                        {partyLabel(selected.party)}
                 </div>
                 <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "13rem" }}>
                   {levelLabel(selected.vigilanceLevel)}
@@ -134,8 +137,25 @@ export function ElectoralCommissionTab() {
               </div>
             )}
           </>
-        )}
-      </div>
+            )}
+        </div>
+
+        <div
+  style={{
+    position: "absolute",
+    bottom: "10rem",
+    right: "10rem",
+    width: "110rem", //rapport:0.58
+    height: "64rem",
+    backgroundImage: `url(${TAB_IMAGES.doodleCommission})`,
+    backgroundSize: "contain",
+    backgroundRepeat: "no-repeat",
+    backgroundPosition: "center",
+    pointerEvents: "none",
+    zIndex: 10,
+  }}
+/>
+
     </div>
   );
 }

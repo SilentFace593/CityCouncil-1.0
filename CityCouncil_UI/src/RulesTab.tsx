@@ -1,5 +1,8 @@
 import { useMemo, useState, useRef } from "react";
 import { RULES_SECTIONS } from "./RulesCatalog";
+import doodleRulesImg from "./images/doodle_regles.png";
+
+const TAB_IMAGES = { doodleRules: doodleRulesImg };
 
 /**
  * Parse un paragraphe contenant des liens internes au format [[id|libellé]] et rend le texte
@@ -60,7 +63,7 @@ export function RulesTab() {
   };
 
   return (
-    <div style={{ display: "flex", width: "100%", height: "100%", boxSizing: "border-box" }}>
+    <div style={{ display: "flex", position: "relative", width: "100%", height: "100%", boxSizing: "border-box" }}>
       {/* Colonne gauche : sommaire, même pattern que PoliticalForcesTab/ElectoralCommissionTab */}
       <div style={{ width: "170rem", flexShrink: 0, borderRight: "1rem solid rgba(255,255,255,0.12)", overflowY: "auto" }}>
         {RULES_SECTIONS.map((s) => {
@@ -106,7 +109,25 @@ export function RulesTab() {
             <RuleText text={p} onNavigate={handleNavigate} />
           </div>
         ))}
+
       </div>
+
+      <div
+  style={{
+    position: "absolute",
+    bottom: "10rem",
+    right: "10rem",
+    width: "120rem", //rapport : 0.48
+    height: "57rem",
+    backgroundImage: `url(${TAB_IMAGES.doodleRules})`,
+    backgroundSize: "contain",
+    backgroundRepeat: "no-repeat",
+    backgroundPosition: "center",
+    pointerEvents: "none",
+    zIndex: 10,
+  }}
+/>
+
     </div>
   );
 }

@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import { bindValue, trigger, useValue } from "cs2/api";
 import { useLocalization } from "cs2/l10n";
 import { centeredTabWrapperStyle, centeredTabContentStyle } from "./layoutConstants";
+import doodleFundingImg from "./images/doodle_finances.png";
 
 const fundingFixedAmount$ = bindValue<number>("cityCouncil", "fundingFixedAmount");
 const fundingLocked$ = bindValue<boolean>("cityCouncil", "fundingLocked");
 const fundingAutoRenew$ = bindValue<boolean>("cityCouncil", "fundingAutoRenew");
+const TAB_IMAGES = { doodleFunding: doodleFundingImg };
 
 const MAX_AMOUNT = 100000;
 
@@ -74,7 +76,7 @@ export function FundingTab() {
   const autoRenewLabel = t("CityCouncil.Funding.AUTO_RENEW_LABEL", "Reconduire automatiquement");
 
   return (
-  <div style={centeredTabWrapperStyle}>
+  <div style={{ ...centeredTabWrapperStyle, position: "relative", minHeight: "100%" }}>
    <div style={centeredTabContentStyle}>
       <div
         style={{
@@ -152,6 +154,23 @@ export function FundingTab() {
         {variableInfo}
       </div>
     </div>
+
+    <div
+  style={{
+    position: "absolute",
+    bottom: "10rem",
+    right: "10rem",
+    width: "110rem", //rapport:1.01
+    height: "111rem",
+    backgroundImage: `url(${TAB_IMAGES.doodleFunding})`,
+    backgroundSize: "contain",
+    backgroundRepeat: "no-repeat",
+    backgroundPosition: "center",
+    pointerEvents: "none",
+    zIndex: 10,
+  }}
+/>
+
    </div>
   );
 }

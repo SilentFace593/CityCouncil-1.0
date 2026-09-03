@@ -3,6 +3,9 @@ import { bindValue, trigger, useValue } from "cs2/api";
 import { useLocalization } from "cs2/l10n";
 import { translatePartyName } from "./PartyResultDto";
 import { centeredTabWrapperStyle, centeredTabContentStyle } from "./layoutConstants";
+import doodlePropagandeImg from "./images/doodle_propagande.png";
+
+const TAB_IMAGES = { doodlePropagande: doodlePropagandeImg };
 
 const partyMembershipJson$ = bindValue<string>("cityCouncil", "partyMembershipJson");
 const propagandaStateJson$ = bindValue<string>("cityCouncil", "propagandaStateJson");
@@ -290,69 +293,69 @@ if (!isDemocratPlayer || !digitalBonusActive) return;
 
 
   return (
-  <div style={centeredTabWrapperStyle}>
-   <div style={centeredTabContentStyle}>
-      {playerControlsAvailable ? (
-   playerActiveCampaign ? (
-    <div style={{ padding: "10rem", background: "rgba(255,255,255,0.06)", borderRadius: "6rem", marginBottom: "12rem" }}>
-      <div style={{ color: "rgba(255,180,120,0.9)", fontSize: "12rem", lineHeight: "16rem", marginBottom: "10rem" }}>
-        {alreadyActiveLine}
-      </div>
-
-
-      <ActionButton label={cancelLabel} enabled={true} onClick={handleCancel} />
-    </div>
-  ) : (
-    <>
-      <div style={{ marginBottom: "12rem" }}>
-        <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "11rem", marginBottom: "4rem", textTransform: "uppercase" }}>
-          {t("CityCouncil.Propaganda.TARGET_LABEL", "Cible")}
-        </div>
-        <Dropdown value={target} options={TARGETS} labels={targetLabels} onChange={setTarget} />
-      </div>
-
-      <div style={{ marginBottom: "12rem" }}>
-        <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "11rem", marginBottom: "4rem", textTransform: "uppercase" }}>
-          {t("CityCouncil.Propaganda.INTENSITY_LABEL", "Intensité")}
-        </div>
-        <Dropdown value={intensity} options={INTENSITIES} labels={intensityLabels} onChange={setIntensity} />
-      </div>
-
-      <div style={{ padding: "10rem", background: "rgba(255,255,255,0.06)", borderRadius: "6rem", marginBottom: "12rem" }}>
-        <div style={{ color: "white", fontSize: "13rem", whiteSpace: "nowrap", marginBottom: "4rem" }}>{costLine}</div>
-        <div style={{ color: "rgba(150,190,255,0.9)", fontSize: "13rem", whiteSpace: "nowrap", marginBottom: "4rem" }}>{bonusLine}</div>
-        <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "12rem", whiteSpace: "nowrap" }}>{treasuryLine}</div>
-        {!canAfford && (
-          <div style={{ color: "rgba(255,120,120,0.9)", fontSize: "12rem", marginTop: "6rem", whiteSpace: "nowrap" }}>
-            {insufficientLine}
+  <div style={{ ...centeredTabWrapperStyle, position: "relative", minHeight: "100%" }}>
+       <div style={centeredTabContentStyle}>
+          {playerControlsAvailable ? (
+       playerActiveCampaign ? (
+        <div style={{ padding: "10rem", background: "rgba(255,255,255,0.06)", borderRadius: "6rem", marginBottom: "12rem" }}>
+          <div style={{ color: "rgba(255,180,120,0.9)", fontSize: "12rem", lineHeight: "16rem", marginBottom: "10rem" }}>
+            {alreadyActiveLine}
           </div>
-        )}
-      </div>
 
-      <div
-        onClick={() => setAutoRenew((v) => !v)}
-        style={{ display: "flex", alignItems: "center", cursor: "pointer", marginBottom: "10rem" }}
-      >
-        <div
-          style={{
-            width: "16rem",
-            height: "16rem",
-            borderRadius: "3rem",
-            border: autoRenew ? "1rem solid rgba(120,170,255,0.9)" : "1rem solid rgba(255,255,255,0.35)",
-            background: autoRenew ? "rgba(70,130,220,0.85)" : "rgba(255,255,255,0.06)",
-            marginRight: "8rem",
-            flexShrink: 0,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          {autoRenew && <div style={{ color: "white", fontSize: "11rem", fontWeight: "bold" }}>✓</div>}
+
+          <ActionButton label={cancelLabel} enabled={true} onClick={handleCancel} />
         </div>
-        <div style={{ color: "rgba(255,255,255,0.9)", fontSize: "13rem", whiteSpace: "nowrap" }}>
-          {t("CityCouncil.Propaganda.AUTO_RENEW_LABEL", "Reconduire automatiquement")}
-        </div>
-      </div>
+      ) : (
+        <>
+          <div style={{ marginBottom: "12rem" }}>
+            <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "11rem", marginBottom: "4rem", textTransform: "uppercase" }}>
+              {t("CityCouncil.Propaganda.TARGET_LABEL", "Cible")}
+            </div>
+            <Dropdown value={target} options={TARGETS} labels={targetLabels} onChange={setTarget} />
+          </div>
+
+          <div style={{ marginBottom: "12rem" }}>
+            <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "11rem", marginBottom: "4rem", textTransform: "uppercase" }}>
+              {t("CityCouncil.Propaganda.INTENSITY_LABEL", "Intensité")}
+            </div>
+            <Dropdown value={intensity} options={INTENSITIES} labels={intensityLabels} onChange={setIntensity} />
+          </div>
+
+          <div style={{ padding: "10rem", background: "rgba(255,255,255,0.06)", borderRadius: "6rem", marginBottom: "12rem" }}>
+            <div style={{ color: "white", fontSize: "13rem", whiteSpace: "nowrap", marginBottom: "4rem" }}>{costLine}</div>
+            <div style={{ color: "rgba(150,190,255,0.9)", fontSize: "13rem", whiteSpace: "nowrap", marginBottom: "4rem" }}>{bonusLine}</div>
+            <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "12rem", whiteSpace: "nowrap" }}>{treasuryLine}</div>
+            {!canAfford && (
+              <div style={{ color: "rgba(255,120,120,0.9)", fontSize: "12rem", marginTop: "6rem", whiteSpace: "nowrap" }}>
+                {insufficientLine}
+              </div>
+            )}
+          </div>
+
+          <div
+            onClick={() => setAutoRenew((v) => !v)}
+            style={{ display: "flex", alignItems: "center", cursor: "pointer", marginBottom: "10rem" }}
+          >
+            <div
+              style={{
+                width: "16rem",
+                height: "16rem",
+                borderRadius: "3rem",
+                border: autoRenew ? "1rem solid rgba(120,170,255,0.9)" : "1rem solid rgba(255,255,255,0.35)",
+                background: autoRenew ? "rgba(70,130,220,0.85)" : "rgba(255,255,255,0.06)",
+                marginRight: "8rem",
+                flexShrink: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {autoRenew && <div style={{ color: "white", fontSize: "11rem", fontWeight: "bold" }}>✓</div>}
+            </div>
+            <div style={{ color: "rgba(255,255,255,0.9)", fontSize: "13rem", whiteSpace: "nowrap" }}>
+              {t("CityCouncil.Propaganda.AUTO_RENEW_LABEL", "Reconduire automatiquement")}
+            </div>
+          </div>
 
         {isDemocratPlayer && digitalBonusActive && !playerActiveCampaign && (
           <div style={{ padding: "10rem", background: "rgba(70,130,220,0.10)", borderRadius: "6rem", marginBottom: "12rem", border: "1rem solid rgba(120,170,255,0.35)" }}>
@@ -373,18 +376,18 @@ if (!isDemocratPlayer || !digitalBonusActive) return;
           </div>
         )}
 
-      <ActionButton
-        label={t("CityCouncil.Propaganda.LAUNCH_BUTTON", "Lancer la campagne")}
-        enabled={canAfford}
-        onClick={handleLaunch}
-      />
-    </>
-  )
-) : (
-  <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "12rem", lineHeight: "17rem", marginBottom: "12rem" }}>
-    {noPlayerPartyLine}
-  </div>
-)}
+                  <ActionButton
+                    label={t("CityCouncil.Propaganda.LAUNCH_BUTTON", "Lancer la campagne")}
+                    enabled={canAfford}
+                    onClick={handleLaunch}
+                  />
+                </>
+              )
+            ) : (
+              <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "12rem", lineHeight: "17rem", marginBottom: "12rem" }}>
+                {noPlayerPartyLine}
+              </div>
+            )}
 
       <div style={{ marginTop: "16rem" }}>
         <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "12rem", marginBottom: "8rem", textTransform: "uppercase", whiteSpace: "nowrap" }}>
@@ -564,6 +567,23 @@ if (!isDemocratPlayer || !digitalBonusActive) return;
 </div>
 
     </div>
+
+    <div
+  style={{
+    position: "absolute",
+    bottom: "10rem",
+    right: "10rem",
+    width: "130rem", //rapport : 0.79
+    height: "102rem",
+    backgroundImage: `url(${TAB_IMAGES.doodlePropagande})`,
+    backgroundSize: "contain",
+    backgroundRepeat: "no-repeat",
+    backgroundPosition: "center",
+    pointerEvents: "none",
+    zIndex: 10,
+  }}
+/>
+
     </div>
   );
 }
