@@ -31,11 +31,11 @@ namespace CityCouncil
 
         private static readonly Dictionary<PoliticalParty, float> AdultBase = new()
         {
-            { PoliticalParty.Democrate, 0.25f },
+            { PoliticalParty.Democrate, 0.24f },
             { PoliticalParty.Ecologiste, 0.20f },
-            { PoliticalParty.Republicain, 0.23f },
-            { PoliticalParty.Populiste, 0.16f },
-            { PoliticalParty.GaucheRadicale, 0.16f },
+            { PoliticalParty.Republicain, 0.22f },
+            { PoliticalParty.Populiste, 0.17f },
+            { PoliticalParty.GaucheRadicale, 0.17f },
         };
         private const float AdultAbstentionBase = 0.25f;
 
@@ -122,24 +122,24 @@ namespace CityCouncil
                 case WealthLevel.Comfortable:
                     if (isAdult)
                     {
-                        Boost(shares, PoliticalParty.Ecologiste, 0.15f);
-                        Boost(shares, PoliticalParty.Democrate, 0.04f);
+                        Boost(shares, PoliticalParty.Ecologiste, 0.02f);
+                        Boost(shares, PoliticalParty.Democrate, 0.01f);
                     }
                     else
                     {
-                        Boost(shares, PoliticalParty.Republicain, 0.04f);
+                        Boost(shares, PoliticalParty.Republicain, 0.01f);
                     }
                     break;
 
                 case WealthLevel.Wealthy:
                     if (isAdult)
                     {
-                        Boost(shares, PoliticalParty.Democrate, 0.05f);
-                        Boost(shares, PoliticalParty.Ecologiste, 0.15f);
+                        Boost(shares, PoliticalParty.Democrate, 0.02f);
+                        Boost(shares, PoliticalParty.Ecologiste, 0.02f);
                     }
                     else
                     {
-                        Boost(shares, PoliticalParty.Republicain, 0.05f);
+                        Boost(shares, PoliticalParty.Republicain, 0.02f);
                     }
                     break;
             }

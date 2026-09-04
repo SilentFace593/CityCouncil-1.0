@@ -9,7 +9,7 @@ const fundingLocked$ = bindValue<boolean>("cityCouncil", "fundingLocked");
 const fundingAutoRenew$ = bindValue<boolean>("cityCouncil", "fundingAutoRenew");
 const TAB_IMAGES = { doodleFunding: doodleFundingImg };
 
-const MAX_AMOUNT = 100000;
+const MAX_AMOUNT = 200000;
 
 function ActionButton({ label, enabled, onClick }: { label: string; enabled: boolean; onClick: () => void }) {
   return (

@@ -43,9 +43,9 @@ namespace CityCouncil
     {
         public static readonly System.Collections.Generic.Dictionary<CampaignIntensity, (int cost, float bonusPct)> Tiers = new()
     {
-        { CampaignIntensity.Petite, (25000, 0.02f) },
-        { CampaignIntensity.Moyenne, (75000, 0.04f) },
-        { CampaignIntensity.Forte, (150000, 0.06f) },
+        { CampaignIntensity.Petite, (20000, 0.02f) },
+        { CampaignIntensity.Moyenne, (50000, 0.04f) },
+        { CampaignIntensity.Forte, (75000, 0.06f) },
     };
 
         public const double CampaignDurationDays = 7.0;
@@ -146,9 +146,9 @@ namespace CityCouncil
         // Palier "classique" (Boost) : coût -> bonus pour le parti lançant la campagne.
         public static readonly System.Collections.Generic.Dictionary<CampaignIntensity, (int cost, float bonusPct)> BoostTiers = new()
     {
-        { CampaignIntensity.Petite, (5000, 0.02f) },
-        { CampaignIntensity.Moyenne, (10000, 0.03f) },
-        { CampaignIntensity.Forte, (20000, 0.04f) },
+        { CampaignIntensity.Petite, (3000, 0.02f) },
+        { CampaignIntensity.Moyenne, (6000, 0.03f) },
+        { CampaignIntensity.Forte, (10000, 0.04f) },
     };
 
         // Attaque propre : coût fixe, malus fixe sur la cible, aucun risque.

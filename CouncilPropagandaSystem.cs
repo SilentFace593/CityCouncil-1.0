@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using Colossal.Logging;
 using Colossal.Serialization.Entities;
 using Game;
@@ -30,6 +31,7 @@ namespace CityCouncil
         private EntityQuery m_DistrictQueryForCampaigns;
         private CouncilBlackFundSystem m_BlackFundSystem;
         private CouncilBonusSystem m_BonusSystem;
+        private CouncilScoreSystem m_ScoreSystem;
 
         protected override void OnCreate()
         {
@@ -41,6 +43,8 @@ namespace CityCouncil
             m_DistrictQueryForCampaigns = GetEntityQuery(ComponentType.ReadWrite<CouncilDistrictData>());
             m_BlackFundSystem = World.GetOrCreateSystemManaged<CouncilBlackFundSystem>();
             m_BonusSystem = World.GetOrCreateSystemManaged<CouncilBonusSystem>();
+            m_BonusSystem = World.GetOrCreateSystemManaged<CouncilBonusSystem>();
+            m_ScoreSystem = World.GetOrCreateSystemManaged<CouncilScoreSystem>();
         }
 
         protected override void OnGamePreload(Purpose purpose, Game.GameMode mode)
@@ -95,6 +99,11 @@ namespace CityCouncil
             var propagandaData = GetData();
             var membershipData = m_MembershipSystem.GetData();
 
+            var aggressionTiers = GetAggressionTiers();
+
+            foreach (var kv in aggressionTiers)
+                s_Log.Info($"[CouncilPropagandaSystem][IA-Agressivité] {kv.Key} -> {kv.Value}");
+
             foreach (PoliticalParty party in System.Enum.GetValues(typeof(PoliticalParty)))
             {
                 if (playerSpace.HasValue && party == playerSpace.Value) continue;
@@ -107,13 +116,38 @@ namespace CityCouncil
                 foreach (var m in membershipData.m_Entries)
                     if (m.m_Party == party) { treasury = m.m_Treasury; break; }
 
-                if (!alreadyActive)
-                    TryAiLaunchCampaign(party, treasury);
+                aggressionTiers.TryGetValue(party, out var tier);
 
-                // AJOUT — tentative indépendante de campagne de district (point 6).
-                TryAiLaunchDistrictCampaign(party, treasury);
+                if (!alreadyActive)
+                    TryAiLaunchCampaign(party, treasury, tier);
+
+                TryAiLaunchDistrictCampaign(party, treasury, tier);
                 TryAiLaunchIllegalCampaign(party, treasury);
             }
+        }
+
+        // Palier d'agressivité IA dérivé du classement général (CouncilScoreSystem).
+        // Recalculé une fois par cycle IA (pas par district), pour éviter les incohérences si
+        // le score change entre deux appels de TryAiLaunch* au sein du même cycle.
+        private enum AiAggressionTier { Last, Normal, First }
+
+        private System.Collections.Generic.Dictionary<PoliticalParty, AiAggressionTier> GetAggressionTiers()
+        {
+            var totals = m_ScoreSystem.GetTotalScores();
+            var tiers = new System.Collections.Generic.Dictionary<PoliticalParty, AiAggressionTier>();
+            if (totals.Count == 0) return tiers;
+
+            var ordered = totals.OrderByDescending(kv => kv.Value).ToList();
+            var firstParty = ordered.First().Key;
+            var lastParty = ordered.Last().Key;
+
+            foreach (var kv in totals)
+            {
+                tiers[kv.Key] = (kv.Key == lastParty && lastParty != firstParty) ? AiAggressionTier.Last
+                               : kv.Key == firstParty ? AiAggressionTier.First
+                               : AiAggressionTier.Normal;
+            }
+            return tiers;
         }
 
         /// <summary>
@@ -121,10 +155,16 @@ namespace CityCouncil
         /// budget et par le plafond de 3 campagnes actives. 50% renforce un district déjà détenu
         /// (Boost), 50% attaque le leader d'un district où l'IA n'est pas en tête (70% propre / 30% sale).
         /// </summary>
-        private void TryAiLaunchDistrictCampaign(PoliticalParty party, int treasury)
+        private void TryAiLaunchDistrictCampaign(PoliticalParty party, int treasury, AiAggressionTier tier) 
         {
-            const float LaunchChance = 0.25f;
-            if (m_AiRng.NextDouble() >= LaunchChance) return;
+
+            float launchChance = tier switch
+            {
+                AiAggressionTier.Last => 0.50f,
+                AiAggressionTier.First => 0.10f,
+                _ => 0.25f
+            };
+            if (m_AiRng.NextDouble() >= launchChance) return;
             if (CountActiveDistrictCampaignsForParty(party) >= GetMaxDistrictCampaignsForParty(party)) return;
 
             var districts = m_DistrictQueryForCampaigns.ToEntityArray(Allocator.Temp);
@@ -142,27 +182,63 @@ namespace CityCouncil
                     else contestedDistricts.Add((d, data.m_LeadingParty));
                 }
 
-                bool wantsBoost = m_AiRng.NextDouble() < 0.5;
+                // Un dernier attaque en priorité (20% boost / 80% attaque), un premier
+                // reste sur du renforcement défensif (85% boost / 15% attaque).
+                float boostChance = tier switch
+                {
+                    AiAggressionTier.Last => 0.20f,
+                    AiAggressionTier.First => 0.85f,
+                    _ => 0.50f
+                };
+                bool wantsBoost = m_AiRng.NextDouble() < boostChance;
 
                 if (wantsBoost && ownedDistricts.Count > 0)
                 {
                     var target = ownedDistricts[m_AiRng.Next(ownedDistricts.Count)];
-                    var affordableTier = CheapestAffordableBoostTier(treasury);
+
+                    // Budget élargi pour un dernier, plafonné à Petite pour un premier.
+                    float budgetRatio = tier == AiAggressionTier.Last ? 0.80f : 0.50f;
+                    int budget = (int)(treasury * budgetRatio);
+
+                    CampaignIntensity? affordableTier = tier == AiAggressionTier.First
+                        ? (DistrictCampaignCatalog.BoostTiers[CampaignIntensity.Petite].cost <= budget ? CampaignIntensity.Petite : (CampaignIntensity?)null)
+                        : CheapestAffordableBoostTierFromBudget(budget);
+
                     if (affordableTier.HasValue)
                         TryLaunchDistrictCampaign(target, party, DistrictCampaignType.Boost, default, affordableTier.Value, out _);
                 }
                 else if (contestedDistricts.Count > 0)
                 {
                     var (target, leader) = contestedDistricts[m_AiRng.Next(contestedDistricts.Count)];
-                    bool dirty = m_AiRng.NextDouble() < 0.30;
+
+                    // Un dernier privilégie largement le sale (60% au lieu de 30%),
+                    // un premier ne se salit jamais les mains (0%).
+                    float dirtyChance = tier switch
+                    {
+                        AiAggressionTier.Last => 0.60f,
+                        AiAggressionTier.First => 0f,
+                        _ => 0.30f
+                    };
+                    bool dirty = m_AiRng.NextDouble() < dirtyChance;
                     int cost = dirty ? DistrictCampaignCatalog.AttackDirtyCost : DistrictCampaignCatalog.AttackCleanCost;
-                    if (treasury / 2 >= cost)
+
+                    float budgetRatio = tier == AiAggressionTier.Last ? 0.80f : 0.50f;
+                    if ((int)(treasury * budgetRatio) >= cost)
                         TryLaunchDistrictCampaign(target, party,
                             dirty ? DistrictCampaignType.AttackDirty : DistrictCampaignType.AttackClean,
                             leader, CampaignIntensity.Petite, out _);
                 }
             }
             finally { districts.Dispose(); }
+        }
+
+        // Variante de CheapestAffordableBoostTier acceptant un budget déjà calculé
+        // (au lieu de recalculer treasury/2 en interne), nécessaire pour le budget élargi du palier Last.
+        private CampaignIntensity? CheapestAffordableBoostTierFromBudget(int budget)
+        {
+            foreach (var tier in new[] { CampaignIntensity.Forte, CampaignIntensity.Moyenne, CampaignIntensity.Petite })
+                if (DistrictCampaignCatalog.BoostTiers[tier].cost <= budget) return tier;
+            return null;
         }
 
         /// <summary>
@@ -222,28 +298,44 @@ namespace CityCouncil
         /// l'intensité choisie est plafonnée par ce que le parti peut se permettre (max ~50% de sa
         /// trésorerie disponible, pour éviter qu'il se ruine à chaque cycle).
         /// </summary>
-        private void TryAiLaunchCampaign(PoliticalParty party, int treasury)
+        private void TryAiLaunchCampaign(PoliticalParty party, int treasury, AiAggressionTier tier)
         {
-            const float LaunchChance = 0.35f; // ~1 chance sur 3 par cycle de 7 jours, ajustable librement
-            if (m_AiRng.NextDouble() >= LaunchChance) return;
+            // Chance de lancement modulée par le classement : un parti dernier tente sa
+            // chance bien plus souvent (quasi systématique), un parti premier se montre prudent.
+            float launchChance = tier switch
+            {
+                AiAggressionTier.Last => 0.75f,
+                AiAggressionTier.First => 0.15f,
+                _ => 0.35f
+            };
+            if (m_AiRng.NextDouble() >= launchChance) return;
 
-            int budget = treasury / 2;
+            // Un parti dernier engage jusqu'à 80% de sa trésorerie (au lieu de 50%),
+            // un parti premier reste prudent (50% comme avant).
+            float budgetRatio = tier == AiAggressionTier.Last ? 0.80f : 0.50f;
+            int budget = (int)(treasury * budgetRatio);
+
+            // Un parti premier ne dépasse jamais l'intensité Petite (campagne symbolique).
+            var candidateTiers = tier == AiAggressionTier.First
+                ? new[] { CampaignIntensity.Petite }
+                : new[] { CampaignIntensity.Forte, CampaignIntensity.Moyenne, CampaignIntensity.Petite };
 
             CampaignIntensity? affordable = null;
-            foreach (var tier in new[] { CampaignIntensity.Forte, CampaignIntensity.Moyenne, CampaignIntensity.Petite })
+            foreach (var t in candidateTiers)
             {
-                if (CampaignCatalog.Tiers[tier].cost <= budget)
-                {
-                    affordable = tier;
-                    break;
-                }
+                if (CampaignCatalog.Tiers[t].cost <= budget) { affordable = t; break; }
             }
-            if (!affordable.HasValue) return; // même la petite campagne est hors de portée, on ne lance rien
+            if (!affordable.HasValue) return;
 
-            var target = m_AiRng.NextDouble() < 0.5 ? CampaignTarget.Adultes : CampaignTarget.Seniors;
+            // Un parti dernier cible systématiquement les Adultes, ville entière, en
+            // cohérence avec la demande ("forte campagne chez les adultes dans toute la ville").
+            // Les autres cas gardent le tirage 50/50 existant.
+            var target = tier == AiAggressionTier.Last
+                ? CampaignTarget.Adultes
+                : (m_AiRng.NextDouble() < 0.5 ? CampaignTarget.Adultes : CampaignTarget.Seniors);
 
-            if (TryLaunchCampaign(party, target, affordable.Value, autoRenew: false, out _)) // AJOUT paramètre
-                s_Log.Info($"[CouncilPropagandaSystem] IA : {party} lance une campagne {affordable.Value} ciblant {target}.");
+            if (TryLaunchCampaign(party, target, affordable.Value, autoRenew: false, out _))
+                s_Log.Info($"[CouncilPropagandaSystem] IA ({tier}) : {party} lance une campagne {affordable.Value} ciblant {target}.");
         }
 
 
@@ -490,7 +582,7 @@ namespace CityCouncil
                 var target = entry.m_Target;
                 var intensity = entry.m_Intensity;
                 bool wantsRenew = entry.m_AutoRenew;
-                bool wasDigital = entry.m_IsDigital; // AJOUT
+                bool wasDigital = entry.m_IsDigital;
 
                 entry.m_Active = false;
                 entries[i] = entry;
@@ -504,7 +596,7 @@ namespace CityCouncil
 
                     bool renewed;
                     string renewError;
-                    if (wasDigital) // AJOUT — branche dédiée pour la reconduction digitale
+                    if (wasDigital) 
                         renewed = TryLaunchDigitalCampaign(party, autoRenew: true, out renewError);
                     else
                         renewed = TryLaunchCampaign(party, target, intensity, autoRenew: true, out renewError);

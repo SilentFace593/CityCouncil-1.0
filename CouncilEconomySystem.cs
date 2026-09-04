@@ -15,8 +15,8 @@ namespace CityCouncil
         private static readonly ILog s_Log = LogManager.GetLogger("CityCouncil").SetShowsErrorsInUI(false);
 
         // Seuil déclenchant le bonus Populiste, et amplitude du bonus — ajustables librement.
-        public const float UnemploymentThresholdPct = 7f; // 7%
-        public const float PopulisteUnemploymentBonusPct = 0.30f;
+        public const float UnemploymentThresholdPct = 8f; // pourcentage de chomage 
+        public const float PopulisteUnemploymentBonusPct = 0.15f;
 
         private CountHouseholdDataSystem m_CountHouseholdDataSystem;
 

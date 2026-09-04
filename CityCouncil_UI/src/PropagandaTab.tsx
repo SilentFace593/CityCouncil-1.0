@@ -34,9 +34,9 @@ interface IllegalCampaignDto {
 
 
 const INTENSITY_TIERS: Record<string, { cost: number; bonus: number }> = {
-  Petite: { cost: 25000, bonus: 0.02 },
-  Moyenne: { cost: 75000, bonus: 0.04 },
-  Forte: { cost: 150000, bonus: 0.06 },
+  Petite: { cost: 20000, bonus: 0.02 },
+  Moyenne: { cost: 50000, bonus: 0.04 },
+  Forte: { cost: 75000, bonus: 0.06 },
 };
 const INTENSITIES = ["Petite", "Moyenne", "Forte"];
 const TARGETS = ["Adultes", "Seniors"];

@@ -24,7 +24,7 @@ namespace CityCouncil
     {
         private static readonly ILog s_Log = LogManager.GetLogger("CityCouncil").SetShowsErrorsInUI(false);
 
-        public const int MaxFixedAmount = 100000;
+        public const int MaxFixedAmount = 200000;
         private const int CreditsPerSeat = 1000;
         private const double AutoRenewCycleIntervalDays = 7.0;
 
