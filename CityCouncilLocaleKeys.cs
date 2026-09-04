@@ -229,6 +229,8 @@
         public const string Commission_ActiveIllegalCount = "CityCouncil.Commission.ACTIVE_ILLEGAL_COUNT";
         public const string Commission_ActiveSanction = "CityCouncil.Commission.ACTIVE_SANCTION";
         public const string Commission_NoSanction = "CityCouncil.Commission.NO_SANCTION";
+        public const string Commission_TabTitle = "CityCouncil.Commission.TAB_TITLE";
+        public const string Commission_TabIntro = "CityCouncil.Commission.TAB_INTRO";
 
         // --- Illegal district campaign (PropagandaTab) ---
         public const string Illegal_SectionHeader = "CityCouncil.Illegal.SECTION_HEADER";

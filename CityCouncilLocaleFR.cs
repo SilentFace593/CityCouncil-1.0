@@ -231,6 +231,8 @@ namespace CityCouncil
                 { LocaleKeys.Commission_ActiveIllegalCount, "Campagnes illégales actives" },
                 { LocaleKeys.Commission_ActiveSanction, "Sanction active" },
                 { LocaleKeys.Commission_NoSanction, "Aucune sanction active." },
+                { LocaleKeys.Commission_TabTitle, "Commission Électorale" },
+                { LocaleKeys.Commission_TabIntro, "La Commission Électorale surveille les campagnes illégales de chaque parti et effectue un contrôle tous les 7 jours.\n\n Plus un parti multiplie les campagnes illégales actives, plus il risque d'être détecté et de voir sa vigilance escalader." },
 
                 // Campagne illégale de district
                 { LocaleKeys.Illegal_SectionHeader, "Campagne illégale" },

@@ -227,6 +227,8 @@ namespace CityCouncil
                 { LocaleKeys.Commission_ActiveIllegalCount, "Active illegal campaigns" },
                 { LocaleKeys.Commission_ActiveSanction, "Active sanction" },
                 { LocaleKeys.Commission_NoSanction, "No active sanction." },
+                { LocaleKeys.Commission_TabTitle, "Electoral Commission" },
+                { LocaleKeys.Commission_TabIntro, "The Electoral Commission monitors each party's illegal campaigns and runs a check every 7 days.\n\n The more active illegal campaigns a party runs, the higher the risk of detection and escalating vigilance." },
 
                 // Illegal district campaign
                 { LocaleKeys.Illegal_SectionHeader, "Illegal campaign" },

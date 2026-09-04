@@ -84,7 +84,7 @@ const tabIntro = t(
   <div style={{ ...centeredTabWrapperStyle, position: "relative", minHeight: "100%" }}>
    <div style={centeredTabContentStyle}>
 
-            <div style={{ color: "white", text-align: "center", fontSize: "22rem", fontWeight: 700, marginBottom: "8rem" }}>
+            <div style={{ color: "white", fontSize: "18rem", fontWeight: 700, marginBottom: "8rem" }}>
             {tabTitle}
           </div>
           <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "12rem", lineHeight: "17rem", marginBottom: "16rem" }}>

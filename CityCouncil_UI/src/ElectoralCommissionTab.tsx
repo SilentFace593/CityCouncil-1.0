@@ -40,6 +40,12 @@ export function ElectoralCommissionTab() {
   const { translate } = useLocalization();
   const t = (key: string, fallback: string): string => translate(key, fallback) ?? fallback;
 
+  const tabTitle = t("CityCouncil.Commission.TAB_TITLE", "Commission Électorale"); // AJOUT
+  const tabIntro = t(
+    "CityCouncil.Commission.TAB_INTRO",
+    "La Commission Électorale surveille les campagnes illégales de chaque parti et effectue un contrôle tous les 7 jours. Plus un parti multiplie les campagnes illégales actives, plus il risque d'être détecté et de voir sa vigilance escalader."
+  );
+
   const reportJson = useValue(commissionReportJson$);
   const customExists = useValue(customPartyExists$);
   const customName = useValue(customPartyName$);
@@ -76,46 +82,59 @@ export function ElectoralCommissionTab() {
   };
 
   return (
-    <div style={{ display: "flex", position: "relative", width: "100%", height: "100%", boxSizing: "border-box" }}>
-      {/* Colonne gauche : liste des partis, cliquable */}
-      <div style={{ width: "150rem", flexShrink: 0, borderRight: "1rem solid rgba(255,255,255,0.12)", overflowY: "auto" }}>
-        {orderedReport.map((r) => {
-          const isSelected = selected && r.party === selected.party;
-          const color = PARTY_COLORS[r.party] ?? "#888";
-          return (
-            <div
-              key={r.party}
-              onClick={() => setSelectedKey(r.party)}
-              style={{
-                display: "flex", alignItems: "center", padding: "8rem 10rem", cursor: "pointer",
-                background: isSelected ? "rgba(255,255,255,0.10)" : "transparent",
-                borderLeft: isSelected ? "3rem solid white" : "3rem solid transparent",
-              }}
-            >
-              <div style={{ width: "10rem", height: "10rem", borderRadius: "50%", background: color, flexShrink: 0, marginRight: "8rem" }} />
-              <span style={{ color: "white", fontSize: "12rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-  {partyLabel(r.party)}
-</span>
-            </div>
-          );
-        })}
+    <div style={{ display: "flex", flexDirection: "column", width: "100%", height: "100%", boxSizing: "border-box" }}>
+
+     {/* AJOUT — titre + phrase explicative, au-dessus des deux colonnes */}
+      <div style={{ padding: "12rem 12rem 0 12rem", flexShrink: 0 }}>
+        <div style={{ color: "white", fontSize: "18rem", fontWeight: 700, marginBottom: "8rem" }}>
+          {tabTitle}
+        </div>
+        <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "12rem", lineHeight: "17rem", marginBottom: "12rem" }}>
+          {tabIntro}
+        </div>
       </div>
 
-      {/* Colonne droite : rapport d'activités */}
-      <div style={{ flex: 1, padding: "12rem", overflowY: "auto", boxSizing: "border-box" }}>
-        {selected && (
-          <>
-            <div style={{ display: "flex", alignItems: "center", marginBottom: "14rem" }}>
-              <VigilanceIcon level={selected.vigilanceLevel} />
-              <div style={{ marginLeft: "10rem" }}>
-                <div style={{ color: "white", fontSize: "16rem", fontWeight: 700 }}>
-                        {partyLabel(selected.party)}
-                </div>
-                <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "13rem" }}>
-                  {levelLabel(selected.vigilanceLevel)}
-                </div>
-              </div>
+      <div style={{ display: "flex", position: "relative", width: "100%", flex: 1, minHeight: 0, boxSizing: "border-box" }}>
+
+      {/* Colonne gauche : liste des partis, cliquable */}
+      <div style={{ width: "150rem", flexShrink: 0, borderRight: "1rem solid rgba(255,255,255,0.12)", overflowY: "auto" }}>
+                        {orderedReport.map((r) => {
+                          const isSelected = selected && r.party === selected.party;
+                          const color = PARTY_COLORS[r.party] ?? "#888";
+                          return (
+                            <div
+                              key={r.party}
+                              onClick={() => setSelectedKey(r.party)}
+                              style={{
+                                display: "flex", alignItems: "center", padding: "8rem 10rem", cursor: "pointer",
+                                background: isSelected ? "rgba(255,255,255,0.10)" : "transparent",
+                                borderLeft: isSelected ? "3rem solid white" : "3rem solid transparent",
+                              }}
+                            >
+                              <div style={{ width: "10rem", height: "10rem", borderRadius: "50%", background: color, flexShrink: 0, marginRight: "8rem" }} />
+                              <span style={{ color: "white", fontSize: "12rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {partyLabel(r.party)}
+                </span>
             </div>
+             );
+                 })}
+        </div>
+
+              {/* Colonne droite : rapport d'activités */}
+              <div style={{ flex: 1, padding: "12rem", overflowY: "auto", boxSizing: "border-box" }}>
+                {selected && (
+                  <>
+                    <div style={{ display: "flex", alignItems: "center", marginBottom: "14rem" }}>
+                      <VigilanceIcon level={selected.vigilanceLevel} />
+                      <div style={{ marginLeft: "10rem" }}>
+                        <div style={{ color: "white", fontSize: "16rem", fontWeight: 700 }}>
+                                {partyLabel(selected.party)}
+                        </div>
+                        <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "13rem" }}>
+                          {levelLabel(selected.vigilanceLevel)}
+                        </div>
+                      </div>
+                    </div>
 
             <div style={{ color: "white", fontSize: "14rem", fontWeight: 600, marginBottom: "10rem" }}>
               {t("CityCouncil.Commission.REPORT_TITLE", "Rapport d'Activités")}
@@ -138,24 +157,25 @@ export function ElectoralCommissionTab() {
             )}
           </>
             )}
-        </div>
+                </div>
 
-        <div
-  style={{
-    position: "absolute",
-    bottom: "10rem",
-    right: "10rem",
-    width: "110rem", //rapport:0.58
-    height: "64rem",
-    backgroundImage: `url(${TAB_IMAGES.doodleCommission})`,
-    backgroundSize: "contain",
-    backgroundRepeat: "no-repeat",
-    backgroundPosition: "center",
-    pointerEvents: "none",
-    zIndex: 10,
-  }}
-/>
+                        <div
+                  style={{
+                    position: "absolute",
+                    bottom: "10rem",
+                    right: "10rem",
+                    width: "110rem", //rapport:0.58
+                    height: "64rem",
+                    backgroundImage: `url(${TAB_IMAGES.doodleCommission})`,
+                    backgroundSize: "contain",
+                    backgroundRepeat: "no-repeat",
+                    backgroundPosition: "center",
+                    pointerEvents: "none",
+                    zIndex: 10,
+                  }}
+                />
 
     </div>
+</div>
   );
 }
