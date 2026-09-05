@@ -78,6 +78,11 @@ namespace CityCouncil
                 { (PoliticalParty.Republicain, PoliticalParty.GaucheRadicale), 0.05f },
             };
 
+        public static float GetTransferShareForCoalition(PoliticalParty eliminated, PoliticalParty finalist)
+        {
+            return TransferMatrix.TryGetValue((eliminated, finalist), out float v) ? v : 0f;
+        }
+
         /// <summary>
         /// Applique les modificateurs de richesse à une base de vote pour une tranche d'âge donnée.
         /// isAdult=true applique les bonus adultes, sinon les bonus séniors.
@@ -211,14 +216,14 @@ namespace CityCouncil
         /// </summary>
         private static readonly Dictionary<string, (PoliticalParty party, float percent)[]> PolicyModifiers = new()
         {
-            ["Energy Consumption Awareness"] = new[] { (PoliticalParty.Ecologiste, 0.12f) },
-            ["Recycling"] = new[] { (PoliticalParty.Ecologiste, 0.12f), (PoliticalParty.Populiste, 0.01f) },
-            ["Roadside Parking Fee"] = new[] { (PoliticalParty.Populiste, 0.05f), (PoliticalParty.GaucheRadicale, 0.15f) },
-            ["Speed Bumps"] = new[] { (PoliticalParty.Populiste, 0.05f) },
-            ["Heavy Traffic Ban"] = new[] { (PoliticalParty.Ecologiste, 0.02f) },
+            ["Energy Consumption Awareness"] = new[] { (PoliticalParty.Ecologiste, 0.12f), (PoliticalParty.GaucheRadicale, 0.10f) },
+            ["Recycling"] = new[] { (PoliticalParty.Ecologiste, 0.12f), (PoliticalParty.GaucheRadicale, 0.10f), (PoliticalParty.Populiste, 0.01f) },
+            ["Roadside Parking Fee"] = new[] { (PoliticalParty.Populiste, 0.03f), (PoliticalParty.GaucheRadicale, 0.15f) },
+            ["Speed Bumps"] = new[] { (PoliticalParty.Populiste, 0.02f), (PoliticalParty.GaucheRadicale, 0.02f) },
+            ["Heavy Traffic Ban"] = new[] { (PoliticalParty.Ecologiste, 0.05f), (PoliticalParty.GaucheRadicale, 0.05f) },
             ["Gated Community"] = new[] { (PoliticalParty.Populiste, 0.20f), (PoliticalParty.Republicain, 0.18f) },
             ["Combustion Engine Ban"] = new[] { (PoliticalParty.Ecologiste, -0.20f) },
-            ["Urban Cycling Initiative"] = new[] { (PoliticalParty.Ecologiste, 0.08f) },
+            ["Urban Cycling Initiative"] = new[] { (PoliticalParty.Ecologiste, 0.08f), (PoliticalParty.GaucheRadicale, 0.04f) },
             ["Bicycle Traffic Restriction"] = new[] { (PoliticalParty.Populiste, 0.05f), (PoliticalParty.Republicain, 0.05f) },
         };
 

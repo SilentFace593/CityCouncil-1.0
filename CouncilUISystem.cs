@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO.Ports;
 using System.Linq;
+using Colossal.Logging;
 using Colossal.UI.Binding;
 using Game.Areas;
 using Game.Tools;
@@ -25,6 +26,7 @@ namespace CityCouncil.Systems
     public partial class CouncilUISystem : UISystemBase
     {
         private const string kGroup = "cityCouncil";
+        private static readonly ILog s_Log = LogManager.GetLogger("CityCouncil").SetShowsErrorsInUI(false);
 
         private ToolSystem m_ToolSystem;
         private EntityManager m_EntityManager;
@@ -193,6 +195,12 @@ namespace CityCouncil.Systems
         //District Puissant
         private ValueBinding<string> m_PowerfulDistrictJsonBinding;
 
+        // AJOUT — Coalition
+        private CityCouncil.CouncilCoalitionSystem m_CoalitionSystem;
+        private ValueBinding<string> m_CoalitionJsonBinding;       // état complet, JSON
+        private string m_LastPushedCoalitionJson;
+        private bool m_HasLastPushedCoalition;
+
 
 
         protected override void OnCreate()
@@ -219,7 +227,7 @@ namespace CityCouncil.Systems
             m_InstitutionSystem = World.GetOrCreateSystemManaged<CityCouncil.CouncilInstitutionSystem>();
             m_VotingInstructionSystem = World.GetOrCreateSystemManaged<CityCouncil.CouncilVotingInstructionSystem>();
             m_ReinforcedBastionSystem = World.GetOrCreateSystemManaged<CityCouncil.CouncilReinforcedBastionSystem>(); // AJOUT
-
+            m_CoalitionSystem = World.GetOrCreateSystemManaged<CityCouncil.CouncilCoalitionSystem>();
 
 
 
@@ -284,6 +292,7 @@ namespace CityCouncil.Systems
             m_VotingInstructionDistrictsJsonBinding = new ValueBinding<string>(kGroup, "votingInstructionDistrictsJson", "[]");
             m_ReinforcedBastionEligibleDistrictsJsonBinding = new ValueBinding<string>(kGroup, "reinforcedBastionEligibleDistrictsJson", "[]"); // AJOUT
             m_PowerfulDistrictJsonBinding = new ValueBinding<string>(kGroup, "powerfulDistrictJson", "{}");
+            m_CoalitionJsonBinding = new ValueBinding<string>(kGroup, "coalitionJson", "{}");
 
 
 
@@ -348,6 +357,30 @@ namespace CityCouncil.Systems
             AddBinding(m_VotingInstructionDistrictsJsonBinding);
             AddBinding(m_ReinforcedBastionEligibleDistrictsJsonBinding);
             AddBinding(m_PowerfulDistrictJsonBinding);
+            AddBinding(m_CoalitionJsonBinding);
+
+            AddBinding(new TriggerBinding(kGroup, "debugForceCoalitionCheck",
+    () => { m_CoalitionSystem.DebugForceCoalitionCheck(); UpdateCoalitionBindingIfChanged(force: true); }));
+
+            AddBinding(new TriggerBinding(kGroup, "declineCoalitionProposal",
+    () =>
+    {
+        m_CoalitionSystem.TryDeclineCoalitionProposal(out _);
+        UpdateCoalitionBindingIfChanged(force: true);
+    }));
+
+            AddBinding(new TriggerBinding<string>(kGroup, "proposeCoalition",
+    (targetsStr) =>
+    {
+        var targets = new List<PoliticalParty>();
+        if (!string.IsNullOrEmpty(targetsStr))
+        {
+            foreach (var part in targetsStr.Split(','))
+                if (System.Enum.TryParse<PoliticalParty>(part, out var p)) targets.Add(p);
+        }
+        m_CoalitionSystem.TryProposeCoalition(targets, out _);
+        UpdateCoalitionBindingIfChanged(force: true);
+    }));
 
             AddBinding(new TriggerBinding<string>(kGroup, "chooseReinforcedBastion",
     (districtIdStr) =>
@@ -632,7 +665,8 @@ namespace CityCouncil.Systems
             UpdateUniversityBonusBindingIfChanged();
             UpdateDigitalBonusBindingIfChanged();
             UpdateVotingInstructionDistrictsBinding();
-            UpdateReinforcedBastionEligibleBinding(); // AJOUT
+            UpdateReinforcedBastionEligibleBinding();
+            UpdateCoalitionBindingIfChanged();
 
 
             Entity selected = m_ToolSystem.selected;
@@ -691,6 +725,33 @@ namespace CityCouncil.Systems
             m_HasLastPushedShowDebugTab = true;
         }
 
+        private void UpdateCoalitionBindingIfChanged(bool force = false)
+        {
+            var leadingBloc = m_CoalitionSystem.GetLeadingBloc(); // MODIFIÉ
+            bool leadingHasMajority = m_CoalitionSystem.LeadingBlocHasAbsoluteMajority(); // MODIFIÉ
+
+            var dto = new CoalitionDto
+            {
+                leadingIsCoalition = leadingBloc.Members.Count >= 2, // MODIFIÉ
+                leadingMembers = leadingBloc.Members.Select(p => p.ToString()).ToList(), // MODIFIÉ
+                leadingHasAbsoluteMajority = leadingHasMajority, // MODIFIÉ
+                awaitingPlayerDecision = m_CoalitionSystem.IsAwaitingPlayerDecision(),
+            };
+
+            var custom = m_CustomPartySystem.GetData();
+            dto.playerCustomName = (custom.m_Exists && custom.m_SubstitutionActive) ? custom.m_ActiveSpace.ToString() : "";
+            dto.customPartyName = (custom.m_Exists && custom.m_SubstitutionActive) ? custom.m_Name.ToString() : "";
+            dto.customPartyColor = (custom.m_Exists && custom.m_SubstitutionActive) ? custom.m_Color.ToString() : "";
+
+            string json = dto.ToJson();
+            if (!force && m_HasLastPushedCoalition && json == m_LastPushedCoalitionJson) return;
+
+
+            s_Log.Info($"[CouncilUISystem][DEBUG-Coalition] JSON poussé : {json}");
+            m_CoalitionJsonBinding.Update(json);
+            m_LastPushedCoalitionJson = json;
+            m_HasLastPushedCoalition = true;
+        }
 
         private void UpdateReinforcedBastionEligibleBinding(bool force = false)
         {
@@ -1015,10 +1076,6 @@ namespace CityCouncil.Systems
 
         private void UpdateDistrictCampaignsBinding()
         {
-            var custom = m_CustomPartySystem.GetData();
-            if (!custom.m_Exists || !custom.m_SubstitutionActive) { return; }
-            var playerParty = custom.m_ActiveSpace;
-
             var dtos = new List<DistrictCampaignDto>();
             var districts = m_DistrictQuery.ToEntityArray(Unity.Collections.Allocator.Temp);
             try
@@ -1029,7 +1086,6 @@ namespace CityCouncil.Systems
                     var data = m_EntityManager.GetComponentData<CouncilDistrictData>(d);
                     foreach (var c in data.m_DistrictCampaigns)
                     {
-                        if (c.m_Party != playerParty) continue;
                         dtos.Add(new DistrictCampaignDto
                         {
                             districtId = d.Index,
@@ -1638,7 +1694,7 @@ namespace CityCouncil.Systems
             return dto;
         }
 
-private static bool DataEquals(in CouncilDistrictData a, in CouncilDistrictData b)
+        private static bool DataEquals(in CouncilDistrictData a, in CouncilDistrictData b)
         {
             return a.m_Phase == b.m_Phase
                && a.m_LeadingParty == b.m_LeadingParty
@@ -1664,6 +1720,8 @@ private static bool DataEquals(in CouncilDistrictData a, in CouncilDistrictData 
             return string.IsNullOrWhiteSpace(name) ? $"District #{districtEntity.Index}" : name;
         }
     }
+
+
 
 
     /// <summary>
@@ -2138,6 +2196,32 @@ private static bool DataEquals(in CouncilDistrictData a, in CouncilDistrictData 
         }
 
         private static string EscapeJson(string s) => (s ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"");
+    }
+
+    public struct CoalitionDto
+    {
+        public bool leadingIsCoalition;
+        public List<string> leadingMembers;       // 1 élément si parti seul, 2+ si coalition
+        public bool leadingHasAbsoluteMajority;
+        public bool awaitingPlayerDecision;
+        public string playerCustomName;
+        public string customPartyName;
+        public string customPartyColor;
+
+        public string ToJson()
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.Append('{');
+            sb.Append("\"leadingIsCoalition\":").Append(leadingIsCoalition ? "true" : "false").Append(',');
+            sb.Append("\"leadingMembers\":[").Append(string.Join(",", leadingMembers.Select(m => $"\"{m}\""))).Append("],");
+            sb.Append("\"leadingHasAbsoluteMajority\":").Append(leadingHasAbsoluteMajority ? "true" : "false").Append(',');
+            sb.Append("\"awaitingPlayerDecision\":").Append(awaitingPlayerDecision ? "true" : "false").Append(',');
+            sb.Append("\"playerCustomName\":\"").Append(playerCustomName).Append("\",");
+            sb.Append("\"customPartyName\":\"").Append((customPartyName ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"")).Append("\",");
+            sb.Append("\"customPartyColor\":\"").Append(customPartyColor ?? "").Append("\"");
+            sb.Append('}');
+            return sb.ToString();
+        }
     }
 
 }

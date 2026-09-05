@@ -33,6 +33,17 @@ interface IllegalCampaignDto {
 }
 
 
+const DISTRICT_BOOST_TIERS: Record<string, { cost: number; bonus: number }> = {
+  Petite: { cost: 3000, bonus: 0.02 },
+  Moyenne: { cost: 6000, bonus: 0.03 },
+  Forte: { cost: 10000, bonus: 0.04 },
+};
+const ATTACK_CLEAN_COST = 10000;
+const ATTACK_CLEAN_MALUS = 0.02;
+const ATTACK_DIRTY_COST = 15000;
+const ATTACK_DIRTY_MALUS = 0.04;
+
+
 const INTENSITY_TIERS: Record<string, { cost: number; bonus: number }> = {
   Petite: { cost: 20000, bonus: 0.02 },
   Moyenne: { cost: 50000, bonus: 0.04 },
@@ -40,6 +51,7 @@ const INTENSITY_TIERS: Record<string, { cost: number; bonus: number }> = {
 };
 const INTENSITIES = ["Petite", "Moyenne", "Forte"];
 const TARGETS = ["Adultes", "Seniors"];
+
 
 function ActionButton({ label, enabled, onClick }: { label: string; enabled: boolean; onClick: () => void }) {
   return (
@@ -214,7 +226,12 @@ const [boostTier, setBoostTier] = useState<string>("Petite");
 const [attackTarget, setAttackTarget] = useState<string>("");
 const [attackDirty, setAttackDirty] = useState(false);
 
-const slotsUsed = districtCampaigns.length;
+const ownDistrictCampaigns = useMemo(
+  () => districtCampaigns.filter((c) => playerControlsAvailable && c.party === customSpace),
+  [districtCampaigns, playerControlsAvailable, customSpace]
+);
+
+const slotsUsed = ownDistrictCampaigns.length;
 const slotsFull = slotsUsed >= districtCampaignMax;
 
 const handleLaunchDistrict = () => {
@@ -446,34 +463,43 @@ if (!isDemocratPlayer || !digitalBonusActive) return;
       </div>
 
       {campaignMode === "boost" && (
-        <Dropdown value={boostTier} options={INTENSITIES} labels={intensityLabels} onChange={setBoostTier} />
-      )}
+  <>
+    <Dropdown value={boostTier} options={INTENSITIES} labels={intensityLabels} onChange={setBoostTier} />
+  
+    <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "11rem", marginTop: "6rem" }}>
+      {`${t("CityCouncil.Propaganda.COST_LABEL", "Coût : ")}${DISTRICT_BOOST_TIERS[boostTier].cost.toLocaleString()} — +${Math.round(DISTRICT_BOOST_TIERS[boostTier].bonus * 100)}%`}
+    </div>
+  </>
+)}
 
-      {campaignMode === "attack" && (
-        <>
-          <Dropdown
-            value={attackTarget}
-            options={["Ecologiste", "Democrate", "Populiste", "Republicain", "GaucheRadicale"].filter((p) => p !== customSpace)}
-            labels={{}}
-            onChange={setAttackTarget}
-          />
-          <div
-            onClick={() => setAttackDirty((v) => !v)}
-            style={{ marginTop: "8rem", padding: "8rem", background: "rgba(255,255,255,0.06)", borderRadius: "4rem", cursor: "pointer" }}
-          >
-            <div style={{ color: "white", fontSize: "12rem", fontWeight: 600 }}>
-              {attackDirty
-                ? t("CityCouncil.DistrictCampaign.ATTACK_DIRTY_LABEL", "Campagne sale")
-                : t("CityCouncil.DistrictCampaign.ATTACK_CLEAN_LABEL", "Campagne propre")}
-            </div>
-            <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "11rem", marginTop: "4rem", lineHeight: "15rem" }}>
-              {attackDirty
-                ? t("CityCouncil.DistrictCampaign.ATTACK_DIRTY_DESC", "-4% pour le parti visé, mais un malus aléatoire (0 à -5%) frappe aussi votre propre parti dans ce district.")
-                : t("CityCouncil.DistrictCampaign.ATTACK_CLEAN_DESC", "-2% pour le parti visé dans ce district. Aucun risque pour vous.")}
-            </div>
-          </div>
-        </>
-      )}
+     {campaignMode === "attack" && (
+  <>
+    <Dropdown
+      value={attackTarget}
+      options={["Ecologiste", "Democrate", "Populiste", "Republicain", "GaucheRadicale"].filter((p) => p !== customSpace)}
+      labels={{}}
+      onChange={setAttackTarget}
+    />
+    <div
+      onClick={() => setAttackDirty((v) => !v)}
+      style={{ marginTop: "8rem", padding: "8rem", background: "rgba(255,255,255,0.06)", borderRadius: "4rem", cursor: "pointer" }}
+    >
+      <div style={{ color: "white", fontSize: "12rem", fontWeight: 600 }}>
+        {attackDirty
+          ? t("CityCouncil.DistrictCampaign.ATTACK_DIRTY_LABEL", "Campagne sale")
+          : t("CityCouncil.DistrictCampaign.ATTACK_CLEAN_LABEL", "Campagne propre")}
+      </div>
+      <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "11rem", marginTop: "4rem", lineHeight: "15rem" }}>
+        {attackDirty
+          ? t("CityCouncil.DistrictCampaign.ATTACK_DIRTY_DESC", "-4% pour le parti visé, mais un malus aléatoire (0 à -5%) frappe aussi votre propre parti dans ce district.")
+          : t("CityCouncil.DistrictCampaign.ATTACK_CLEAN_DESC", "-2% pour le parti visé dans ce district. Aucun risque pour vous.")}
+      </div>
+      <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "11rem", marginTop: "6rem" }}>
+        {`${t("CityCouncil.Propaganda.COST_LABEL", "Coût : ")}${(attackDirty ? ATTACK_DIRTY_COST : ATTACK_CLEAN_COST).toLocaleString()}`}
+      </div>
+    </div>
+  </>
+)}
 
       <ActionButton
         label={t("CityCouncil.DistrictCampaign.LAUNCH_BUTTON", "Lancer la campagne")}
@@ -548,22 +574,28 @@ if (!isDemocratPlayer || !digitalBonusActive) return;
   </div>
 )}
 
-  {/* Liste des campagnes actives */}
-  <div style={{ marginTop: "14rem" }}>
-    {districtCampaigns.map((c) => {
-      const typeLabel = c.type === "Boost"
-        ? `+${Math.round(c.bonusPercent * 100)}%`
-        : `${translatePartyName(c.targetParty, translate)} -${Math.round(c.bonusPercent * 100)}%` +
-          (c.type === "AttackDirty" ? ` (risque -${Math.round(c.selfMalusPercent * 100)}% pour vous)` : "");
-      return (
-        <div key={`${c.districtId}-${c.type}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6rem" }}>
-          <span style={{ color: "white", fontSize: "12rem" }}>{`${c.districtName} — ${typeLabel}`}</span>
+  {/* Liste des campagnes actives, TOUS partis confondus (IA incluses) */}
+<div style={{ marginTop: "14rem" }}>
+  {districtCampaigns.map((c) => {
+    const isOwn = playerControlsAvailable && c.party === customSpace;
+    const typeLabel = c.type === "Boost"
+      ? `+${Math.round(c.bonusPercent * 100)}%`
+      : `${translatePartyName(c.targetParty, translate)} -${Math.round(c.bonusPercent * 100)}%` +
+        (c.type === "AttackDirty" && isOwn ? ` (risque -${Math.round(c.selfMalusPercent * 100)}% pour vous)` : "");
+
+    return (
+
+      <div key={`${c.districtId}-${c.party}-${c.type}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6rem" }}>
+
+        <span style={{ color: "white", fontSize: "12rem" }}>{`${partyLabel(c.party)} — ${c.districtName} — ${typeLabel}`}</span>
+        {isOwn && (
           <ActionButton label={t("CityCouncil.DistrictCampaign.CANCEL_BUTTON", "Annuler")}
             enabled={true} onClick={() => handleCancelDistrict(c.districtId)} />
-        </div>
-      );
-    })}
-  </div>
+        )}
+      </div>
+    );
+  })}
+</div>
 </div>
 
     </div>

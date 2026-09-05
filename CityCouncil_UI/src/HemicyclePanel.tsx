@@ -1,9 +1,21 @@
 import { Component, useMemo, useState } from "react";
 import { bindValue, trigger, useValue } from "cs2/api";
-import { Button, Panel } from "cs2/ui";
+import { Button, Panel, Scrollable } from "cs2/ui";
 import { useLocalization } from "cs2/l10n";
-import { Scrollable } from "cs2/ui";
-import { translatePartyName, PARTY_LABELS, PARTY_ORDER, resolvePartyColor, resolvePartyLabel, PartyLogo, type PartyResultDto } from "./PartyResultDto";
+
+import { 
+  translatePartyName, 
+  PARTY_LABELS, 
+  PARTY_ORDER, 
+  PARTY_COLORS,
+  CUSTOM_PARTY_PALETTE_HEX,
+  resolvePartyColor, 
+  resolvePartyLabel, 
+  PartyLogo, 
+  type PartyResultDto,
+  BonusBadgeIcon 
+} from "./PartyResultDto";
+
 import { YourPartyTab } from "./YourPartyTab";
 import { PoliticalForcesTab } from "./PoliticalForcesTab";
 import { FundingTab } from "./FundingTab";
@@ -15,8 +27,8 @@ import { RulesTab } from "./RulesTab";
 import { DebugTab } from "./DebugTab";
 import { centeredTabWrapperStyle, centeredTabContentStyle } from "./layoutConstants";
 import { VotingInstructionsCard } from "./VotingInstructionsCard";
-import { BonusBadgeIcon } from "./PartyResultDto";
 import { ReinforcedBastionCard } from "./ReinforcedBastionCard";
+import { CoalitionProposalCard } from "./CoalitionProposalCard"; // Ajout de l'import manquant
 import doodleResultatsImg from "./images/doodle_resultats.png";
 
 const TAB_IMAGES = { doodleResultats: doodleResultatsImg };
@@ -29,23 +41,7 @@ const playerBonusChoicePending$ = bindValue<boolean>("cityCouncil", "playerBonus
 const playerBonusChoiceSpace$ = bindValue<string>("cityCouncil", "playerBonusChoiceSpace");
 const showDebugTab$ = bindValue<boolean>("cityCouncil", "showDebugTab");
 const powerfulDistrictJson$ = bindValue<string>("cityCouncil", "powerfulDistrictJson");
-
-const scrollbarStyle = `
-  .cc-scrollable::-webkit-scrollbar {
-    width: 8rem;
-  }
-  .cc-scrollable::-webkit-scrollbar-track {
-    background: rgba(255,255,255,0.05);
-  }
-  .cc-scrollable::-webkit-scrollbar-thumb {
-    background: rgba(255,255,255,0.25);
-    border-radius: 4rem;
-  }
-  .cc-scrollable::-webkit-scrollbar-thumb:hover {
-    background: rgba(255,255,255,0.4);
-  }
-`;
-
+const coalitionJson$ = bindValue<string>("cityCouncil", "coalitionJson");
 
 // Error Boundary
 class SafeBoundary extends Component<{ children: any }, { crashed: boolean }> {
@@ -187,17 +183,16 @@ function BonusChoicePrompt() {
       </div>
 
       <div style={{ display: "flex", gap: "8rem", marginBottom: "10rem" }}>
-        {/* TODO : remplacer les emoji par de vraies icônes .png une fois le design disponible. */}
         <div style={optionStyle("Defensif")} onClick={() => setSelection("Defensif")}>
           <div style={{ marginBottom: "4rem", display: "flex", justifyContent: "center" }}>
-  <BonusBadgeIcon bonus="Defensif" widthRem={150} />
-</div>
+            <BonusBadgeIcon bonus="Defensif" widthRem={150} />
+          </div>
           <div>{defensifLabel}</div>
         </div>
         <div style={optionStyle("Offensif")} onClick={() => setSelection("Offensif")}>
-         <div style={{ marginBottom: "4rem", display: "flex", justifyContent: "center" }}>
-  <BonusBadgeIcon bonus="Offensif" widthRem={150} />
-</div>
+          <div style={{ marginBottom: "4rem", display: "flex", justifyContent: "center" }}>
+            <BonusBadgeIcon bonus="Offensif" widthRem={150} />
+          </div>
           <div>{offensifLabel}</div>
         </div>
       </div>
@@ -223,6 +218,62 @@ function BonusChoicePrompt() {
 
       <div style={{ color: "rgba(255,255,255,0.5)", fontSize: "11rem", lineHeight: "15rem" }}>
         {hint}
+      </div>
+    </div>
+  );
+}
+
+interface CoalitionDto {
+  leadingIsCoalition: boolean;
+  leadingMembers: string[]; // triés par sièges décroissants côté C#
+  leadingHasAbsoluteMajority: boolean;
+  awaitingPlayerDecision: boolean;
+  playerCustomName: string;
+  customPartyName: string;
+  customPartyColor: string;
+}
+
+function CoalitionStatusLine() {
+  const { translate } = useLocalization();
+  const t = (key: string, fallback: string): string => translate(key, fallback) ?? fallback;
+  const json = useValue(coalitionJson$);
+
+  const dto: CoalitionDto | null = useMemo(() => {
+    try {
+      const p = JSON.parse(json ?? "{}");
+      return typeof p.leadingIsCoalition === "boolean" ? p : null;
+    } catch { return null; }
+  }, [json]);
+
+  // MODIFIÉ — ne s'affiche QUE si le bloc en tête est une coalition (2+ membres), pas
+  // n'importe quelle coalition existante par ailleurs.
+  if (!dto || !dto.leadingIsCoalition) return null;
+
+  const label = (partyKey: string): string =>
+    dto.playerCustomName && partyKey === dto.playerCustomName ? dto.customPartyName : translatePartyName(partyKey, translate);
+  const color = (partyKey: string): string =>
+    dto.playerCustomName && partyKey === dto.playerCustomName
+      ? (CUSTOM_PARTY_PALETTE_HEX[dto.customPartyColor] ?? "#888")
+      : (PARTY_COLORS[partyKey] ?? "#888");
+
+  // AJOUT — précise si la coalition dispose ou non de la majorité absolue, pour ne pas
+  // induire en erreur ("Coalition" ne veut pas forcément dire "majoritaire").
+  const majoritySuffix = dto.leadingHasAbsoluteMajority
+    ? t("CityCouncil.Coalition.MAJORITY_SUFFIX", " (majorité absolue)")
+    : t("CityCouncil.Coalition.PLURALITY_SUFFIX", " (majorité relative)");
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "10rem" }}>
+      <div style={{ color: "rgba(150,190,255,0.95)", fontSize: "16rem", fontWeight: 700, marginBottom: "6rem" }}>
+        {t("CityCouncil.Coalition.HEADER", "Coalition")}{majoritySuffix}
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: "10rem" }}>
+        {dto.leadingMembers.map((m) => (
+          <div key={m} style={{ display: "flex", alignItems: "center", gap: "4rem" }}>
+            <PartyLogo party={m} color={color(m)} isCustom={!!dto.playerCustomName && m === dto.playerCustomName} sizeRem={40} />
+            <span style={{ color: "white", fontSize: "12rem", whiteSpace: "nowrap" }}>{label(m)}</span>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -291,51 +342,54 @@ function HemicycleResultsContent() {
   const seatsJson = useValue(hemicycleSeatsJson$);
   const results: PartyResultDto[] = useMemo(() => {
     try {
-      const parsed = JSON.parse(seatsJson ?? "[]"); // GARDE
-      return Array.isArray(parsed) ? parsed.filter((r) => r && typeof r.party === "string") : []; // GARDE
+      const parsed = JSON.parse(seatsJson ?? "[]");
+      return Array.isArray(parsed) ? parsed.filter((r) => r && typeof r.party === "string") : [];
     } catch {
       return [];
     }
   }, [seatsJson]);
-  const leader = useValue(hemicycleLeader$);
-  const totalSeats = results.reduce((sum, r) => sum + (r.seats ?? 0), 0); // GARDE
+
+ const leader = useValue(hemicycleLeader$);
+const coalitionJsonRaw = useValue(coalitionJson$);
+
+const coalitionLeadingIsCoalition = useMemo(() => {
+  try {
+    return !!JSON.parse(coalitionJsonRaw ?? "{}").leadingIsCoalition;
+  } catch {
+    return false;
+  }
+}, [coalitionJsonRaw]);
+
+  const totalSeats = results.reduce((sum, r) => sum + (r.seats ?? 0), 0);
   const leaderResult = results.find((r) => r.party === leader);
 
-  // Construction sécurisée de la ligne de résumé sous forme d'une seule chaîne (template literal)
   let statusLine = t("CityCouncil.Hemicycle.NO_ELECTION", "Aucune élection terminée pour le moment.");
   if (leader) {
-   const leaderName = leaderResult
-    ? resolvePartyLabel(leaderResult, translate)
-    : translatePartyName(leader, translate);
+    const leaderName = leaderResult
+      ? resolvePartyLabel(leaderResult, translate)
+      : translatePartyName(leader, translate);
     const leaderPrefix = t("CityCouncil.Hemicycle.LEADER_PREFIX", "Parti en tête : ");
     const seatsSuffix = t("CityCouncil.Hemicycle.SEATS_SUFFIX", " sièges au total");
     statusLine = `${leaderPrefix}${leaderName} — ${totalSeats}${seatsSuffix}`;
   }
 
-    return (
+  return (
     <div style={{ position: "relative", width: "100%", boxSizing: "border-box", minHeight: "100%" }}>
-
-      {/* Bloc étroit : statut + logo du leader */}
       <div style={centeredTabWrapperStyle}>
         <div style={centeredTabContentStyle}>
-          <div style={{ color: "rgba(255,255,255,0.8)", fontSize: "18rem", marginBottom: "10rem", textAlign: "center" }}>
-            {statusLine}
-          </div>
 
-          {leaderResult && (
-            <div style={{ display: "flex", justifyContent: "center", marginBottom: "14rem" }}>
-              <PartyLogo
-                party={leaderResult.party}
-                color={resolvePartyColor(leaderResult)}
-                isCustom={!!(leaderResult.displayName && leaderResult.displayName.length > 0)}
-                sizeRem={60}
-              />
-            </div>
-          )}
+          <CoalitionStatusLine />
+{!coalitionLeadingIsCoalition && (
+  <div style={{ color: "rgba(255,255,255,0.8)", fontSize: "18rem", marginBottom: "10rem", textAlign: "center" }}>
+    {statusLine}
+  </div>
+)}
+
+        
         </div>
       </div>
 
-      {/* AJOUT — Bloc élargi : graphique + légende, déborde de centeredTabContentStyle */}
+      {/* Bloc élargi : graphique + légende */}
       <div style={{ display: "flex", justifyContent: "center", width: "100%", boxSizing: "border-box" }}>
         <div style={{ width: "100%", maxWidth: RESULTS_FAN_MAX_WIDTH, boxSizing: "border-box", padding: "0 10rem" }}>
           <div style={{ display: "flex", alignItems: "center" }}>
@@ -394,13 +448,14 @@ function HemicycleResultsContent() {
         </div>
       </div>
 
-      {/* Bloc étroit : contenu annexe, recentré comme avant */}
+      {/* Bloc étroit : contenu annexe */}
       <div style={centeredTabWrapperStyle}>
         <div style={centeredTabContentStyle}>
           <PowerfulDistrictLine />
           <BonusChoicePrompt />
           <VotingInstructionsCard />
           <ReinforcedBastionCard />
+          <CoalitionProposalCard />
         </div>
       </div>
 
@@ -419,11 +474,9 @@ function HemicycleResultsContent() {
           zIndex: 10,
         }}
       />
-
     </div>
   );
 }
-
 
 type TabKey = "results" | "yourParty" | "forces" | "funding" | "propaganda" | "commission" | "poll" | "score" | "rules" | "debug";
 
@@ -435,7 +488,7 @@ function HemicycleTabs() {
   const t = (key: string, fallback: string): string => translate(key, fallback) ?? fallback;
 
   const [tab, setTab] = useState<TabKey>("results");
-  const showDebugTab = useValue(showDebugTab$); // AJOUT
+  const showDebugTab = useValue(showDebugTab$);
 
   const tabStyle = (key: TabKey) => ({
     padding: "8rem 9rem",
@@ -446,8 +499,6 @@ function HemicycleTabs() {
     fontWeight: 600,
   });
 
-  // AJOUT — si l'onglet actif est "debug" mais que le réglage vient d'être désactivé en
-  // cours de session, on retombe sur "results" pour éviter un onglet sélectionné invisible.
   const effectiveTab = tab === "debug" && !showDebugTab ? "results" : tab;
 
   return (
@@ -480,7 +531,7 @@ function HemicycleTabs() {
         <div style={tabStyle("rules")} onClick={() => setTab("rules")}>
           {t("CityCouncil.Rules.TAB_LABEL", "Règles")}
         </div>
-        {showDebugTab && ( // AJOUT — onglet visible uniquement si activé dans les Options
+        {showDebugTab && (
           <div style={tabStyle("debug")} onClick={() => setTab("debug")}>
             [DEBUG]
           </div>
@@ -508,7 +559,7 @@ function HemicycleEntry() {
   const t = (key: string, fallback: string): string => translate(key, fallback) ?? fallback;
 
   const [open, setOpen] = useState(false);
-   const bonusPending = useValue(playerBonusChoicePending$);
+  const bonusPending = useValue(playerBonusChoicePending$);
 
   const handleOpen = () => {
     const next = !open;
@@ -518,9 +569,6 @@ function HemicycleEntry() {
     }
   };
 
-  // TODO : remplacer ce badge emoji par un vrai remplacement d'icône .png une fois le design
-  // disponible (ex. <img src="coui://.../hemicycle_bonus_pending.png" /> à la place du bouton
-  // normal). Pour l'instant : icône inchangée + petit indicateur rouge + tooltip natif.
   const tooltip = bonusPending ? t("CityCouncil.Hemicycle.BONUS_PENDING_TOOLTIP", "Bonus Permanent à choisir !") : undefined;
 
   return (

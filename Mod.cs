@@ -45,6 +45,7 @@ namespace CityCouncil
             updateSystem.UpdateAt<CouncilInstitutionSystem>(SystemUpdatePhase.GameSimulation);
             updateSystem.UpdateAt<CouncilVotingInstructionSystem>(SystemUpdatePhase.GameSimulation);
             updateSystem.UpdateAt<CouncilReinforcedBastionSystem>(SystemUpdatePhase.GameSimulation);
+            updateSystem.UpdateAt<CouncilCoalitionSystem>(SystemUpdatePhase.GameSimulation);
 
             updateSystem.UpdateAt<CityCouncil.Systems.CouncilUISystem>(SystemUpdatePhase.UIUpdate);
         }

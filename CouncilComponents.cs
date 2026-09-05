@@ -1082,6 +1082,11 @@ public struct CouncilPollData : IComponentData, ISerializable
         public const long PointsPerMember = 1;
         public const long PointsGeneralElectionWon = 500;  // trophée, sur changement de majorité générale
         public const long PointsDistrictWon = 150;          // trophée, sur changement de leader d'un district
+
+        // AJOUT — RÉSERVÉ, non branché : trophée prévu pour la participation à une coalition
+        // (cf. discussion design). À câbler dans CouncilCoalitionSystem.CommitCoalition via
+        // CouncilScoreSystem.AddTrophyScore une fois la mécanique validée en jeu.
+        public const long PointsCoalitionParticipation = 300;
     }
 
     /// <summary>Bastion Renforcé détenu par un parti : un seul district à la fois par parti.</summary>
@@ -1142,6 +1147,100 @@ public struct CouncilPollData : IComponentData, ISerializable
                     m_Population = population
                 });
             }
+        }
+    }
+
+    /// <summary>Une coalition active : liste de partis membres, triés par sièges décroissants à la formation.</summary>
+    public struct CoalitionEntry
+    {
+        public FixedList128Bytes<byte> m_Members; // PoliticalParty encodés en byte, ordre = sièges décroissants au moment de la formation
+        public bool m_PlayerInitiated;            // true si formée par une proposition du joueur, false si IA
+    }
+
+    /// <summary>
+    /// Composant SINGLETON (même pattern que CouncilBonusData) portant l'état de coalition ville
+    /// entière, géré par CouncilCoalitionSystem. Une seule coalition active à la fois (l'énoncé ne
+    /// prévoit pas de coalitions concurrentes/rivales) ; se dissout et se reforme à chaque cycle.
+    /// </summary>
+    // MODIFIÉ — CouncilCoalitionData : m_ActiveCoalition (singulier) devient m_Coalitions (liste),
+    // pour permettre à un bloc rival de se former si la coalition du joueur n'atteint pas la
+    // majorité. Chaque parti n'appartient jamais à plus d'une coalition à la fois (garanti par
+    // TryFormAiCoalition/TryProposeCoalition qui excluent les partis déjà engagés).
+    public struct CouncilCoalitionData : IComponentData, ISerializable
+    {
+        public FixedList512Bytes<CoalitionEntry> m_Coalitions; // MODIFIÉ — remplace m_HasActiveCoalition/m_ActiveCoalition
+
+        public bool m_PlayerProposalPending;
+        public FixedList128Bytes<byte> m_PlayerProposalTargets;
+        public FixedList128Bytes<byte> m_PlayerProposalAccepted;
+        public bool m_AwaitingPlayerDecision;
+
+        private const int kVersion = 3; // MODIFIÉ — bump pour m_Coalitions (liste)
+
+        public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
+        {
+            writer.Write(kVersion);
+
+            writer.Write(m_Coalitions.Length);
+            for (int i = 0; i < m_Coalitions.Length; i++)
+            {
+                var c = m_Coalitions[i];
+                writer.Write(c.m_Members.Length);
+                for (int j = 0; j < c.m_Members.Length; j++)
+                    writer.Write(c.m_Members[j]);
+                writer.Write(c.m_PlayerInitiated);
+            }
+
+            writer.Write(m_PlayerProposalPending);
+            writer.Write(m_PlayerProposalTargets.Length);
+            for (int i = 0; i < m_PlayerProposalTargets.Length; i++)
+                writer.Write(m_PlayerProposalTargets[i]);
+            writer.Write(m_PlayerProposalAccepted.Length);
+            for (int i = 0; i < m_PlayerProposalAccepted.Length; i++)
+                writer.Write(m_PlayerProposalAccepted[i]);
+
+            writer.Write(m_AwaitingPlayerDecision);
+        }
+
+        public void Deserialize<TReader>(TReader reader) where TReader : IReader
+        {
+            reader.Read(out int version);
+
+            m_Coalitions = new FixedList512Bytes<CoalitionEntry>();
+            if (version >= 3)
+            {
+                reader.Read(out int coalitionCount);
+                for (int i = 0; i < coalitionCount; i++)
+                {
+                    var entry = new CoalitionEntry { m_Members = new FixedList128Bytes<byte>() };
+                    reader.Read(out int memberCount);
+                    for (int j = 0; j < memberCount; j++) { reader.Read(out byte p); entry.m_Members.Add(p); }
+                    reader.Read(out entry.m_PlayerInitiated);
+                    m_Coalitions.Add(entry);
+                }
+            }
+            else
+            {
+                // Compat v1/v2 : ancien format à une seule coalition (m_HasActiveCoalition/m_ActiveCoalition).
+                reader.Read(out bool hadActive);
+                reader.Read(out int memberCount);
+                var legacyEntry = new CoalitionEntry { m_Members = new FixedList128Bytes<byte>() };
+                for (int j = 0; j < memberCount; j++) { reader.Read(out byte p); legacyEntry.m_Members.Add(p); }
+                reader.Read(out legacyEntry.m_PlayerInitiated);
+                if (hadActive) m_Coalitions.Add(legacyEntry);
+            }
+
+            reader.Read(out m_PlayerProposalPending);
+            reader.Read(out int targetCount);
+            m_PlayerProposalTargets = new FixedList128Bytes<byte>();
+            for (int i = 0; i < targetCount; i++) { reader.Read(out byte p); m_PlayerProposalTargets.Add(p); }
+
+            reader.Read(out int acceptedCount);
+            m_PlayerProposalAccepted = new FixedList128Bytes<byte>();
+            for (int i = 0; i < acceptedCount; i++) { reader.Read(out byte p); m_PlayerProposalAccepted.Add(p); }
+
+            m_AwaitingPlayerDecision = false;
+            if (version >= 2) reader.Read(out m_AwaitingPlayerDecision);
         }
     }
 
