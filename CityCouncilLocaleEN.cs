@@ -53,6 +53,17 @@ namespace CityCouncil
                 { LocaleKeys.Hemicycle_PowerfulDistrictLedBy, "Led by " },
                 { LocaleKeys.Hemicycle_PowerfulDistrictBonusHint, "+1% voter intent on the entire city for this party." },
 
+
+                // Coalition
+                { LocaleKeys.Coalition_Header, "Coalition" },
+                { LocaleKeys.Coalition_MajoritySuffix, " (absolute majority)" },
+                { LocaleKeys.Coalition_PluralitySuffix, " (relative majority)" },
+                { LocaleKeys.Coalition_ProposalHeader, "Propose a coalition" },
+                { LocaleKeys.Coalition_ProposalIntro, "No party holds an absolute majority. Select one or more parties to approach — each will respond based on their political proximity to your party and the other members already on board." },
+                { LocaleKeys.Coalition_ProposeButton, "Propose" },
+                { LocaleKeys.Coalition_DeclineButton, "Decline" },
+
+
                 // AdministrationSection
                 { LocaleKeys.Admin_Header, "Administration" },
                 { LocaleKeys.Admin_NoElectionDesc, "No elections in this district because there are no residents. It is managed by a Special Commission." },

@@ -23,16 +23,21 @@ export function CoalitionProposalCard() {
   const customSpace = useValue(customPartySpace$);
   const customPending = useValue(customPartyPendingActivation$);
 
-  const dto: CoalitionDto | null = useMemo(() => {
-    try { const p = JSON.parse(json ?? "{}"); return typeof p.hasActiveCoalition === "boolean" ? p : null; }
-    catch { return null; }
-  }, [json]);
+ const dto: CoalitionDto | null = useMemo(() => {
+  try {
+    const p = JSON.parse(json ?? "{}");
+    // MODIFIÉ — vérifie la présence d'un champ qui existe réellement dans le DTO actuel
+    return typeof p.awaitingPlayerDecision === "boolean" ? p : null;
+  } catch {
+    return null;
+  }
+}, [json]);
 
   const playerAvailable = !!customExists && !customPending && !!customSpace;
   const [selected, setSelected] = useState<Record<string, boolean>>({});
 
   // La carte ne s'affiche QUE si le système attend explicitement une décision
-  if (!playerAvailable || !dto || !dto.awaitingPlayerDecision) return null;
+ if (!playerAvailable || !dto || !dto.awaitingPlayerDecision) return null;
 
   const eligibleParties = PARTY_ORDER.filter((p) => p !== customSpace);
 

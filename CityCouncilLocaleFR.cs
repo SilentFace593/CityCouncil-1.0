@@ -52,6 +52,17 @@ namespace CityCouncil
                 { LocaleKeys.Hemicycle_PowerfulDistrictCouncilSuffix, "du Conseil Municipal" }, 
                 { LocaleKeys.Hemicycle_PowerfulDistrictLedBy, "Dirigé par " },                   
                 { LocaleKeys.Hemicycle_PowerfulDistrictBonusHint, "+1% d'intention de vote sur toute la ville pour ce parti." },
+                
+                
+                // Coalition
+                { LocaleKeys.Coalition_Header, "Coalition" },
+                { LocaleKeys.Coalition_MajoritySuffix, " (majorité absolue)" },
+                { LocaleKeys.Coalition_PluralitySuffix, " (majorité relative)" },
+                { LocaleKeys.Coalition_ProposalHeader, "Proposer une coalition" },
+                { LocaleKeys.Coalition_ProposalIntro, "Aucun parti ne détient la majorité absolue. Sélectionnez un ou plusieurs partis à solliciter — chacun répondra selon sa proximité politique avec votre parti et les autres membres déjà partants." },
+                { LocaleKeys.Coalition_ProposeButton, "Proposer" },
+                { LocaleKeys.Coalition_DeclineButton, "Renoncer" },
+
 
                 // AdministrationSection
                 { LocaleKeys.Admin_Header, "Administration" },

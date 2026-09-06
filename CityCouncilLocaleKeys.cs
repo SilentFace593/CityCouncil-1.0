@@ -44,7 +44,16 @@
         public const string Hemicycle_PowerfulDistrictCouncilSuffix = "CityCouncil.Hemicycle.POWERFUL_DISTRICT_COUNCIL_SUFFIX";
         public const string Hemicycle_PowerfulDistrictLedBy = "CityCouncil.Hemicycle.POWERFUL_DISTRICT_LED_BY";
         public const string Hemicycle_PowerfulDistrictBonusHint = "CityCouncil.Hemicycle.POWERFUL_DISTRICT_BONUS_HINT";
-        
+
+        // --- Coalition ---
+        public const string Coalition_Header = "CityCouncil.Coalition.HEADER";
+        public const string Coalition_MajoritySuffix = "CityCouncil.Coalition.MAJORITY_SUFFIX";
+        public const string Coalition_PluralitySuffix = "CityCouncil.Coalition.PLURALITY_SUFFIX";
+        public const string Coalition_ProposalHeader = "CityCouncil.Coalition.PROPOSAL_HEADER";
+        public const string Coalition_ProposalIntro = "CityCouncil.Coalition.PROPOSAL_INTRO";
+        public const string Coalition_ProposeButton = "CityCouncil.Coalition.PROPOSE_BUTTON";
+        public const string Coalition_DeclineButton = "CityCouncil.Coalition.DECLINE_BUTTON";
+
         // --- AdministrationSection ---
         public const string Admin_Header = "CityCouncil.Admin.HEADER";
         public const string Admin_NoElectionDesc = "CityCouncil.Admin.NO_ELECTION_DESC";
