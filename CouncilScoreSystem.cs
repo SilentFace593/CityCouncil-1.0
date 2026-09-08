@@ -153,6 +153,18 @@ namespace CityCouncil
         }
 
         /// <summary>
+        /// Point d'entrée PUBLIC pour créditer un trophée depuis un autre système (ex.
+        /// CouncilLawSystem : adoption/abrogation de loi, +500 points partagés/arrondis entre
+        /// les membres d'un bloc). Même mécanique que les trophées internes (district/majorité
+        /// générale) : jamais retiré, cumulatif. Nommée différemment d'AddTrophyScore (privée)
+        /// pour marquer explicitement qu'il s'agit d'un point d'entrée externe au système.
+        /// </summary>
+        public void AddExternalTrophyScore(PoliticalParty party, long amount)
+        {
+            AddTrophyScore(party, amount);
+        }
+
+        /// <summary>
         /// Conquête de district (+150 points, trophée) — appelé par CouncilElectionSystem
         /// UNIQUEMENT quand le leader du district change réellement (première élection du
         /// district, ou changement de vainqueur par rapport au cycle précédent). Une reconduction

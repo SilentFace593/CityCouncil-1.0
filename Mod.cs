@@ -46,6 +46,13 @@ namespace CityCouncil
             updateSystem.UpdateAt<CouncilVotingInstructionSystem>(SystemUpdatePhase.GameSimulation);
             updateSystem.UpdateAt<CouncilReinforcedBastionSystem>(SystemUpdatePhase.GameSimulation);
             updateSystem.UpdateAt<CouncilCoalitionSystem>(SystemUpdatePhase.GameSimulation);
+            // AJOUT — système de lois (proposition/vote/abrogation). Doit tourner APRÈS
+            // CouncilCoalitionSystem dans l'ordre logique (il dépend de GetAllBlocs/GetBlocKey),
+            // mais SystemUpdatePhase.GameSimulation ne garantit pas d'ordre strict entre systèmes
+            // du même groupe sans [UpdateAfter] explicite — à surveiller si des incohérences de
+            // "bloc pas encore à jour ce tick" apparaissent en jeu (peu probable : les deux
+            // systèmes lisent CouncilCoalitionData en direct depuis l'ECS, pas un cache local).
+            updateSystem.UpdateAt<CouncilLawSystem>(SystemUpdatePhase.GameSimulation);
 
             updateSystem.UpdateAt<CityCouncil.Systems.CouncilUISystem>(SystemUpdatePhase.UIUpdate);
         }

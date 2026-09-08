@@ -45,6 +45,7 @@ namespace CityCouncil
         private CouncilEconomySystem m_EconomySystem;
         private CouncilTaxSystem m_TaxSystem;
         private CouncilBonusSystem m_BonusSystem;
+        private CouncilLawSystem m_LawSystem; // AJOUT — malus city-wide "vote de loi contradictoire"
 
         private readonly Random m_Rng = new Random();
         private Entity m_SingletonEntity = Entity.Null;
@@ -66,6 +67,7 @@ namespace CityCouncil
             m_EconomySystem = World.GetOrCreateSystemManaged<CouncilEconomySystem>();
             m_TaxSystem = World.GetOrCreateSystemManaged<CouncilTaxSystem>();
             m_BonusSystem = World.GetOrCreateSystemManaged<CouncilBonusSystem>();
+            m_LawSystem = World.GetOrCreateSystemManaged<CouncilLawSystem>(); // AJOUT
         }
 
         protected override void OnGamePreload(Purpose purpose, Game.GameMode mode)
@@ -238,6 +240,9 @@ namespace CityCouncil
                     ? customForRebalance.m_ActiveSpace
                     : (PoliticalParty?)null;
 
+                // AJOUT — malus cumulé "vote de loi contradictoire", même valeur que pour les élections réelles.
+                float playerLawMalusPercent = m_LawSystem.GetPlayerLawMalusPercent();
+
                 foreach (var d in districts)
                 {
                     var (seniors, adults, wealth) = m_ElectionSystem.GetDistrictDemographicsForPoll(d);
@@ -261,7 +266,8 @@ namespace CityCouncil
                         taxDiscontentBonusGaucheRadicale: pollTaxGauche,
                         ecologistNuclearBonusActive: ecologistNuclearBonus,
                         playerParty: playerParty,
-                        powerfulDistrictBonusHolder: GetPowerfulDistrictLeadingPartyForPoll());
+                        powerfulDistrictBonusHolder: GetPowerfulDistrictLeadingPartyForPoll(),
+                        playerLawMalusPercent: playerLawMalusPercent); // AJOUT
 
                     foreach (var kv in result.m_VoteShares)
                         totals[kv.Key] += kv.Value * result.m_Voters;

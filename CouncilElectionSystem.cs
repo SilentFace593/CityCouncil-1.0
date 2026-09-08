@@ -47,6 +47,7 @@ namespace CityCouncil
         private CouncilEconomySystem m_EconomySystem;
         private CouncilTaxSystem m_TaxSystem;
         private CouncilVotingInstructionSystem m_VotingInstructionSystem;
+        private CouncilLawSystem m_LawSystem; // AJOUT — malus city-wide "vote de loi contradictoire"
         private readonly Random m_InstructionRng = new Random();
 
         protected override void OnCreate()
@@ -67,6 +68,7 @@ namespace CityCouncil
             m_TaxSystem = World.GetOrCreateSystemManaged<CouncilTaxSystem>();
             m_VotingInstructionSystem = World.GetOrCreateSystemManaged<CouncilVotingInstructionSystem>();
             m_ReinforcedBastionSystem = World.GetOrCreateSystemManaged<CouncilReinforcedBastionSystem>();
+            m_LawSystem = World.GetOrCreateSystemManaged<CouncilLawSystem>(); // AJOUT
 
 
             m_DistrictQuery = GetEntityQuery(new EntityQueryDesc
@@ -262,6 +264,9 @@ namespace CityCouncil
                 ? customDataForRebalance.m_ActiveSpace
                 : (PoliticalParty?)null;
 
+            // AJOUT — malus cumulé "vote de loi contradictoire" (cf. CouncilLawSystem), 0 si aucun actif.
+            float playerLawMalusPercent = m_LawSystem.GetPlayerLawMalusPercent();
+
             // AJOUT — l'état Bastion utilisé ici est celui d'AVANT cette élection (m_IsBastion/
             // m_BastionParty ne sont mis à jour qu'après, dans FinalizeResults), donc le bonus profite
             // bien au détenteur actuel pour DÉFENDRE son district, pas à un futur vainqueur.
@@ -280,7 +285,8 @@ namespace CityCouncil
             taxDiscontentGauche,
             ecologistNuclearBonus,
             playerParty,
-            powerfulDistrictHolder);
+            powerfulDistrictHolder,
+            playerLawMalusPercent); // AJOUT
 
             data.m_VotersRound1 = result.m_Voters;
             data.m_AbstentionRound1 = result.m_Abstention;
@@ -506,7 +512,7 @@ namespace CityCouncil
                 s_Log.Info($"[CouncilElectionSystem] Bastion : {winner} détient désormais ce district (3 victoires consécutives).");
             }
         }
-        
+
 
         private void SetData(Entity districtEntity, CouncilDistrictData data)
         {

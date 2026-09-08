@@ -404,6 +404,20 @@ namespace CityCouncil
         /// </summary>
         public PoliticalBloc GetLeadingBloc()
         {
+            var blocs = GetAllBlocs();
+            if (blocs.Count == 0) return new PoliticalBloc { Members = new List<PoliticalParty>(), Seats = 0 };
+            return blocs.OrderByDescending(b => b.Seats).First();
+        }
+
+        /// <summary>
+        /// Liste TOUS les blocs politiques actuellement en présence (partis seuls + coalitions
+        /// formées), avec leur total de sièges. Chaque parti apparaît dans EXACTEMENT un bloc.
+        /// Extrait de GetLeadingBloc (qui n'en gardait que le premier) pour être réutilisé par
+        /// d'autres systèmes ayant besoin de la notion de "bloc" (ex. CouncilLawSystem, où chaque
+        /// bloc ne peut porter qu'un seul vote de loi actif à la fois).
+        /// </summary>
+        public List<PoliticalBloc> GetAllBlocs()
+        {
             var seats = GetSeatsByParty();
             var data = GetData();
 
@@ -435,8 +449,30 @@ namespace CityCouncil
                 blocs.Add(new PoliticalBloc { Members = new List<PoliticalParty> { kv.Key }, Seats = kv.Value });
             }
 
-            if (blocs.Count == 0) return new PoliticalBloc { Members = new List<PoliticalParty>(), Seats = 0 };
-            return blocs.OrderByDescending(b => b.Seats).First();
+            return blocs;
+        }
+
+        /// <summary>
+        /// Identifiant stable d'un bloc pour LE CYCLE ÉLECTORAL EN COURS : le membre qui possède le
+        /// plus de sièges au sein du bloc (le parti lui-même s'il est seul). Comme un parti
+        /// n'appartient jamais à deux blocs à la fois, et que la composition des coalitions ne change
+        /// qu'à chaque nouveau cycle (cf. RunCoalitionCycle), cette clé reste stable tant qu'aucune
+        /// élection n'est intervenue — ce qui est justement la condition d'annulation des votes de
+        /// loi en cours (cf. CouncilLawSystem). m_Members est déjà trié par sièges décroissants à la
+        /// formation (cf. CommitCoalition), donc m_Members[0] est directement la clé pour une coalition.
+        /// </summary>
+        public PoliticalParty GetBlocKey(PoliticalParty member)
+        {
+            var bloc = GetBlocOf(member);
+            return bloc.Members.Count > 0 ? bloc.Members[0] : member;
+        }
+
+        /// <summary>Le bloc complet auquel appartient un parti donné (lui-même seul si non coalisé).</summary>
+        public PoliticalBloc GetBlocOf(PoliticalParty member)
+        {
+            foreach (var bloc in GetAllBlocs())
+                if (bloc.Members.Contains(member)) return bloc;
+            return new PoliticalBloc { Members = new List<PoliticalParty> { member }, Seats = 0 };
         }
 
         public bool LeadingBlocHasAbsoluteMajority()

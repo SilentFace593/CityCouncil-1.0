@@ -16,6 +16,7 @@ import {
   BonusBadgeIcon 
 } from "./PartyResultDto";
 
+import { LawsTab } from "./LawsTab";
 import { YourPartyTab } from "./YourPartyTab";
 import { PoliticalForcesTab } from "./PoliticalForcesTab";
 import { FundingTab } from "./FundingTab";
@@ -478,7 +479,7 @@ const coalitionLeadingIsCoalition = useMemo(() => {
   );
 }
 
-type TabKey = "results" | "yourParty" | "forces" | "funding" | "propaganda" | "commission" | "poll" | "score" | "rules" | "debug";
+type TabKey = "results" | "yourParty" | "forces" | "funding" | "propaganda" | "commission" | "poll" | "laws" | "score" | "rules" | "debug";
 
 const PANEL_WIDTH = "820rem";
 const PANEL_CONTENT_HEIGHT = "560rem";
@@ -525,6 +526,9 @@ function HemicycleTabs() {
         <div style={tabStyle("poll")} onClick={() => setTab("poll")}>
           {t("CityCouncil.Poll.TAB_LABEL", "Sondages")}
         </div>
+        <div style={tabStyle("laws")} onClick={() => setTab("laws")}>
+          {t("CityCouncil.Law.TAB_LABEL", "Lois")}
+        </div>
         <div style={tabStyle("score")} onClick={() => setTab("score")}>
           {t("CityCouncil.Score.TAB_LABEL", "Score")}
         </div>
@@ -546,6 +550,7 @@ function HemicycleTabs() {
         {effectiveTab === "propaganda" && <SafeBoundary><PropagandaTab /></SafeBoundary>}
         {effectiveTab === "commission" && <SafeBoundary><ElectoralCommissionTab /></SafeBoundary>}
         {effectiveTab === "poll" && <SafeBoundary><PollTab /></SafeBoundary>}
+        {effectiveTab === "laws" && <SafeBoundary><LawsTab /></SafeBoundary>}
         {effectiveTab === "score" && <SafeBoundary><ScoreTab /></SafeBoundary>}
         {effectiveTab === "rules" && <SafeBoundary><RulesTab /></SafeBoundary>}
         {effectiveTab === "debug" && showDebugTab && <SafeBoundary><DebugTab /></SafeBoundary>}

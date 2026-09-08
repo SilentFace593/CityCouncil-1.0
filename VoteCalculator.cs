@@ -13,7 +13,7 @@ namespace CityCouncil
         public int m_Abstention;
         public bool m_MajorityReached; // >= 50% dès ce tour
         public PoliticalParty m_Leader;
-       
+
     }
 
     public static class VoteCalculator
@@ -322,7 +322,8 @@ namespace CityCouncil
     float taxDiscontentBonusGaucheRadicale = 0f,
     bool ecologistNuclearBonusActive = false,
     PoliticalParty? playerParty = null,
-    PoliticalParty? powerfulDistrictBonusHolder = null)
+    PoliticalParty? powerfulDistrictBonusHolder = null,
+    float playerLawMalusPercent = 0f) // AJOUT — malus cumulé (cf. CouncilLawSystem.GetPlayerLawMalusPercent)
 
         {
             var rng = new Random(seed);
@@ -336,13 +337,13 @@ namespace CityCouncil
             ApplyEventEffects(adultShares, ref adultAbst, isAdult: true, activeEventEffects, cityLeadingParty);
 
             // AJOUT — bonus Populiste "colère sociale" si le chômage dépasse le seuil (cf.
-                       // CouncilEconomySystem.UnemploymentThresholdPct), city-wide et symétrique séniors/adultes,
-                       // même mécanisme que le bonus Bastion ci-dessous.
-                        if (unemploymentCrisisActive)
-                            {
+            // CouncilEconomySystem.UnemploymentThresholdPct), city-wide et symétrique séniors/adultes,
+            // même mécanisme que le bonus Bastion ci-dessous.
+            if (unemploymentCrisisActive)
+            {
                 Boost(seniorShares, PoliticalParty.Populiste, CouncilEconomySystem.PopulisteUnemploymentBonusPct);
                 Boost(adultShares, PoliticalParty.Populiste, CouncilEconomySystem.PopulisteUnemploymentBonusPct);
-                            }
+            }
 
             // AJOUT — mécontentement fiscal (colère populaire ou anti-inégalité, jamais les deux
             // à la fois, cf. CouncilTaxSystem.GetTaxDiscontentBonus), Populiste ET GaucheRadicale,
@@ -359,6 +360,19 @@ namespace CityCouncil
             {
                 Boost(seniorShares, PoliticalParty.GaucheRadicale, taxDiscontentBonusGaucheRadicale);
                 Boost(adultShares, PoliticalParty.GaucheRadicale, taxDiscontentBonusGaucheRadicale);
+            }
+
+            // AJOUT — malus "vote de loi contradictoire" (cf. CouncilLawSystem) : le parti joueur a
+            // voté pour une loi notée -/-- dans sa propre grille d'adhésion. Malus city-wide,
+            // symétrique séniors/adultes, même mécanisme que les autres malus/bonus ci-dessus.
+            // Le nombre à retirer est déjà la somme cumulée de tous les malus actifs (une entrée par
+            // loi mal votée, cf. GetPlayerLawMalusPercent), donc pas de garde-fou d'exclusivité ici
+            // contrairement au mécontentement fiscal (qui exclut le parti concerné de son propre bonus) :
+            // ce malus vise justement le parti joueur lui-même, jamais un autre.
+            if (playerParty.HasValue && playerLawMalusPercent > 0f)
+            {
+                Boost(seniorShares, playerParty.Value, -playerLawMalusPercent);
+                Boost(adultShares, playerParty.Value, -playerLawMalusPercent);
             }
 
             if (isBastion)
@@ -527,10 +541,10 @@ namespace CityCouncil
             PoliticalParty eliminated, PoliticalParty finalist,
             Dictionary<(PoliticalParty eliminated, PoliticalParty finalist), float> overrides)
         {
-                if (overrides != null && overrides.TryGetValue((eliminated, finalist), out float overridden))
-                        return overridden;
-                return TransferMatrix.TryGetValue((eliminated, finalist), out float t) ? t : 0f;
-            }
+            if (overrides != null && overrides.TryGetValue((eliminated, finalist), out float overridden))
+                return overridden;
+            return TransferMatrix.TryGetValue((eliminated, finalist), out float t) ? t : 0f;
+        }
 
         /// <summary>
         /// Calcule le résultat du 2e tour à partir des scores du 1er tour et des deux finalistes.

@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.IO.Ports;
 using Colossal;
 
 namespace CityCouncil
@@ -62,6 +63,55 @@ namespace CityCouncil
                 { LocaleKeys.Coalition_ProposalIntro, "No party holds an absolute majority. Select one or more parties to approach — each will respond based on their political proximity to your party and the other members already on board." },
                 { LocaleKeys.Coalition_ProposeButton, "Propose" },
                 { LocaleKeys.Coalition_DeclineButton, "Decline" },
+
+                //Laws
+                { LocaleKeys.Law_TransportsGratuitsTitle, "Free public transit" },
+                { LocaleKeys.Law_ReseauRoutierTitle, "Road network expansion" },
+                { LocaleKeys.Law_ZfeTitle, "Low-emission zones (LEZ)" },
+                { LocaleKeys.Law_TabLabel, "Laws" },
+                { LocaleKeys.Law_TabTitle, "Laws" },
+                { LocaleKeys.Law_TabIntro, "Propose a law for the city council to vote on, or respond to proposals from other parties. Each political bloc (solo party or coalition) can only carry one vote at a time. Voting lasts 12 in-game hours." },
+                { LocaleKeys.Law_PlayerMalusActive, "Active penalty: " },
+                { LocaleKeys.Law_PlayerMalusSuffix, "voting intention (voted against your own political stance, until the next election cycle)" },
+                { LocaleKeys.Law_DecisionHeader, "Your party is being consulted" },
+                { LocaleKeys.Law_ProposesRepealOf, "proposes repealing " },
+                { LocaleKeys.Law_ProposesLaw, "proposes the law " },
+                { LocaleKeys.Law_VoteFor, "Vote for" }, 
+                { LocaleKeys.Law_VoteAgainst, "Vote against" }, 
+                { LocaleKeys.Law_NoPlayerParty, "Create your own party (Your Party tab) to propose laws." },
+                { LocaleKeys.Law_ProposeHeader, "Propose a law" },
+                { LocaleKeys.Law_BlocBusy, "Your political bloc already has a vote in progress." },
+                { LocaleKeys.Law_SelectPlaceholder, "-- Choose a law --" }, 
+                { LocaleKeys.Law_NamePlaceholder, "Law name (50 characters max, final)" },
+                { LocaleKeys.Law_ProposeButton, "Propose for vote" }, 
+                { LocaleKeys.Law_ActiveVotesHeader, "Ongoing votes" }, 
+                { LocaleKeys.Law_NoActiveVotes, "No ongoing vote." }, 
+                { LocaleKeys.Law_LabelRepeal, "Repeal: " }, 
+                { LocaleKeys.Law_LabelProposal, "Proposal: " },
+                { LocaleKeys.Law_HistoryHeader, "History" }, 
+                { LocaleKeys.Law_NoHistory, "No law voted yet." }, 
+                { LocaleKeys.Law_RepealedBy, "repealed by" }, 
+                { LocaleKeys.Law_RepealButton, "Propose repeal" }, 
+                { LocaleKeys.Law_OutcomeAdopted, "Adopted" }, 
+                { LocaleKeys.Law_OutcomeRejected, "Rejected" },
+                { LocaleKeys.Law_OutcomeCancelled, "Cancelled (election)" },
+                { LocaleKeys.Law_BaisseImpotsTitle, "Tax Reduction" },
+                { LocaleKeys.Law_CouvreFeuCommercialTitle, "Commercial Curfew / Noise Regulation" },
+                { LocaleKeys.Law_EnergieNucleaireTitle, "Nuclear Energy" },
+                { LocaleKeys.Law_EnergiesRenouvelablesTitle, "Renewable Energies" },
+                { LocaleKeys.Law_GrandsEquipementsTitle, "Major Facilities" },
+                { LocaleKeys.Law_IntegrationServicesAccueilTitle, "Integration of Welcome Services" },
+                { LocaleKeys.Law_LogementsSociauxTitle, "Mandatory Social Housing" },
+                { LocaleKeys.Law_ParcsEspacesVertsTitle, "Parks and Green Spaces" },
+                { LocaleKeys.Law_PoliceSurveillanceTitle, "Police Budget and Surveillance" },
+                { LocaleKeys.Law_PreferenceLocaleTitle, "Local Preference" },
+                { LocaleKeys.Law_PrivatisationServicesTitle, "Privatization of Public Services" },
+                { LocaleKeys.Law_ProtectionZonesNaturellesTitle, "Protection of Natural Zones" },
+                { LocaleKeys.Law_RecyclageDechetsTitle, "Treatment / Advanced Recycling of Waste" },
+                { LocaleKeys.Law_SoutienPetitesEntreprisesTitle, "Support for Small Enterprises" },
+                { LocaleKeys.Law_SubventionsCultureTitle, "Cultural Subsidies" },
+                { LocaleKeys.Law_TaxesEnvironnementalesTitle, "Environmental Taxes" },
+                { LocaleKeys.Law_ZonesCommercialesTitle, "Commercial Zones" },
 
 
                 // AdministrationSection

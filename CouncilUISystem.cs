@@ -636,6 +636,9 @@ namespace CityCouncil.Systems
         UpdateMembershipBindingIfChanged(); // reflète le débit du coût + spentPolls
     }));
 
+            SetupLawBindings();
+            RegisterLawTriggers();
+
         }
 
 
@@ -667,6 +670,7 @@ namespace CityCouncil.Systems
             UpdateVotingInstructionDistrictsBinding();
             UpdateReinforcedBastionEligibleBinding();
             UpdateCoalitionBindingIfChanged();
+            UpdateLawBindingIfChanged();
 
 
             Entity selected = m_ToolSystem.selected;

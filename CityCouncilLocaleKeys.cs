@@ -1,4 +1,4 @@
-﻿namespace CityCouncil
+namespace CityCouncil
 {
     public static class LocaleKeys
     {
@@ -53,6 +53,59 @@
         public const string Coalition_ProposalIntro = "CityCouncil.Coalition.PROPOSAL_INTRO";
         public const string Coalition_ProposeButton = "CityCouncil.Coalition.PROPOSE_BUTTON";
         public const string Coalition_DeclineButton = "CityCouncil.Coalition.DECLINE_BUTTON";
+
+        //Laws
+        public const string Law_TransportsGratuitsTitle = "CityCouncil.Law.TRANSPORTS_GRATUITS_TITLE";
+        public const string Law_ReseauRoutierTitle = "CityCouncil.Law.RESEAU_ROUTIER_TITLE";
+        public const string Law_ZfeTitle = "CityCouncil.Law.ZFE_TITLE";
+        public const string Law_TabLabel = "CityCouncil.Law.TAB_LABEL";
+        public const string Law_TabTitle = "CityCouncil.Law.TAB_TITLE";
+        public const string Law_TabIntro = "CityCouncil.Law.TAB_INTRO";
+        public const string Law_PlayerMalusActive = "CityCouncil.Law.PLAYER_MALUS_ACTIVE";
+        public const string Law_PlayerMalusSuffix = "CityCouncil.Law.PLAYER_MALUS_SUFFIX";
+        public const string Law_DecisionHeader = "CityCouncil.Law.DECISION_HEADER";
+        public const string Law_ProposesRepealOf = "CityCouncil.Law.PROPOSES_REPEAL_OF";
+        public const string Law_ProposesLaw = "CityCouncil.Law.PROPOSES_LAW";
+        public const string Law_VoteFor = "CityCouncil.Law.VOTE_FOR";
+        public const string Law_VoteAgainst = "CityCouncil.Law.VOTE_AGAINST";
+        public const string Law_NoPlayerParty = "CityCouncil.Law.NO_PLAYER_PARTY";
+        public const string Law_ProposeHeader = "CityCouncil.Law.PROPOSE_HEADER";
+        public const string Law_BlocBusy = "CityCouncil.Law.BLOC_BUSY";
+        public const string Law_SelectPlaceholder = "CityCouncil.Law.SELECT_PLACEHOLDER";
+        public const string Law_NamePlaceholder = "CityCouncil.Law.NAME_PLACEHOLDER";
+        public const string Law_ProposeButton = "CityCouncil.Law.PROPOSE_BUTTON";
+        public const string Law_ActiveVotesHeader = "CityCouncil.Law.ACTIVE_VOTES_HEADER";
+        public const string Law_NoActiveVotes = "CityCouncil.Law.NO_ACTIVE_VOTES";
+        public const string Law_LabelRepeal = "CityCouncil.Law.LABEL_REPEAL";
+        public const string Law_LabelProposal = "CityCouncil.Law.LABEL_PROPOSAL";
+        public const string Law_HistoryHeader = "CityCouncil.Law.HISTORY_HEADER";
+        public const string Law_NoHistory = "CityCouncil.Law.NO_HISTORY";
+        public const string Law_RepealedBy = "CityCouncil.Law.REPEALED_BY";
+        public const string Law_RepealButton = "CityCouncil.Law.REPEAL_BUTTON";
+        public const string Law_OutcomeAdopted = "CityCouncil.Law.OUTCOME_ADOPTED";
+        public const string Law_OutcomeRejected = "CityCouncil.Law.OUTCOME_REJECTED";
+        public const string Law_OutcomeCancelled = "CityCouncil.Law.OUTCOME_CANCELLED";
+        public const string Law_BaisseImpotsTitle = "CityCouncil.Law.BAISE_IMPOTS_TITLE";
+        public const string Law_CouvreFeuCommercialTitle = "CityCouncil.Law.COUVRE_FEU_COMMERCIAL_TITLE";
+        public const string Law_EnergieNucleaireTitle = "CityCouncil.Law.ENERGIE_NUCLEAIRE_TITLE";
+        public const string Law_EnergiesRenouvelablesTitle = "CityCouncil.Law.ENERGIES_RENOUVELABLES_TITLE";
+        public const string Law_GrandsEquipementsTitle = "CityCouncil.Law.GRANDS_EQUIPEMENTS_TITLE";
+        public const string Law_IntegrationServicesAccueilTitle = "CityCouncil.Law.INTERGRATION_SERVICES_ACCUEIL_TITLE";
+        public const string Law_LogementsSociauxTitle = "CityCouncil.Law.LOGEMENT_SOCIAUX_TITLE";
+        public const string Law_ParcsEspacesVertsTitle = "CityCouncil.Law.PARCS_ESPACE_VERT_TITLE";
+        public const string Law_PoliceSurveillanceTitle = "CityCouncil.Law.POLICE_SURVEILLANCE_TITLE";
+        public const string Law_PreferenceLocaleTitle = "CityCouncil.Law.PREFERENCE_LOCALE_TITLE";
+        public const string Law_PrivatisationServicesTitle = "CityCouncil.Law.PRIVATISATION_SERVICES_TITLE";
+        public const string Law_ProtectionZonesNaturellesTitle = "CityCouncil.Law.PROTECTION_ZONES_NATURELLES_TITLE";
+        public const string Law_RecyclageDechetsTitle = "CityCouncil.Law.RECYCLAGE_DECHETS_TITLE";
+        public const string Law_SoutienPetitesEntreprisesTitle = "CityCouncil.Law.SOUTIEN_PETITES_ENTREPRISES_TITLE";
+        public const string Law_SubventionsCultureTitle = "CityCouncil.Law.SUBVENTIONS_CULTURE_TITLE";
+        public const string Law_TaxesEnvironnementalesTitle = "CityCouncil.Law.TAXES_ENVIRONNEMENTALES_TITLE";
+        public const string Law_ZonesCommercialesTitle = "CityCouncil.Law.ZONES_COMMERCIALES_TITLE";
+
+
+
+
 
         // --- AdministrationSection ---
         public const string Admin_Header = "CityCouncil.Admin.HEADER";

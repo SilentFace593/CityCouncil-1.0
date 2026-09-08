@@ -21,6 +21,8 @@ const DEBUG_BUTTONS: DebugButtonDef[] = [
   { label: "Forcer le contrôle d'élection générale (score)", triggerName: "debugForceGeneralElectionCheck" },
   { label: "Lister tous les bâtiments présents (logs)", triggerName: "debugLogAllBuildings" },
   { label: "Forcer le contrôle de coalition", triggerName: "debugForceCoalitionCheck" },
+  { label: "Forcer la résolution des votes de loi", triggerName: "debugForceResolveLawVotes" }, 
+  { label: "Forcer le cycle périodique des lois (IA)", triggerName: "debugForceLawPeriodicCycle" },
 ];
 
 function DebugButton({ label, triggerName }: DebugButtonDef) {
