@@ -192,6 +192,17 @@ namespace CityCouncil
             return false;
         }
 
+        /// <summary>
+        /// Nombre de sièges actuellement détenus par UN parti précis (0 si aucun district
+        /// n'a encore de résultat, ou si le parti n'a simplement gagné aucun siège). Utilisé
+        /// par CouncilLawSystem : un parti sans siège n'a pas de légitimité pour proposer,
+        /// répondre à, ou abroger une loi au conseil.
+        /// </summary>
+        public int GetSeatsForParty(PoliticalParty party)
+        {
+            return GetSeatsByParty().TryGetValue(party, out int seats) ? seats : 0;
+        }
+
         private void RunCoalitionCycle()
         {
             var data = GetData();

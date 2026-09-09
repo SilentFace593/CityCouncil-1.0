@@ -66,11 +66,12 @@ namespace CityCouncil
         public const string Law_DecisionHeader = "CityCouncil.Law.DECISION_HEADER";
         public const string Law_ProposesRepealOf = "CityCouncil.Law.PROPOSES_REPEAL_OF";
         public const string Law_ProposesLaw = "CityCouncil.Law.PROPOSES_LAW";
+        public const string Law_NameLabel = "CityCouncil.Law.NAME_LABEL";
         public const string Law_VoteFor = "CityCouncil.Law.VOTE_FOR";
         public const string Law_VoteAgainst = "CityCouncil.Law.VOTE_AGAINST";
         public const string Law_NoPlayerParty = "CityCouncil.Law.NO_PLAYER_PARTY";
         public const string Law_ProposeHeader = "CityCouncil.Law.PROPOSE_HEADER";
-        public const string Law_BlocBusy = "CityCouncil.Law.BLOC_BUSY";
+        public const string Law_CannotPropose = "CityCouncil.Law.CANNOT_PROPOSE";
         public const string Law_SelectPlaceholder = "CityCouncil.Law.SELECT_PLACEHOLDER";
         public const string Law_NamePlaceholder = "CityCouncil.Law.NAME_PLACEHOLDER";
         public const string Law_ProposeButton = "CityCouncil.Law.PROPOSE_BUTTON";

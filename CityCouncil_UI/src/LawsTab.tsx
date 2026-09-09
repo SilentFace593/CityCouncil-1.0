@@ -1,8 +1,9 @@
-import { useMemo, useState, useRef, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { bindValue, trigger, useValue } from "cs2/api";
 import { useLocalization } from "cs2/l10n";
 import { translatePartyName, PARTY_COLORS } from "./PartyResultDto";
 import { centeredTabWrapperStyle, centeredTabContentStyle } from "./layoutConstants";
+import { CustomDropdown, type DropdownOption } from "./CustomDropdown";
 
 const lawCatalogJson$ = bindValue<string>("cityCouncil", "lawCatalogJson");
 const lawActiveVotesJson$ = bindValue<string>("cityCouncil", "lawActiveVotesJson");
@@ -44,100 +45,6 @@ const ADHERENCE_COLORS: Record<string, string> = {
   PlutotDefavorable: "rgba(230,160,110,0.9)",
   TresDefavorable: "rgba(230,110,110,0.9)",
 };
-
-interface DropdownOption {
-  value: string;
-  label: string;
-}
-
-interface CustomDropdownProps {
-  options: DropdownOption[];
-  value: string;
-  onChange: (value: string) => void;
-  placeholder: string;
-  disabled?: boolean;
-}
-
-function CustomDropdown({ options, value, onChange, placeholder, disabled }: CustomDropdownProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  const selectedOption = options.find((opt) => opt.value === value);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  return (
-    <div ref={dropdownRef} style={{ position: "relative", width: "100%", marginBottom: "8rem" }}>
-      <div
-        onClick={() => !disabled && setIsOpen((prev) => !prev)}
-        style={{
-          width: "100%",
-          boxSizing: "border-box",
-          background: disabled ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.08)",
-          border: "1rem solid rgba(255,255,255,0.15)",
-          borderRadius: "4rem",
-          color: disabled ? "rgba(255,255,255,0.3)" : "white",
-          fontSize: "13rem",
-          padding: "6rem 8rem",
-          cursor: disabled ? "default" : "pointer",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <span>{selectedOption ? selectedOption.label : placeholder}</span>
-        <span style={{ fontSize: "10rem", marginLeft: "8rem" }}>{isOpen ? "▲" : "▼"}</span>
-      </div>
-
-      {isOpen && !disabled && (
-        <div
-          style={{
-            position: "absolute",
-            top: "100%",
-            left: 0,
-            right: 0,
-            marginTop: "2rem",
-            background: "rgba(30, 35, 45, 0.95)",
-            border: "1rem solid rgba(255,255,255,0.2)",
-            borderRadius: "4rem",
-            maxHeight: "200rem",
-            overflowY: "auto",
-            zIndex: 1000,
-            boxShadow: "0 4rem 12rem rgba(0,0,0,0.5)",
-          }}
-        >
-          {options.map((opt) => (
-            <div
-              key={opt.value}
-              onClick={() => {
-                onChange(opt.value);
-                setIsOpen(false);
-              }}
-              style={{
-                padding: "8rem 10rem",
-                fontSize: "12rem",
-                color: opt.value === value ? "#70a6ff" : "white",
-                background: opt.value === value ? "rgba(255,255,255,0.1)" : "transparent",
-                cursor: "pointer",
-                borderBottom: "1rem solid rgba(255,255,255,0.05)",
-              }}
-            >
-              {opt.label}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 function ActionButton({ label, enabled, onClick, danger }: { label: string; enabled: boolean; onClick: () => void; danger?: boolean }) {
   return (
@@ -197,8 +104,6 @@ export function LawsTab() {
   const [historyExpanded, setHistoryExpanded] = useState(false);
 
   const selectedLaw = catalog.find((l) => l.id === selectedLawId);
-  const trimmedName = lawName.trim();
-  const canSubmit = playerAvailable && canPropose && !!selectedLaw && trimmedName.length > 0 && trimmedName.length <= MAX_NAME_LENGTH;
 
   const dropdownOptions: DropdownOption[] = useMemo(() => {
     return catalog.map((l) => ({
@@ -206,6 +111,8 @@ export function LawsTab() {
       label: t(l.titleLocaleKey, l.id),
     }));
   }, [catalog, translate]);
+  const trimmedName = lawName.trim();
+  const canSubmit = playerAvailable && canPropose && !!selectedLaw && trimmedName.length > 0 && trimmedName.length <= MAX_NAME_LENGTH;
 
   const handlePropose = () => {
     if (!canSubmit) return;
@@ -249,7 +156,7 @@ export function LawsTab() {
         {malusPercent > 0 && (
           <div style={{ padding: "8rem 10rem", background: "rgba(230,110,110,0.12)", border: "1rem solid rgba(230,110,110,0.4)", borderRadius: "6rem", marginBottom: "14rem" }}>
             <span style={{ color: "rgba(255,180,180,0.95)", fontSize: "12rem", fontWeight: 600 }}>
-              {t("CityCouncil.Law.PLAYER_MALUS_ACTIVE", "Malus actif : ")}-{Math.round(malusPercent * 100)}% {t("CityCouncil.Law.PLAYER_MALUS_SUFFIX", "d'intention de vote (vote contradictoire avec votre bord politique, jusqu'au prochain cycle électoral)")}
+              {`${t("CityCouncil.Law.PLAYER_MALUS_ACTIVE", "Malus actif : ")}-${Math.round(malusPercent * 100)}% ${t("CityCouncil.Law.PLAYER_MALUS_SUFFIX", "d'intention de vote (vote contradictoire avec votre bord politique, jusqu'au prochain cycle électoral)")}`}
             </span>
           </div>
         )}
@@ -261,11 +168,13 @@ export function LawsTab() {
               {t("CityCouncil.Law.DECISION_HEADER", "Votre parti est sollicité")}
             </div>
             <div style={{ color: "white", fontSize: "12rem", marginBottom: "10rem" }}>
-              {proposerLine(pendingPlayerDecisionVote.proposerParty, pendingPlayerDecisionVote.proposerIsCoalition, pendingPlayerDecisionVote.proposerMembers)}
-              {" "}{pendingPlayerDecisionVote.isRepeal
-                ? t("CityCouncil.Law.PROPOSES_REPEAL_OF", "propose l'abrogation de ")
-                : t("CityCouncil.Law.PROPOSES_LAW", "propose la loi ")}
-              « {pendingPlayerDecisionVote.customName} »
+              {(() => {
+                const proposer = proposerLine(pendingPlayerDecisionVote.proposerParty, pendingPlayerDecisionVote.proposerIsCoalition, pendingPlayerDecisionVote.proposerMembers);
+                const verb = pendingPlayerDecisionVote.isRepeal
+                  ? t("CityCouncil.Law.PROPOSES_REPEAL_OF", "propose l'abrogation de ")
+                  : t("CityCouncil.Law.PROPOSES_LAW", "propose la loi ");
+                return `${proposer} ${verb}« ${pendingPlayerDecisionVote.customName} »`;
+              })()}
             </div>
             <div style={{ display: "flex", gap: "10rem" }}>
               <ActionButton label={t("CityCouncil.Law.VOTE_FOR", "Voter pour")} enabled={true} onClick={() => handleRespond(true)} />
@@ -287,7 +196,7 @@ export function LawsTab() {
 
             {!canPropose && (
               <div style={{ color: "rgba(255,180,120,0.9)", fontSize: "12rem", marginBottom: "8rem" }}>
-                {t("CityCouncil.Law.BLOC_BUSY", "Votre bloc politique a déjà un vote en cours.")}
+                {t("CityCouncil.Law.CANNOT_PROPOSE", "Impossible de proposer une loi actuellement (vote déjà en cours pour votre bloc, ou votre parti ne détient aucun siège au conseil).")}
               </div>
             )}
 
@@ -312,6 +221,10 @@ export function LawsTab() {
                 ))}
               </div>
             )}
+
+            <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "11rem", marginBottom: "4rem", textTransform: "uppercase" }}>
+              {t("CityCouncil.Law.NAME_LABEL", "Donnez un nom à votre loi")}
+            </div>
 
             <input
               value={lawName}
@@ -343,10 +256,13 @@ export function LawsTab() {
             activeVotes.map((v, i) => (
               <div key={i} style={{ padding: "8rem 10rem", background: "rgba(255,255,255,0.05)", borderRadius: "4rem", marginBottom: "6rem" }}>
                 <div style={{ color: "white", fontSize: "12rem" }}>
-                  {proposerLine(v.proposerParty, v.proposerIsCoalition, v.proposerMembers)}
-                  {" — "}
-                  {v.isRepeal ? t("CityCouncil.Law.LABEL_REPEAL", "Abrogation : ") : t("CityCouncil.Law.LABEL_PROPOSAL", "Proposition : ")}
-                  « {v.customName} »
+                  {(() => {
+                    const proposer = proposerLine(v.proposerParty, v.proposerIsCoalition, v.proposerMembers);
+                    const label = v.isRepeal
+                      ? t("CityCouncil.Law.LABEL_REPEAL", "Abrogation : ")
+                      : t("CityCouncil.Law.LABEL_PROPOSAL", "Proposition : ");
+                    return `${proposer} — ${label}« ${v.customName} »`;
+                  })()}
                 </div>
               </div>
             ))
@@ -354,7 +270,7 @@ export function LawsTab() {
         </div>
 
         {/* --- Historique repliable --- */}
-        <div>
+        <div style={{ padding: "10rem", background: "rgba(255,255,255,0.06)", borderRadius: "6rem", marginBottom: "14rem" }}>
           <div
             onClick={() => setHistoryExpanded((v) => !v)}
             style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", color: "rgba(255,255,255,0.7)", fontSize: "12rem", marginBottom: "8rem", textTransform: "uppercase" }}
@@ -373,8 +289,13 @@ export function LawsTab() {
                 <div key={r.recordIndex} style={{ padding: "8rem 10rem", background: "rgba(255,255,255,0.05)", borderRadius: "4rem", marginBottom: "6rem" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span style={{ color: "white", fontSize: "12rem" }}>
-                      « {r.customName} » — {proposerLine(r.proposerParty, r.proposerIsCoalition, [r.proposerParty])} — {outcomeLabel(r.outcome)}
-                      {r.repealed && ` — ${t("CityCouncil.Law.REPEALED_BY", "abrogée par")} ${partyLabel(r.repealerParty)}`}
+                      {(() => {
+                        const proposer = proposerLine(r.proposerParty, r.proposerIsCoalition, [r.proposerParty]);
+                        const repealSuffix = r.repealed
+                          ? ` — ${t("CityCouncil.Law.REPEALED_BY", "abrogée par")} ${partyLabel(r.repealerParty)}`
+                          : "";
+                        return `« ${r.customName} » — ${proposer} — ${outcomeLabel(r.outcome)}${repealSuffix}`;
+                      })()}
                     </span>
                     {r.canPlayerRepeal && (
                       <ActionButton label={t("CityCouncil.Law.REPEAL_BUTTON", "Proposer l'abrogation")} enabled={true} onClick={() => handleRepeal(r.recordIndex)} />

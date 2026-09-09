@@ -319,10 +319,22 @@ namespace CityCouncil
         // --- Lecture d'état (parti joueur actif, bloc courant) ---
         // ------------------------------------------------------------------
 
+        /// <summary>
+        /// Le parti joueur actif, ou null si aucun parti joueur n'est actif OU s'il n'a
+        /// actuellement AUCUN siège au conseil — un parti sans siège n'a pas de légitimité
+        /// pour proposer, répondre à, ou abroger une loi (cf. discussion design). Ce point
+        /// unique de lecture fait cascader la règle vers StartVote (m_HasPlayerBloc),
+        /// ResolveVote (malus/décompte) et RunPeriodicCycle (le joueur ne "bloque" plus son
+        /// bloc pour l'IA s'il n'a pas de siège — voir aussi le garde-fou dédié plus bas pour
+        /// les blocs IA à 0 siège).
+        /// </summary>
         private PoliticalParty? GetPlayerActiveParty()
         {
             var custom = m_CustomPartySystem.GetData();
-            return (custom.m_Exists && custom.m_SubstitutionActive) ? custom.m_ActiveSpace : (PoliticalParty?)null;
+            if (!custom.m_Exists || !custom.m_SubstitutionActive) return null;
+
+            var space = custom.m_ActiveSpace;
+            return m_CoalitionSystem.GetSeatsForParty(space) > 0 ? space : (PoliticalParty?)null;
         }
 
         /// <summary>true si le bloc identifié par blocKey contient le parti joueur actif.</summary>
@@ -355,6 +367,13 @@ namespace CityCouncil
         public bool TryProposeLaw(PoliticalParty actingParty, string lawId, string customName, out string error)
         {
             error = null;
+
+            if (m_CoalitionSystem.GetSeatsForParty(actingParty) <= 0)
+            {
+                error = "Votre parti ne détient aucun siège au conseil : aucune légitimité pour proposer une loi.";
+                return false;
+            }
+
             var lawDef = CouncilLawCatalog.GetById(lawId);
             if (lawDef == null) { error = "Loi introuvable dans le catalogue."; return false; }
 
@@ -382,6 +401,13 @@ namespace CityCouncil
         public bool TryProposeRepeal(PoliticalParty actingParty, int targetRecordIndex, out string error)
         {
             error = null;
+
+            if (m_CoalitionSystem.GetSeatsForParty(actingParty) <= 0)
+            {
+                error = "Votre parti ne détient aucun siège au conseil : aucune légitimité pour proposer une abrogation.";
+                return false;
+            }
+
             var data = GetData();
             if (targetRecordIndex < 0 || targetRecordIndex >= data.m_Records.Length)
             {
@@ -715,6 +741,7 @@ namespace CityCouncil
             var playerParty = GetPlayerActiveParty();
             foreach (var bloc in m_CoalitionSystem.GetAllBlocs())
             {
+                if (bloc.Seats <= 0) continue; // aucune légitimité pour un bloc sans siège
                 var blocKey = bloc.Members[0];
                 if (BlocContainsPlayer(blocKey, playerParty)) continue; // le joueur décide lui-même pour son bloc
                 TryRunAiDecisionForBloc(blocKey, currentDay);

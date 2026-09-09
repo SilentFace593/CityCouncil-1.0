@@ -101,8 +101,12 @@ namespace CityCouncil.Systems
             if (playerParty.HasValue)
             {
                 var coalitionSystem = World.GetExistingSystemManaged<CityCouncil.CouncilCoalitionSystem>();
-                var blocKey = coalitionSystem.GetBlocKey(playerParty.Value);
-                playerCanPropose = !activeVotes.Any(v => (CityCouncil.PoliticalParty)v.m_ProposerBlocKey == blocKey);
+                if (coalitionSystem != null)
+                {
+                    bool hasSeats = coalitionSystem.GetSeatsForParty(playerParty.Value) > 0;
+                    var blocKey = coalitionSystem.GetBlocKey(playerParty.Value);
+                    playerCanPropose = hasSeats && !activeVotes.Any(v => (CityCouncil.PoliticalParty)v.m_ProposerBlocKey == blocKey);
+                }
             }
 
             string activeVotesJson = LawActiveVoteDto.ToJsonArray(activeVotes.Select(v => LawActiveVoteDto.From(v, playerParty, World)));
