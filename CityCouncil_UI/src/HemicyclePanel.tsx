@@ -44,6 +44,9 @@ const showDebugTab$ = bindValue<boolean>("cityCouncil", "showDebugTab");
 const powerfulDistrictJson$ = bindValue<string>("cityCouncil", "powerfulDistrictJson");
 const coalitionJson$ = bindValue<string>("cityCouncil", "coalitionJson");
 
+const lawActiveVotesJson$ = bindValue<string>("cityCouncil", "lawActiveVotesJson");
+const votingInstructionDistrictsJson$ = bindValue<string>("cityCouncil", "votingInstructionDistrictsJson");
+
 // Error Boundary
 class SafeBoundary extends Component<{ children: any }, { crashed: boolean }> {
   constructor(props: any) {
@@ -226,12 +229,14 @@ function BonusChoicePrompt() {
 
 interface CoalitionDto {
   leadingIsCoalition: boolean;
-  leadingMembers: string[]; // triés par sièges décroissants côté C#
+  leadingMembers: string[];
   leadingHasAbsoluteMajority: boolean;
   awaitingPlayerDecision: boolean;
   playerCustomName: string;
   customPartyName: string;
   customPartyColor: string;
+  leadingBlocLawsVoted: number;     
+  leadingBlocLawsAbrogated: number;
 }
 
 function CoalitionStatusLine() {
@@ -336,6 +341,46 @@ function PowerfulDistrictLine() {
   );
 }
 
+
+function LeadingBlocLawSummary() {
+  const { translate } = useLocalization();
+  const t = (key: string, fallback: string): string => translate(key, fallback) ?? fallback;
+  const json = useValue(coalitionJson$);
+
+  const dto: CoalitionDto | null = useMemo(() => {
+    try {
+      const p = JSON.parse(json ?? "{}");
+      return typeof p.leadingIsCoalition === "boolean" ? p : null;
+    } catch { return null; }
+  }, [json]);
+
+  if (!dto || dto.leadingMembers.length === 0) return null;
+
+  const prefix = t("CityCouncil.Hemicycle.LEADING_BLOC_LAW_SUMMARY_PREFIX", "Bilan de l'actuel parti ou coalition au pouvoir : ");
+  const votedWord = t("CityCouncil.Hemicycle.LAWS_VOTED_WORD", "lois votées");
+  const abrogatedWord = t("CityCouncil.Hemicycle.LAWS_ABROGATED_WORD", "lois abrogées");
+
+  // Une seule chaîne (contrainte du moteur) : pas de mélange texte + expressions adjacentes.
+  const line = `${prefix}${dto.leadingBlocLawsVoted} ${votedWord}, ${dto.leadingBlocLawsAbrogated} ${abrogatedWord}`;
+
+  return (
+    <div
+      style={{
+        marginTop: "12rem",
+        padding: "10rem",
+        background: "rgba(255,255,255,0.06)",
+        borderRadius: "6rem",
+        textAlign: "center",
+      }}
+    >
+      <div style={{ color: "rgba(255,255,255,0.85)", fontSize: "12rem", lineHeight: "16rem" }}>
+        {line}
+      </div>
+    </div>
+  );
+}
+
+
 function HemicycleResultsContent() {
   const { translate } = useLocalization();
   const t = (key: string, fallback: string): string => translate(key, fallback) ?? fallback;
@@ -390,7 +435,7 @@ const coalitionLeadingIsCoalition = useMemo(() => {
         </div>
       </div>
 
-      {/* Bloc élargi : graphique + légende */}
+           {/* Bloc élargi : graphique + légende */}
       <div style={{ display: "flex", justifyContent: "center", width: "100%", boxSizing: "border-box" }}>
         <div style={{ width: "100%", maxWidth: RESULTS_FAN_MAX_WIDTH, boxSizing: "border-box", padding: "0 10rem" }}>
           <div style={{ display: "flex", alignItems: "center" }}>
@@ -446,6 +491,8 @@ const coalitionLeadingIsCoalition = useMemo(() => {
               })}
             </div>
           </div>
+
+          <LeadingBlocLawSummary />
         </div>
       </div>
 
@@ -559,12 +606,108 @@ function HemicycleTabs() {
   );
 }
 
+function NotificationDot({ color, tooltip, offset }: { color: string; tooltip: string; offset: number }) {
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        position: "absolute",
+        top: "2rem",
+        right: `${2 + offset * 11}rem`,
+        width: "8rem",
+        height: "8rem",
+        borderRadius: "50%",
+        background: color,
+        border: "1rem solid white",
+        pointerEvents: "auto",
+      }}
+    >
+      {hovered && tooltip && (
+        <div
+          style={{
+            position: "absolute",
+            bottom: "130%",
+            right: 0,
+            background: "rgba(20,20,28,0.97)",
+            border: "1rem solid rgba(255,255,255,0.15)",
+            borderRadius: "4rem",
+            padding: "6rem 8rem",
+            color: "white",
+            fontSize: "11rem",
+            lineHeight: "15rem",
+            whiteSpace: "nowrap",
+            zIndex: 20,
+            pointerEvents: "none",
+          }}
+        >
+          {tooltip}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function HemicycleEntry() {
   const { translate } = useLocalization();
   const t = (key: string, fallback: string): string => translate(key, fallback) ?? fallback;
 
   const [open, setOpen] = useState(false);
   const bonusPending = useValue(playerBonusChoicePending$);
+  const coalitionJsonRaw = useValue(coalitionJson$);
+  const lawActiveVotesJsonRaw = useValue(lawActiveVotesJson$);
+  const votingInstructionJsonRaw = useValue(votingInstructionDistrictsJson$);
+
+  const coalitionPending = useMemo(() => {
+    try {
+      return !!JSON.parse(coalitionJsonRaw ?? "{}").awaitingPlayerDecision;
+    } catch {
+      return false;
+    }
+  }, [coalitionJsonRaw]);
+
+  const lawPending = useMemo(() => {
+    try {
+      const arr = JSON.parse(lawActiveVotesJsonRaw ?? "[]");
+      return Array.isArray(arr) && arr.some((v: any) => v && v.hasPlayerBloc && !v.playerHasAnswered && !v.isPlayerProposer);
+    } catch {
+      return false;
+    }
+  }, [lawActiveVotesJsonRaw]);
+
+  const votingInstructionPending = useMemo(() => {
+    try {
+      const arr = JSON.parse(votingInstructionJsonRaw ?? "[]");
+      return Array.isArray(arr) && arr.some((d: any) => d && d.submitted === false);
+    } catch {
+      return false;
+    }
+  }, [votingInstructionJsonRaw]);
+
+  const notifications = [
+    bonusPending && {
+      key: "bonus",
+      color: "rgba(220,80,80,0.95)",
+      tooltip: t("CityCouncil.Hemicycle.BONUS_PENDING_TOOLTIP", "Bonus Permanent à choisir !"),
+    },
+    coalitionPending && {
+      key: "coalition",
+      color: "rgba(70,130,220,0.95)",
+      tooltip: t("CityCouncil.Hemicycle.COALITION_PENDING_TOOLTIP", "Décision de coalition en attente !"),
+    },
+    lawPending && {
+      key: "law",
+      color: "rgba(160,90,220,0.95)",
+      tooltip: t("CityCouncil.Hemicycle.LAW_PENDING_TOOLTIP", "Votre parti est sollicité pour une loi !"),
+    },
+    votingInstructionPending && {
+      key: "votingInstruction",
+      color: "rgba(90,200,120,0.95)",
+      tooltip: t("CityCouncil.Hemicycle.VOTING_INSTRUCTION_PENDING_TOOLTIP", "Consigne de vote disponible !"),
+    },
+  ].filter((n): n is { key: string; color: string; tooltip: string } => !!n);
 
   const handleOpen = () => {
     const next = !open;
@@ -574,29 +717,15 @@ function HemicycleEntry() {
     }
   };
 
-  const tooltip = bonusPending ? t("CityCouncil.Hemicycle.BONUS_PENDING_TOOLTIP", "Bonus Permanent à choisir !") : undefined;
-
   return (
     <>
-      <div title={tooltip} style={{ position: "relative", display: "inline-block" }}>
+      <div style={{ position: "relative", display: "inline-block" }}>
         <Button variant="flat" onSelect={handleOpen}>
           <div style={{ fontSize: "16rem" }}>CityCouncil</div>
         </Button>
-        {bonusPending && (
-          <div
-            style={{
-              position: "absolute",
-              top: "2rem",
-              right: "2rem",
-              width: "8rem",
-              height: "8rem",
-              borderRadius: "50%",
-              background: "rgba(220,80,80,0.95)",
-              border: "1rem solid white",
-              pointerEvents: "none",
-            }}
-          />
-        )}
+        {notifications.map((n, i) => (
+          <NotificationDot key={n.key} color={n.color} tooltip={n.tooltip} offset={i} />
+        ))}
       </div>
 
       {open && (

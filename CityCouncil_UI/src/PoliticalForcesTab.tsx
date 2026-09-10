@@ -19,6 +19,7 @@ import bonusExcluDemocrateIcon from "./images/Bonus_EXCLU_Democrate.png";
 import { PartyDescriptionBlock } from "./PartyDescriptionBlock";
 import { BonusBadgeIcon } from "./PartyResultDto";
 
+const districtsOverviewJson$ = bindValue<string>("cityCouncil", "districtsOverviewJson");
 const hemicycleSeatsJson$ = bindValue<string>("cityCouncil", "hemicycleSeatsJson");
 const partyMembershipJson$ = bindValue<string>("cityCouncil", "partyMembershipJson");
 const customPartyExists$ = bindValue<boolean>("cityCouncil", "customPartyExists");
@@ -36,6 +37,163 @@ const ecologistNuclearBonusActive$ = bindValue<boolean>("cityCouncil", "ecologis
 const radicalLeftUniversityBonusActive$ = bindValue<boolean>("cityCouncil", "radicalLeftUniversityBonusActive");
 const democratDigitalBonusActive$ = bindValue<boolean>("cityCouncil", "democratDigitalBonusActive");
 const TAB_HEIGHT = "560rem";
+const DISTRICTS_KEY = "__districts__";
+
+
+interface DistrictOverviewDto {
+  districtId: number;
+  districtName: string;
+  voters: number;
+  seats: number;
+  percentOfCouncil: number;
+  leadingParty: string;
+  displayName?: string;
+  displayColor?: string;
+  isBastion: boolean;
+  bastionParty: string;
+  bastionDisplayName?: string;
+  bastionDisplayColor?: string;
+  streakCount: number;
+}
+
+function districtPartyLabel(d: DistrictOverviewDto, translate: any): string {
+  return d.displayName && d.displayName.length > 0 ? d.displayName : translatePartyName(d.leadingParty, translate);
+}
+function districtPartyColor(d: DistrictOverviewDto): string {
+  if (d.displayColor && d.displayColor.length > 0) return CUSTOM_PARTY_PALETTE_HEX[d.displayColor] ?? "#888";
+  return PARTY_COLORS[d.leadingParty] ?? "#888";
+}
+function bastionPartyLabel(d: DistrictOverviewDto, translate: any): string {
+  return d.bastionDisplayName && d.bastionDisplayName.length > 0 ? d.bastionDisplayName : translatePartyName(d.bastionParty, translate);
+}
+
+// Mini barre de série Bastion (3 cases), version compacte de BastionProgressBar (AdministrationSection.tsx)
+function MiniBastionBar({ streakCount, color }: { streakCount: number; color: string }) {
+  return (
+    <div style={{ display: "flex", marginTop: "4rem", maxWidth: "80rem" }}>
+      {[0, 1, 2].map((i) => (
+        <div
+          key={i}
+          style={{
+            flex: 1,
+            height: "5rem",
+            borderRadius: "2rem",
+            background: i < streakCount ? color : "rgba(255,255,255,0.10)",
+            marginRight: i < 2 ? "3rem" : 0,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function DistrictRow({ d, translate }: { d: DistrictOverviewDto; translate: any }) {
+  const t = (key: string, fallback: string): string => translate(key, fallback) ?? fallback;
+  const [expanded, setExpanded] = useState(false);
+
+  const votersWord = t("CityCouncil.Hemicycle.POWERFUL_DISTRICT_VOTERS", "personnes en âge de voter");
+  const seatsWord = d.seats > 1
+    ? t("CityCouncil.Admin.SEATS_PLURAL", "sièges")
+    : t("CityCouncil.Admin.SEATS_SINGULAR", "siège");
+  const councilSuffix = t("CityCouncil.Hemicycle.POWERFUL_DISTRICT_COUNCIL_SUFFIX", "du Conseil Municipal");
+  const ledByLabel = t("CityCouncil.Hemicycle.POWERFUL_DISTRICT_LED_BY", "Dirigé par ");
+  const bastionLabel = t("CityCouncil.Admin.BASTION_LABEL", "Bastion : ");
+
+  const pct = Math.round(d.percentOfCouncil * 10) / 10;
+  const detailLine = `${d.voters.toLocaleString()} ${votersWord}, ${d.seats} ${seatsWord}, ${pct}% ${councilSuffix}`;
+  const leaderColor = districtPartyColor(d);
+
+  // Aplati en une seule chaîne — le moteur casse la ligne si plusieurs enfants JSX
+  // adjacents (texte + span) sont utilisés à la place d'une seule string.
+  const ledByLine = `${ledByLabel}« ${districtPartyLabel(d, translate)} »`;
+  const bastionLine = d.isBastion ? `${bastionLabel}« ${bastionPartyLabel(d, translate)} »` : "";
+
+  return (
+    <div
+      style={{
+        marginBottom: "6rem",
+        borderRadius: "6rem",
+        border: "1rem solid rgba(255,255,255,0.15)",
+        background: "rgba(255,255,255,0.05)",
+        overflow: "hidden",
+      }}
+    >
+      <div
+        onClick={() => setExpanded((v) => !v)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          padding: "8rem 10rem",
+          cursor: "pointer",
+        }}
+      >
+        <div style={{ marginRight: "8rem", flexShrink: 0 }}>
+          <PartyLogo party={d.leadingParty} color={leaderColor} isCustom={!!(d.displayName && d.displayName.length > 0)} sizeRem={30} />
+        </div>
+        <div style={{ flex: 1, minWidth: 0, color: "white", fontSize: "15rem", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {d.districtName}
+        </div>
+        <div style={{ color: "rgba(255,255,255,0.5)", fontSize: "11rem", flexShrink: 0, marginLeft: "8rem" }}>
+          {expanded ? "▲" : "▼"}
+        </div>
+      </div>
+
+      {expanded && (
+        <div style={{ padding: "0 10rem 10rem" }}>
+          <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "12rem", lineHeight: "15rem", marginBottom: "6rem" }}>
+            {detailLine}
+          </div>
+
+          <div style={{ color: "rgba(255,255,255,0.85)", fontSize: "12rem", fontWeight: 700 }}>
+            {ledByLine}
+          </div>
+
+          {d.isBastion && (
+            <div style={{ marginTop: "6rem" }}>
+              <div style={{ color: "rgba(150,190,255,0.9)", fontSize: "12rem", fontWeight: 700 }}>
+                {bastionLine}
+              </div>
+              <MiniBastionBar streakCount={d.streakCount} color={PARTY_COLORS[d.bastionParty] ?? "#888"} />
+            </div>
+          )}
+          {!d.isBastion && d.streakCount > 0 && (
+            <MiniBastionBar streakCount={d.streakCount} color={leaderColor} />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DistrictsPanel() {
+  const { translate } = useLocalization();
+  const t = (key: string, fallback: string): string => translate(key, fallback) ?? fallback;
+
+  const districtsJson = useValue(districtsOverviewJson$);
+  const districts: DistrictOverviewDto[] = useMemo(() => {
+    try {
+      const p = JSON.parse(districtsJson ?? "[]");
+      return Array.isArray(p) ? p.filter((d) => d && typeof d.districtId === "number") : [];
+    } catch {
+      return [];
+    }
+  }, [districtsJson]);
+
+  return (
+    <div style={{ padding: "16rem" }}>
+      <div style={{ color: "white", fontSize: "18rem", fontWeight: 700, marginBottom: "12rem" }}>
+        {t("CityCouncil.Forces.DISTRICTS_HEADER", "Districts")}
+      </div>
+      {districts.length === 0 ? (
+        <div style={{ color: "rgba(255,255,255,0.5)", fontSize: "12rem" }}>
+          {t("CityCouncil.Forces.DISTRICTS_EMPTY", "Aucun district avec des votants pour le moment.")}
+        </div>
+      ) : (
+        districts.map((d) => <DistrictRow key={d.districtId} d={d} translate={translate} />)
+      )}
+    </div>
+  );
+}
 
 
 interface BlackFundDto { active: boolean; balance: number; }
@@ -254,11 +412,34 @@ export function PoliticalForcesTab() {
       </div>
     );
   })}
-</div>
+
+        {/* Séparateur + entrée Districts */}
+      <div style={{ height: "1rem", background: "rgba(255,255,255,0.12)", margin: "6rem 10rem" }} />
+      <div
+        onClick={() => setSelectedKey(DISTRICTS_KEY)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          padding: "8rem 10rem",
+          cursor: "pointer",
+          background: selectedKey === DISTRICTS_KEY ? "rgba(255,255,255,0.10)" : "transparent",
+          borderLeft: selectedKey === DISTRICTS_KEY ? "3rem solid white" : "3rem solid transparent",
+        }}
+      >
+        <span style={{ color: "white", fontSize: "13rem" }}>
+          {t("CityCouncil.Forces.DISTRICTS_ENTRY", "Districts")}
+        </span>
+      </div>
+    </div>
 
       {/* Colonne droite : détail du parti sélectionné */}
-      {selected && (
-        <Scrollable style={{ flex: 1 }}>
+
+                  {selectedKey === DISTRICTS_KEY ? (
+              <Scrollable style={{ flex: 1 }}>
+            <DistrictsPanel />
+          </Scrollable>
+        ) : selected && (
+          <Scrollable style={{ flex: 1 }}>
           <div style={{ padding: "16rem" }}>
           <div style={{ display: "flex", alignItems: "center", marginBottom: "10rem" }}>
             <div style={{ marginRight: "10rem" }}>

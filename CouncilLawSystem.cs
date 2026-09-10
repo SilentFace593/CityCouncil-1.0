@@ -207,7 +207,6 @@ namespace CityCouncil
 
         private const double VoteDurationDays = 0.5; // 12h in-game
         private const double CycleIntervalDays = 7.0; // même rythme que les autres cycles du mod
-        private const long LawTrophyPoints = 500;
         private const float PlayerMalusPercent = 0.05f;
         public const int MaxCustomNameLength = 50;
         private const int MaxRecordsKept = 25; // cap arbitraire, évite une croissance illimitée (cf. FixedList4096Bytes)
@@ -626,8 +625,8 @@ namespace CityCouncil
                 return;
             }
 
-            GrantLawTrophy(proposerBloc.Members, LawTrophyPoints);
-            s_Log.Info($"[CouncilLawSystem] Loi '{vote.m_LawId}' (\"{vote.m_CustomName}\") ADOPTÉE, +{LawTrophyPoints} points partagés entre {string.Join("+", proposerBloc.Members)}.");
+            GrantLawScore(proposerBloc.Members, ScoreCatalog.PointsLawVoted); // MODIFIÉ
+            s_Log.Info($"[CouncilLawSystem] Loi '{vote.m_LawId}' (\"{vote.m_CustomName}\") ADOPTÉE, +{ScoreCatalog.PointsLawVoted} points de loi partagés entre {string.Join("+", proposerBloc.Members)}.");
 
             ApplyPlayerMalusIfNeeded(vote.m_LawId.ToString(), forParties, playerParty, currentDay, lawDef);
         }
@@ -652,8 +651,8 @@ namespace CityCouncil
                 SetData(data);
             }
 
-            GrantLawTrophy(proposerBloc.Members, LawTrophyPoints);
-            s_Log.Info($"[CouncilLawSystem] Loi '{vote.m_LawId}' ABROGÉE par {proposerKey}, +{LawTrophyPoints} points partagés (trophée, n'enlève rien au parti l'ayant fait voter).");
+            GrantLawScore(proposerBloc.Members, ScoreCatalog.PointsLawVoted); // MODIFIÉ
+            s_Log.Info($"[CouncilLawSystem] Loi '{vote.m_LawId}' ABROGÉE par {proposerKey}, +{ScoreCatalog.PointsLawVoted} points de loi partagés (n'enlève rien au parti l'ayant fait voter).");
         }
 
         /// <summary>
@@ -721,13 +720,13 @@ namespace CityCouncil
             SetData(data);
         }
 
-        /// <summary>Partage et arrondit les points entre les membres d'un bloc (coalition ou parti seul).</summary>
-        private void GrantLawTrophy(List<PoliticalParty> members, long totalPoints)
+        /// <summary>Partage et arrondit les points de loi entre les membres d'un bloc (coalition ou parti seul). Catégorie de score séparée des trophées.</summary>
+        private void GrantLawScore(List<PoliticalParty> members, long totalPoints)
         {
             if (members.Count == 0) return;
             long share = (long)Math.Round((double)totalPoints / members.Count, MidpointRounding.AwayFromZero);
             foreach (var p in members)
-                m_ScoreSystem.AddExternalTrophyScore(p, share);
+                m_ScoreSystem.AddLawScore(p, share);
         }
 
         // ------------------------------------------------------------------
@@ -821,6 +820,24 @@ namespace CityCouncil
 
         public List<LawVoteEntry> GetActiveVotes() => GetData().m_ActiveVotes.ToArray().ToList();
         public List<LawRecordEntry> GetHistory() => GetData().m_Records.ToArray().ToList();
+
+        /// <summary>
+        /// Compte les lois votées (adoptées) et abrogées par UN bloc précis (identifié par son
+        /// blocKey, cf. CouncilCoalitionSystem.GetBlocKey), tous cycles confondus. Utilisé pour
+        /// le bilan affiché sous le graphique de l'onglet Résultats (bloc actuellement au pouvoir).
+        /// </summary>
+        public (int voted, int abrogated) GetLawStatsForBloc(PoliticalParty blocKey)
+        {
+            int voted = 0, abrogated = 0;
+            foreach (var r in GetData().m_Records)
+            {
+                if (r.m_Outcome == LawRecordOutcome.Adopted && (PoliticalParty)r.m_ProposerBlocKey == blocKey)
+                    voted++;
+                if (r.m_Repealed && (PoliticalParty)r.m_RepealerBlocKey == blocKey)
+                    abrogated++;
+            }
+            return (voted, abrogated);
+        }
 
         /// <summary>OUTIL DE DEBUG TEMPORAIRE — force la résolution immédiate de tous les votes en cours.</summary>
         public void DebugForceResolveAllVotes()

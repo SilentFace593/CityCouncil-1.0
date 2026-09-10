@@ -638,6 +638,8 @@ namespace CityCouncil.Systems
 
             SetupLawBindings();
             RegisterLawTriggers();
+            SetupDistrictsOverviewBindings();
+            SetupRecordsBindings();
 
         }
 
@@ -671,6 +673,8 @@ namespace CityCouncil.Systems
             UpdateReinforcedBastionEligibleBinding();
             UpdateCoalitionBindingIfChanged();
             UpdateLawBindingIfChanged();
+            UpdateDistrictsOverviewBindingIfChanged();
+            UpdateRecordsBindingIfChanged();
 
 
             Entity selected = m_ToolSystem.selected;
@@ -731,16 +735,25 @@ namespace CityCouncil.Systems
 
         private void UpdateCoalitionBindingIfChanged(bool force = false)
         {
-            var leadingBloc = m_CoalitionSystem.GetLeadingBloc(); // MODIFIÉ
-            bool leadingHasMajority = m_CoalitionSystem.LeadingBlocHasAbsoluteMajority(); // MODIFIÉ
+            var leadingBloc = m_CoalitionSystem.GetLeadingBloc();
+            bool leadingHasMajority = m_CoalitionSystem.LeadingBlocHasAbsoluteMajority();
 
             var dto = new CoalitionDto
             {
-                leadingIsCoalition = leadingBloc.Members.Count >= 2, // MODIFIÉ
-                leadingMembers = leadingBloc.Members.Select(p => p.ToString()).ToList(), // MODIFIÉ
-                leadingHasAbsoluteMajority = leadingHasMajority, // MODIFIÉ
+                leadingIsCoalition = leadingBloc.Members.Count >= 2,
+                leadingMembers = leadingBloc.Members.Select(p => p.ToString()).ToList(),
+                leadingHasAbsoluteMajority = leadingHasMajority,
                 awaitingPlayerDecision = m_CoalitionSystem.IsAwaitingPlayerDecision(),
             };
+
+            // AJOUT — bilan des lois votées/abrogées par le bloc actuellement au pouvoir.
+            if (leadingBloc.Members.Count > 0)
+            {
+                var leadingKey = leadingBloc.Members[0]; // GetBlocKey = membre le plus siégé, déjà trié en tête
+                var (voted, abrogated) = m_LawSystem.GetLawStatsForBloc(leadingKey);
+                dto.leadingBlocLawsVoted = voted;
+                dto.leadingBlocLawsAbrogated = abrogated;
+            }
 
             var custom = m_CustomPartySystem.GetData();
             dto.playerCustomName = (custom.m_Exists && custom.m_SubstitutionActive) ? custom.m_ActiveSpace.ToString() : "";
@@ -749,7 +762,6 @@ namespace CityCouncil.Systems
 
             string json = dto.ToJson();
             if (!force && m_HasLastPushedCoalition && json == m_LastPushedCoalitionJson) return;
-
 
             s_Log.Info($"[CouncilUISystem][DEBUG-Coalition] JSON poussé : {json}");
             m_CoalitionJsonBinding.Update(json);
@@ -1207,6 +1219,9 @@ namespace CityCouncil.Systems
                     displayName = "",
                     displayColor = "",
                     trophyScore = kv.Value.TrophyScore,
+                    coalitionScore = kv.Value.CoalitionScore,
+                    lawScore = kv.Value.LawScore,
+                    recordsScore = kv.Value.RecordsScore,
                     seatsHeld = kv.Value.SeatsHeld,
                     districtsHeld = kv.Value.DistrictsHeld,
                     bastionsHeld = kv.Value.BastionsHeld,
@@ -1970,6 +1985,9 @@ namespace CityCouncil.Systems
         public string displayName;
         public string displayColor;
         public long trophyScore;
+        public long coalitionScore;
+        public long lawScore;
+        public long recordsScore;
         public int seatsHeld;
         public int districtsHeld;
         public int bastionsHeld;
@@ -1992,6 +2010,9 @@ namespace CityCouncil.Systems
                 sb.Append("\"displayName\":\"").Append(EscapeJson(d.displayName ?? "")).Append("\",");
                 sb.Append("\"displayColor\":\"").Append(d.displayColor ?? "").Append("\",");
                 sb.Append("\"trophyScore\":").Append(d.trophyScore).Append(',');
+                sb.Append("\"coalitionScore\":").Append(d.coalitionScore).Append(',');
+                sb.Append("\"lawScore\":").Append(d.lawScore).Append(',');
+                sb.Append("\"recordsScore\":").Append(d.recordsScore).Append(',');
                 sb.Append("\"seatsHeld\":").Append(d.seatsHeld).Append(',');
                 sb.Append("\"districtsHeld\":").Append(d.districtsHeld).Append(',');
                 sb.Append("\"bastionsHeld\":").Append(d.bastionsHeld).Append(',');
@@ -2205,12 +2226,14 @@ namespace CityCouncil.Systems
     public struct CoalitionDto
     {
         public bool leadingIsCoalition;
-        public List<string> leadingMembers;       // 1 élément si parti seul, 2+ si coalition
+        public List<string> leadingMembers;
         public bool leadingHasAbsoluteMajority;
         public bool awaitingPlayerDecision;
         public string playerCustomName;
         public string customPartyName;
         public string customPartyColor;
+        public int leadingBlocLawsVoted;     // AJOUT
+        public int leadingBlocLawsAbrogated; // AJOUT
 
         public string ToJson()
         {
@@ -2222,7 +2245,9 @@ namespace CityCouncil.Systems
             sb.Append("\"awaitingPlayerDecision\":").Append(awaitingPlayerDecision ? "true" : "false").Append(',');
             sb.Append("\"playerCustomName\":\"").Append(playerCustomName).Append("\",");
             sb.Append("\"customPartyName\":\"").Append((customPartyName ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"")).Append("\",");
-            sb.Append("\"customPartyColor\":\"").Append(customPartyColor ?? "").Append("\"");
+            sb.Append("\"customPartyColor\":\"").Append(customPartyColor ?? "").Append("\",");
+            sb.Append("\"leadingBlocLawsVoted\":").Append(leadingBlocLawsVoted).Append(','); // AJOUT
+            sb.Append("\"leadingBlocLawsAbrogated\":").Append(leadingBlocLawsAbrogated);      // AJOUT
             sb.Append('}');
             return sb.ToString();
         }

@@ -21,7 +21,7 @@ namespace CityCouncil
         private Entity m_SingletonEntity = Entity.Null;
         private CouncilPartyMembershipSystem m_MembershipSystem;
         private CouncilScoreSystem m_ScoreSystem;
-        private CouncilReinforcedBastionSystem m_ReinforcedBastionSystem; // AJOUT
+        private CouncilReinforcedBastionSystem m_ReinforcedBastionSystem;
 
         protected override void OnCreate()
         {

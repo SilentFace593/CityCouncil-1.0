@@ -1035,13 +1035,17 @@ public struct CouncilPollData : IComponentData, ISerializable
     {
         public FixedList512Bytes<ScoreEntry> m_TrophyEntries;
 
-        // Dernier détenteur connu de la majorité générale — sert à ne déclencher le trophée
-        // "élection générale remportée" que sur un CHANGEMENT de majorité (même logique que la
-        // conquête de district), pas à chaque cycle de 7 jours où le même parti reste majoritaire.
+        // AJOUT — catégories de score séparées des trophées classiques (district/majorité
+        // générale) : coalitions conclues et lois votées, cf. ScoreCatalog.PointsCoalitionConcluded
+        // / PointsLawVoted. Même struct ScoreEntry réutilisée génériquement comme "parti -> points"
+        // (le champ m_TrophyScore reste nommé ainsi mais porte un total différent selon la liste).
+        public FixedList512Bytes<ScoreEntry> m_CoalitionEntries;
+        public FixedList512Bytes<ScoreEntry> m_LawEntries;
+
         public bool m_HasLastGeneralMajority;
         public PoliticalParty m_LastGeneralMajorityParty;
 
-        private const int kVersion = 1;
+        private const int kVersion = 2; // AJOUT m_CoalitionEntries/m_LawEntries -> bump version
 
         public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
         {
@@ -1054,11 +1058,25 @@ public struct CouncilPollData : IComponentData, ISerializable
             }
             writer.Write(m_HasLastGeneralMajority);
             writer.Write((byte)m_LastGeneralMajorityParty);
+
+            writer.Write(m_CoalitionEntries.Length); // AJOUT
+            for (int i = 0; i < m_CoalitionEntries.Length; i++)
+            {
+                writer.Write((byte)m_CoalitionEntries[i].m_Party);
+                writer.Write(m_CoalitionEntries[i].m_TrophyScore);
+            }
+
+            writer.Write(m_LawEntries.Length); // AJOUT
+            for (int i = 0; i < m_LawEntries.Length; i++)
+            {
+                writer.Write((byte)m_LawEntries[i].m_Party);
+                writer.Write(m_LawEntries[i].m_TrophyScore);
+            }
         }
 
         public void Deserialize<TReader>(TReader reader) where TReader : IReader
         {
-            reader.Read(out int _);
+            reader.Read(out int version);
             reader.Read(out int count);
             m_TrophyEntries = new FixedList512Bytes<ScoreEntry>();
             for (int i = 0; i < count; i++)
@@ -1069,6 +1087,29 @@ public struct CouncilPollData : IComponentData, ISerializable
             }
             reader.Read(out m_HasLastGeneralMajority);
             reader.Read(out byte lastMajority); m_LastGeneralMajorityParty = (PoliticalParty)lastMajority;
+
+            m_CoalitionEntries = new FixedList512Bytes<ScoreEntry>();
+            m_LawEntries = new FixedList512Bytes<ScoreEntry>();
+            if (version >= 2)
+            {
+                reader.Read(out int coalitionCount);
+                for (int i = 0; i < coalitionCount; i++)
+                {
+                    reader.Read(out byte party);
+                    reader.Read(out long points);
+                    m_CoalitionEntries.Add(new ScoreEntry { m_Party = (PoliticalParty)party, m_TrophyScore = points });
+                }
+
+                reader.Read(out int lawCount);
+                for (int i = 0; i < lawCount; i++)
+                {
+                    reader.Read(out byte party);
+                    reader.Read(out long points);
+                    m_LawEntries.Add(new ScoreEntry { m_Party = (PoliticalParty)party, m_TrophyScore = points });
+                }
+            }
+            // Compat v1 : listes vides -> AddToScoreList (CouncilScoreSystem) ajoute l'entrée
+            // manquante au premier gain, même garde-fou que CouncilBonusData.m_ExclusiveBonusEntries.
         }
     }
 
@@ -1083,10 +1124,15 @@ public struct CouncilPollData : IComponentData, ISerializable
         public const long PointsGeneralElectionWon = 500;  // trophée, sur changement de majorité générale
         public const long PointsDistrictWon = 150;          // trophée, sur changement de leader d'un district
 
-        // AJOUT — RÉSERVÉ, non branché : trophée prévu pour la participation à une coalition
-        // (cf. discussion design). À câbler dans CouncilCoalitionSystem.CommitCoalition via
-        // CouncilScoreSystem.AddTrophyScore une fois la mécanique validée en jeu.
-        public const long PointsCoalitionParticipation = 300;
+        // Coalition conclue (joueur ou IA) : partagée/arrondie entre tous les membres, cf.
+        // CouncilCoalitionSystem.CommitCoalition. Catégorie de score séparée des trophées
+        // (ligne dédiée "Coalitions conclues" côté UI, cf. ScoreTab.tsx).
+        public const long PointsCoalitionConcluded = 500;
+
+        // Loi adoptée ou abrogée avec succès : partagée/arrondie entre les membres du bloc
+        // proposeur, cf. CouncilLawSystem.GrantLawScore. Catégorie de score séparée des trophées
+        // (ligne dédiée "Lois votées" côté UI).
+        public const long PointsLawVoted = 300;
     }
 
     /// <summary>Bastion Renforcé détenu par un parti : un seul district à la fois par parti.</summary>
@@ -1242,6 +1288,73 @@ public struct CouncilPollData : IComponentData, ISerializable
             m_AwaitingPlayerDecision = false;
             if (version >= 2) reader.Read(out m_AwaitingPlayerDecision);
         }
+    }
+
+    public enum RecordCategory : byte
+    {
+        CouncilSharePercent = 0,   // plus forte part (%) du Conseil jamais atteinte
+        BastionsHeld = 1,          // plus grand nombre de Bastions détenus simultanément
+        LawsVotedAbrogated = 2,    // plus grand nombre de lois votées + abrogées (cumulatif)
+        MembersCount = 3,          // plus grand nombre d'adhérents jamais atteint
+        Treasury = 4,              // plus forte trésorerie jamais atteinte
+        PropagandaSpent = 5,       // plus fortes dépenses de propagande cumulées
+    }
+
+    public struct RecordPeakEntry
+    {
+        public RecordCategory m_Category;
+        public PoliticalParty m_Party;
+        public float m_PeakValue; // plus haute valeur JAMAIS atteinte par ce parti pour cette catégorie
+    }
+
+    /// <summary>
+    /// Composant SINGLETON (même pattern que CouncilBonusData) portant, pour chaque catégorie de
+    /// record et chaque parti, le pic historique atteint. Le détenteur du record = le parti dont
+    /// le pic est le plus élevé pour cette catégorie ; s'il est dépassé par un autre parti, il perd
+    /// le record (et les points associés, cf. RecordCatalog.PointsPerRecordHeld) sans que sa propre
+    /// valeur de pic ne soit jamais réduite (les pics ne redescendent jamais, seul le CLASSEMENT change).
+    /// </summary>
+    public struct CouncilRecordData : IComponentData, ISerializable
+    {
+        public FixedList512Bytes<RecordPeakEntry> m_Peaks;
+
+        private const int kVersion = 1;
+
+        public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
+        {
+            writer.Write(kVersion);
+            writer.Write(m_Peaks.Length);
+            for (int i = 0; i < m_Peaks.Length; i++)
+            {
+                writer.Write((byte)m_Peaks[i].m_Category);
+                writer.Write((byte)m_Peaks[i].m_Party);
+                writer.Write(m_Peaks[i].m_PeakValue);
+            }
+        }
+
+        public void Deserialize<TReader>(TReader reader) where TReader : IReader
+        {
+            reader.Read(out int _);
+            reader.Read(out int count);
+            m_Peaks = new FixedList512Bytes<RecordPeakEntry>();
+            for (int i = 0; i < count; i++)
+            {
+                reader.Read(out byte cat);
+                reader.Read(out byte party);
+                reader.Read(out float value);
+                m_Peaks.Add(new RecordPeakEntry
+                {
+                    m_Category = (RecordCategory)cat,
+                    m_Party = (PoliticalParty)party,
+                    m_PeakValue = value
+                });
+            }
+        }
+    }
+
+    public static class RecordCatalog
+    {
+        public const long PointsPerRecordHeld = 200;
     }
 
 }

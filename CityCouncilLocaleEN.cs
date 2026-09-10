@@ -53,6 +53,9 @@ namespace CityCouncil
                 { LocaleKeys.Hemicycle_PowerfulDistrictCouncilSuffix, "of the City Council" },
                 { LocaleKeys.Hemicycle_PowerfulDistrictLedBy, "Led by " },
                 { LocaleKeys.Hemicycle_PowerfulDistrictBonusHint, "+1% voter intent on the entire city for this party." },
+                { LocaleKeys.Hemicycle_LeadingBlocLawSummaryPrefix, "Track record of the party or coalition currently in power: " },
+                { LocaleKeys.Hemicycle_LawsVotedWord, "laws voted" },
+                { LocaleKeys.Hemicycle_LawsAbrogatedWord, "laws repealed" },
 
 
                 // Coalition
@@ -128,6 +131,7 @@ namespace CityCouncil
                 { LocaleKeys.Admin_AbstentionLabel, "Abstention" },
                 { LocaleKeys.Admin_SeatsPlural, "seats" },
                 { LocaleKeys.Admin_SeatsSingular, "seat" },
+                { LocaleKeys.Admin_FanionTooltip, "Reinforced Stronghold active in this district" },
 
                 // PoliticalForcesTab
                 { LocaleKeys.Forces_CustomPartyDesc, "Your political party. Description customization will be available in a future update." },
@@ -331,6 +335,26 @@ namespace CityCouncil
                 { LocaleKeys.Score_DetailMembers, "Members" },
                 { LocaleKeys.Score_DetailPossessionTotal, "Possession total" },
                 { LocaleKeys.Score_DetailGrandTotal, "Total score" },
+                { LocaleKeys.Score_DetailCoalitions, "Coalitions concluded" },
+                { LocaleKeys.Score_DetailLaws, "Laws voted" },
+
+                //Records
+                { LocaleKeys.Records_Header, "Records" },
+                { LocaleKeys.Records_Explanation, "Each record grants 200 points to the party currently holding it — the highest value ever reached by a party in this game. Losing the record means losing the points." },
+                { LocaleKeys.Records_NoRecords, "No record established yet." },
+                { LocaleKeys.Records_CategoryCouncilShare, "Highest share of the Council" },
+                { LocaleKeys.Records_CategoryBastions, "Most strongholds held" },
+                { LocaleKeys.Records_CategoryLaws, "Most laws voted or repealed" },
+                { LocaleKeys.Records_CategoryMembers, "Most members" },
+                { LocaleKeys.Records_CategoryTreasury, "Highest treasury" },
+                { LocaleKeys.Records_CategoryPropaganda, "Highest total propaganda spending" },
+                { LocaleKeys.Records_HeldByPrefix, "held by " },
+                { LocaleKeys.Score_DetailRecords, "Records held" },
+
+                //Notifications
+                { LocaleKeys.Hemicycle_CoalitionPendingTooltip, "Coalition decision pending!" },
+                { LocaleKeys.Hemicycle_LawPendingTooltip, "Your party is being consulted on a law!" },
+                { LocaleKeys.Hemicycle_VotingInstructionPendingTooltip, "Voting instruction available!" },
 
                 //Rules
                 { LocaleKeys.Rules_TabLabel, "Rules" },

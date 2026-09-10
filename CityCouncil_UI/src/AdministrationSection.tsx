@@ -14,6 +14,11 @@ import {
   type TranslateFn,
   BonusBadgeIcon,
 } from "./PartyResultDto";
+import fanionGaucheIcon from "./images/Fanion_gauche.png";
+import fanionPopulisteIcon from "./images/Fanion_populiste.png";
+import fanionEcologisteIcon from "./images/Fanion_ecologiste.png";
+import fanionDemocrateIcon from "./images/Fanion_democrate.png";
+import fanionRepublicainIcon from "./images/Fanion_republicain.png";
 
 // --- Bindings exposés par CouncilUISystem.cs (group "cityCouncil") ---
 const adminVisible$ = bindValue<boolean>("cityCouncil", "adminVisible");
@@ -32,6 +37,15 @@ const adminBastionStreakCount$ = bindValue<number>("cityCouncil", "adminBastionS
 const adminBastionActive$ = bindValue<boolean>("cityCouncil", "adminBastionActive");
 const adminBastionReinforcedActive$ = bindValue<boolean>("cityCouncil", "adminBastionReinforcedActive"); // AJOUT
 const adminLeadingPartyBonus$ = bindValue<string>("cityCouncil", "adminLeadingPartyBonus");
+
+const FANION_IMAGES: Record<string, string> = {
+  GaucheRadicale: fanionGaucheIcon,
+  Populiste: fanionPopulisteIcon,
+  Ecologiste: fanionEcologisteIcon,
+  Democrate: fanionDemocrateIcon,
+  Republicain: fanionRepublicainIcon,
+};
+const FANION_ASPECT_RATIO = 80 / 140; //ratio : 1.75
 
 function partyBadgeSrc(party: string): string | null {
   return null;
@@ -147,7 +161,7 @@ function HoverTooltip({ text, children }: { text: string; children: any }) {
 }
 
 
-function PartyBadge({ result, bonus }: { result: PartyResultDto; bonus?: string }) {
+function PartyBadge({ result, bonus, reinforcedBastionActive }: { result: PartyResultDto; bonus?: string; reinforcedBastionActive?: boolean }) {
   const { translate } = useLocalization();
   const t = (key: string, fallback: string): string => translate(key, fallback) ?? fallback;
 
@@ -159,12 +173,16 @@ function PartyBadge({ result, bonus }: { result: PartyResultDto; bonus?: string 
     : t("CityCouncil.Admin.SEATS_SINGULAR", "siège");
   const seatsLine = `${result.seats} ${seatsWord}`;
 
-  // MODIFIÉ — tooltips enrichis avec la description complète de l'effet du bonus.
   const bonusTooltip = bonus === "Defensif"
     ? t("CityCouncil.Admin.BONUS_DEFENSIF_TOOLTIP", "Bonus Défensif permanent (protège une case de barre de Bastion)")
     : bonus === "Offensif"
     ? t("CityCouncil.Admin.BONUS_OFFENSIF_TOOLTIP", "Bonus Offensif permanent (+3% d'intention de vote dans les bastions adverses)")
     : "";
+
+  const fanionSrc = reinforcedBastionActive ? FANION_IMAGES[result.party] : null;
+  const fanionTooltip = t("CityCouncil.Admin.FANION_TOOLTIP", "Bastion Renforcé actif dans ce district");
+
+  const showBadgeRow = (bonus && bonus !== "None") || !!fanionSrc;
 
   return (
     <div style={{ display: "flex", alignItems: "center" }}>
@@ -172,30 +190,47 @@ function PartyBadge({ result, bonus }: { result: PartyResultDto; bonus?: string 
         <PartyLogo party={result.party} color={color} isCustom={isCustom} sizeRem={36} />
       </div>
       <div style={{ minWidth: 0 }}>
-        {/* MODIFIÉ — hauteur fixe (celle du texte seul) : le badge, en position absolue, ne
-            peut plus étirer cette ligne ni repousser seatsLine en dessous. */}
         <div style={{ position: "relative", display: "flex", alignItems: "center", height: "18rem" }}>
           <span style={{ color: "white", fontSize: "15rem", fontWeight: 600, whiteSpace: "nowrap", wordBreak: "keep-all", overflowWrap: "normal" }}>
             {label}
           </span>
 
-            {bonus && bonus !== "None" && (
-              <span
-                style={{
-                  position: "absolute",
-                  left: "125%",
-                  top: "50%",
-                  transform: "translateY(-25%)",
-                  marginLeft: "14rem",
-                  zIndex: 2,
-                  display: "inline-block",
-                }}
-              >
-                <HoverTooltip text={bonusTooltip}> {/* MODIFIÉ — enveloppe le badge avec le tooltip custom */}
+          {showBadgeRow && (
+            <span
+              style={{
+                position: "absolute",
+                left: "125%",
+                top: "50%",
+                transform: "translateY(-25%)",
+                marginLeft: "14rem",
+                zIndex: 2,
+                display: "flex",
+                alignItems: "center",
+                gap: "10rem",
+              }}
+            >
+              {bonus && bonus !== "None" && (
+                <HoverTooltip text={bonusTooltip}>
                   <BonusBadgeIcon bonus={bonus} widthRem={35} />
                 </HoverTooltip>
-              </span>
-            )}
+              )}
+
+              {fanionSrc && (
+                <HoverTooltip text={fanionTooltip}>
+                  <img
+                    src={fanionSrc}
+                    style={{
+                      width: "22rem",
+                      height: `${22 / FANION_ASPECT_RATIO}rem`,
+                      objectFit: "contain",
+                      flexShrink: 0,
+                      pointerEvents: "auto",
+                    }}
+                  />
+                </HoverTooltip>
+              )}
+            </span>
+          )}
         </div>
         <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "13rem", whiteSpace: "nowrap", wordBreak: "keep-all", overflowWrap: "normal" }}>
           {seatsLine}
@@ -455,7 +490,11 @@ const round1Results: Round1ResultDto[] = useMemo(() => {
 
         {phase === "Completed" && leadingParty && (
           <div>
-            <PartyBadge result={leadingResult ?? { party: leadingParty, seats, voteShare: 0 }} bonus={leadingPartyBonus} />
+            <PartyBadge
+              result={leadingResult ?? { party: leadingParty, seats, voteShare: 0 }}
+              bonus={leadingPartyBonus}
+              reinforcedBastionActive={bastionReinforcedActive}
+            />
 
                         <div style={{ marginTop: "10rem" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6rem" }}>

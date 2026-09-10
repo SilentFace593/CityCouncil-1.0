@@ -44,6 +44,9 @@ namespace CityCouncil
         public const string Hemicycle_PowerfulDistrictCouncilSuffix = "CityCouncil.Hemicycle.POWERFUL_DISTRICT_COUNCIL_SUFFIX";
         public const string Hemicycle_PowerfulDistrictLedBy = "CityCouncil.Hemicycle.POWERFUL_DISTRICT_LED_BY";
         public const string Hemicycle_PowerfulDistrictBonusHint = "CityCouncil.Hemicycle.POWERFUL_DISTRICT_BONUS_HINT";
+        public const string Hemicycle_LeadingBlocLawSummaryPrefix = "CityCouncil.Hemicycle.LEADING_BLOC_LAW_SUMMARY_PREFIX";
+        public const string Hemicycle_LawsVotedWord = "CityCouncil.Hemicycle.LAWS_VOTED_WORD";
+        public const string Hemicycle_LawsAbrogatedWord = "CityCouncil.Hemicycle.LAWS_ABROGATED_WORD";
 
         // --- Coalition ---
         public const string Coalition_Header = "CityCouncil.Coalition.HEADER";
@@ -121,6 +124,7 @@ namespace CityCouncil
         public const string Admin_AbstentionLabel = "CityCouncil.Admin.ABSTENTION_LABEL";
         public const string Admin_SeatsPlural = "CityCouncil.Admin.SEATS_PLURAL";
         public const string Admin_SeatsSingular = "CityCouncil.Admin.SEATS_SINGULAR";
+        public const string Admin_FanionTooltip = "CityCouncil.Admin.FANION_TOOLTIP";
 
         // --- PoliticalForcesTab et Treasury ---
         public const string Forces_CustomPartyDesc = "CityCouncil.Forces.CUSTOM_PARTY_DESC";
@@ -333,6 +337,26 @@ namespace CityCouncil
         public const string Score_DetailGrandTotal = "CityCouncil.Score.DETAIL_GRAND_TOTAL";
         public const string Score_DetailMembers = "CityCouncil.Score.DETAIL_MEMBERS";
         public const string Score_DetailReinforcedBastions = "CityCouncil.Score.DETAIL_REINFORCED_BASTIONS";
+        public const string Score_DetailCoalitions = "CityCouncil.Score.DETAIL_COALITIONS";
+        public const string Score_DetailLaws = "CityCouncil.Score.DETAIL_LAWS";
+
+        //Records
+        public const string Records_Header = "CityCouncil.Records.HEADER";
+        public const string Records_Explanation = "CityCouncil.Records.EXPLANATION";
+        public const string Records_NoRecords = "CityCouncil.Records.NO_RECORDS";
+        public const string Records_CategoryCouncilShare = "CityCouncil.Records.CATEGORY_COUNCIL_SHARE";
+        public const string Records_CategoryBastions = "CityCouncil.Records.CATEGORY_BASTIONS";
+        public const string Records_CategoryLaws = "CityCouncil.Records.CATEGORY_LAWS";
+        public const string Records_CategoryMembers = "CityCouncil.Records.CATEGORY_MEMBERS";
+        public const string Records_CategoryTreasury = "CityCouncil.Records.CATEGORY_TREASURY";
+        public const string Records_CategoryPropaganda = "CityCouncil.Records.CATEGORY_PROPAGANDA";
+        public const string Records_HeldByPrefix = "CityCouncil.Records.HELD_BY_PREFIX";
+        public const string Score_DetailRecords = "CityCouncil.Score.DETAIL_RECORDS";
+
+        //Notifications
+        public const string Hemicycle_CoalitionPendingTooltip = "CityCouncil.Hemicycle.COALITION_PENDING_TOOLTIP";
+        public const string Hemicycle_LawPendingTooltip = "CityCouncil.Hemicycle.LAW_PENDING_TOOLTIP";
+        public const string Hemicycle_VotingInstructionPendingTooltip = "CityCouncil.Hemicycle.VOTING_INSTRUCTION_PENDING_TOOLTIP";
 
         //Onglet Règles
         public const string Rules_TabLabel = "CityCouncil.Rules.TAB_LABEL";

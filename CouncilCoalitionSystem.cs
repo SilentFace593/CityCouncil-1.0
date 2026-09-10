@@ -35,6 +35,7 @@ namespace CityCouncil
         private EntityQuery m_DistrictQuery;
         private SimulationSystem m_SimulationSystem;
         private CouncilCustomPartySystem m_CustomPartySystem;
+        private CouncilScoreSystem m_ScoreSystem;
         private readonly Random m_Rng = new Random();
 
         private Entity m_SingletonEntity = Entity.Null;
@@ -47,6 +48,7 @@ namespace CityCouncil
             m_DistrictQuery = GetEntityQuery(ComponentType.ReadOnly<CouncilDistrictData>());
             m_SimulationSystem = World.GetOrCreateSystemManaged<SimulationSystem>();
             m_CustomPartySystem = World.GetOrCreateSystemManaged<CouncilCustomPartySystem>();
+            m_ScoreSystem = World.GetOrCreateSystemManaged<CouncilScoreSystem>();
         }
 
         protected override void OnGamePreload(Purpose purpose, Game.GameMode mode)
@@ -297,11 +299,26 @@ namespace CityCouncil
             foreach (var p in membersOrderedBySeats) entry.m_Members.Add((byte)p);
 
             var data = GetData();
-            data.m_Coalitions.Add(entry); // MODIFIÉ — ajout, ne remplace plus
+            data.m_Coalitions.Add(entry);
             data.m_PlayerProposalPending = false;
             SetData(data);
 
+            // AJOUT — score "Coalitions conclues" : partagé/arrondi entre TOUS les membres, que la
+            // coalition soit formée par le joueur ou par l'IA (même logique que le trophée de loi :
+            // la récompense suit le fait, pas l'identité de l'initiateur).
+            GrantCoalitionScore(membersOrderedBySeats);
+
             s_Log.Info($"[CouncilCoalitionSystem] Coalition formée ({(playerInitiated ? "joueur" : "IA")}) : {string.Join(", ", membersOrderedBySeats)}.");
+        }
+
+        /// <summary>Partage et arrondit les points de coalition entre les membres — même pattern que CouncilLawSystem.GrantLawScore.</summary>
+        private void GrantCoalitionScore(List<PoliticalParty> members)
+        {
+            if (members.Count == 0) return;
+            long share = (long)Math.Round((double)ScoreCatalog.PointsCoalitionConcluded / members.Count, MidpointRounding.AwayFromZero);
+            foreach (var p in members)
+                m_ScoreSystem.AddCoalitionScore(p, share);
+            s_Log.Info($"[CouncilCoalitionSystem] +{ScoreCatalog.PointsCoalitionConcluded} points de coalition partagés entre {string.Join("+", members)} ({share}/membre).");
         }
 
         // --- Proposition du joueur ---

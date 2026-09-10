@@ -5,6 +5,7 @@ import { translatePartyName, PARTY_COLORS, CUSTOM_PARTY_PALETTE_HEX, PartyLogo }
 import { centeredTabWrapperStyle, centeredTabContentStyle } from "./layoutConstants";
 import doodleScoreImg from "./images/doodle_score.png";
 
+const recordsJson$ = bindValue<string>("cityCouncil", "recordsJson");
 const scoreJson$ = bindValue<string>("cityCouncil", "scoreJson");
 const TAB_IMAGES = {
   doodleScore: doodleScoreImg,
@@ -16,6 +17,9 @@ interface ScoreDto {
   displayName?: string;
   displayColor?: string;
   trophyScore: number;
+  coalitionScore: number;
+  lawScore: number;
+  recordsScore: number;
   seatsHeld: number;
   districtsHeld: number;
   bastionsHeld: number;
@@ -44,6 +48,99 @@ function DetailRow({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+
+
+interface RecordDto {
+  category: string;
+  value: number;
+  party: string;
+  displayName?: string;
+  displayColor?: string;
+}
+
+const RECORD_CATEGORY_LABEL_KEYS: Record<string, string> = {
+  CouncilSharePercent: "CityCouncil.Records.CATEGORY_COUNCIL_SHARE",
+  BastionsHeld: "CityCouncil.Records.CATEGORY_BASTIONS",
+  LawsVotedAbrogated: "CityCouncil.Records.CATEGORY_LAWS",
+  MembersCount: "CityCouncil.Records.CATEGORY_MEMBERS",
+  Treasury: "CityCouncil.Records.CATEGORY_TREASURY",
+  PropagandaSpent: "CityCouncil.Records.CATEGORY_PROPAGANDA",
+};
+
+const RECORD_CATEGORY_ORDER = [
+  "CouncilSharePercent", "BastionsHeld", "LawsVotedAbrogated",
+  "MembersCount", "Treasury", "PropagandaSpent",
+];
+
+function formatRecordValue(category: string, value: number): string {
+  if (category === "CouncilSharePercent") {
+    return `${(Math.round(value * 10) / 10).toLocaleString()}%`;
+  }
+  return Math.round(value).toLocaleString();
+}
+
+function RecordRow({ r, translate }: { r: RecordDto; translate: (k: string, f: string | null) => string | null }) {
+  const t = (key: string, fallback: string): string => translate(key, fallback) ?? fallback;
+
+  const labelKey = RECORD_CATEGORY_LABEL_KEYS[r.category] ?? r.category;
+  const label = t(labelKey, r.category);
+  const formattedValue = formatRecordValue(r.category, r.value);
+  const partyLabel = r.displayName && r.displayName.length > 0 ? r.displayName : translatePartyName(r.party, translate);
+  const heldByPrefix = t("CityCouncil.Records.HELD_BY_PREFIX", "détenu par ");
+
+  // Une seule chaîne (contrainte du moteur) : label + valeur + détenteur en un seul enfant texte.
+  const line = `${label} : ${formattedValue}, ${heldByPrefix}${partyLabel}`;
+
+  const color = r.displayColor && r.displayColor.length > 0
+    ? (CUSTOM_PARTY_PALETTE_HEX[r.displayColor] ?? "#888")
+    : (PARTY_COLORS[r.party] ?? "#888");
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", marginBottom: "6rem" }}>
+      <div style={{ width: "10rem", height: "10rem", borderRadius: "50%", background: color, flexShrink: 0, marginRight: "8rem" }} />
+      <span style={{ color: "rgba(255,255,255,0.9)", fontSize: "12rem", lineHeight: "16rem" }}>{line}</span>
+    </div>
+  );
+}
+
+function RecordsPanel() {
+  const { translate } = useLocalization();
+  const t = (key: string, fallback: string): string => translate(key, fallback) ?? fallback;
+
+  const recordsJson = useValue(recordsJson$);
+  const records: RecordDto[] = useMemo(() => {
+    try {
+      const p = JSON.parse(recordsJson ?? "[]");
+      return Array.isArray(p) ? p.filter((r) => r && typeof r.category === "string") : [];
+    } catch {
+      return [];
+    }
+  }, [recordsJson]);
+
+  const orderedRecords = RECORD_CATEGORY_ORDER
+    .map((cat) => records.find((r) => r.category === cat))
+    .filter((r): r is RecordDto => !!r);
+
+  return (
+    <div style={{ marginTop: "20rem", padding: "10rem", background: "rgba(255,255,255,0.06)", borderRadius: "6rem" }}>
+      <div style={{ color: "white", fontSize: "14rem", fontWeight: 700, marginBottom: "6rem" }}>
+        {t("CityCouncil.Records.HEADER", "Records")}
+      </div>
+      <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "11rem", lineHeight: "15rem", marginBottom: "10rem" }}>
+        {t("CityCouncil.Records.EXPLANATION", "Chaque record rapporte 200 points au parti qui le détient actuellement — la plus forte valeur jamais atteinte par un parti dans cette partie. Perdre le record fait perdre les points.")}
+      </div>
+
+      {orderedRecords.length === 0 ? (
+        <div style={{ color: "rgba(255,255,255,0.5)", fontSize: "12rem" }}>
+          {t("CityCouncil.Records.NO_RECORDS", "Aucun record établi pour le moment.")}
+        </div>
+      ) : (
+        orderedRecords.map((r) => <RecordRow key={r.category} r={r} translate={translate} />)
+      )}
+    </div>
+  );
+}
+
 
 export function ScoreTab() {
   const { translate } = useLocalization();
@@ -138,6 +235,18 @@ export function ScoreTab() {
                     value={s.trophyScore.toLocaleString()}
                   />
                   <DetailRow
+                    label={t("CityCouncil.Score.DETAIL_COALITIONS", "Coalitions conclues")}
+                    value={s.coalitionScore.toLocaleString()}
+                  />
+                  <DetailRow
+                    label={t("CityCouncil.Score.DETAIL_LAWS", "Lois votées")}
+                    value={s.lawScore.toLocaleString()}
+                  />
+                  <DetailRow
+                    label={t("CityCouncil.Score.DETAIL_RECORDS", "Records détenus")}
+                    value={s.recordsScore.toLocaleString()}
+                  />
+                  <DetailRow
                     label={`${t("CityCouncil.Score.DETAIL_SEATS", "Sièges détenus")} (${s.seatsHeld} × 50)`}
                     value={(s.seatsHeld * 50).toLocaleString()}
                   />
@@ -177,6 +286,8 @@ export function ScoreTab() {
           );
         })}
       </div>
+
+      <RecordsPanel />
 
     </div>
 

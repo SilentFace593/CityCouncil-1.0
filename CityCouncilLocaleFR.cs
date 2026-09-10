@@ -52,7 +52,10 @@ namespace CityCouncil
                 { LocaleKeys.Hemicycle_PowerfulDistrictCouncilSuffix, "du Conseil Municipal" }, 
                 { LocaleKeys.Hemicycle_PowerfulDistrictLedBy, "Dirigé par " },                   
                 { LocaleKeys.Hemicycle_PowerfulDistrictBonusHint, "+1% d'intention de vote sur toute la ville pour ce parti." },
-                
+                { LocaleKeys.Hemicycle_LeadingBlocLawSummaryPrefix, "Bilan de l'actuel parti ou coalition au pouvoir : " },
+                { LocaleKeys.Hemicycle_LawsVotedWord, "lois votées" },
+                { LocaleKeys.Hemicycle_LawsAbrogatedWord, "lois abrogées" },
+
                 
                 // Coalition
                 { LocaleKeys.Coalition_Header, "Coalition" },
@@ -127,6 +130,7 @@ namespace CityCouncil
                 { LocaleKeys.Admin_AbstentionLabel, "Abstention" },
                 { LocaleKeys.Admin_SeatsPlural, "sièges" },
                 { LocaleKeys.Admin_SeatsSingular, "siège" },
+                { LocaleKeys.Admin_FanionTooltip, "Bastion Renforcé actif dans ce district" },
 
                 // PoliticalForcesTab
                 { LocaleKeys.Forces_CustomPartyDesc, "Votre parti politique. La personnalisation de la description est prévue dans une prochaine étape." },
@@ -334,6 +338,26 @@ namespace CityCouncil
                 { LocaleKeys.Score_DetailMembers, "Adhérents" },
                 { LocaleKeys.Score_DetailPossessionTotal, "Total possession" },
                 { LocaleKeys.Score_DetailGrandTotal, "Score total" },
+                { LocaleKeys.Score_DetailCoalitions, "Coalitions conclues" },
+                { LocaleKeys.Score_DetailLaws, "Lois votées" },
+
+                //Records
+                { LocaleKeys.Records_Header, "Records" },
+                { LocaleKeys.Records_Explanation, "Chaque record rapporte 200 points au parti qui le détient actuellement — la plus forte valeur jamais atteinte par un parti dans cette partie. Perdre le record fait perdre les points." },
+                { LocaleKeys.Records_NoRecords, "Aucun record établi pour le moment." },
+                { LocaleKeys.Records_CategoryCouncilShare, "Plus forte proportion du Conseil" },
+                { LocaleKeys.Records_CategoryBastions, "Plus grand nombre de Bastions" },
+                { LocaleKeys.Records_CategoryLaws, "Plus grand nombre de lois votées ou abrogées" },
+                { LocaleKeys.Records_CategoryMembers, "Plus grand nombre d'adhérents" },
+                { LocaleKeys.Records_CategoryTreasury, "Plus forte trésorerie" },
+                { LocaleKeys.Records_CategoryPropaganda, "Plus fortes dépenses de propagande" },
+                { LocaleKeys.Records_HeldByPrefix, "détenu par " },
+                { LocaleKeys.Score_DetailRecords, "Records détenus" },
+
+                //Notifications
+                { LocaleKeys.Hemicycle_CoalitionPendingTooltip, "Décision de coalition en attente !" },
+                { LocaleKeys.Hemicycle_LawPendingTooltip, "Votre parti est sollicité pour une loi !" },
+                { LocaleKeys.Hemicycle_VotingInstructionPendingTooltip, "Consigne de vote disponible !" },
 
                 // Règles
                 { LocaleKeys.Rules_TabLabel, "Règles" },

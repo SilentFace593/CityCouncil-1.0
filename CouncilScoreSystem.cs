@@ -34,6 +34,7 @@ namespace CityCouncil
         private double m_LastCycleDay = -1;
         private CouncilPartyMembershipSystem m_MembershipSystem;
         private CouncilReinforcedBastionSystem m_ReinforcedBastionSystem;
+        private CouncilRecordSystem m_RecordSystem;
 
         protected override void OnCreate()
         {
@@ -43,6 +44,7 @@ namespace CityCouncil
             m_SimulationSystem = World.GetOrCreateSystemManaged<SimulationSystem>();
             m_MembershipSystem = World.GetOrCreateSystemManaged<CouncilPartyMembershipSystem>();
             m_ReinforcedBastionSystem = World.GetOrCreateSystemManaged<CouncilReinforcedBastionSystem>();
+            m_RecordSystem = World.GetOrCreateSystemManaged<CouncilRecordSystem>();
         }
 
         protected override void OnGamePreload(Purpose purpose, Game.GameMode mode)
@@ -106,10 +108,16 @@ namespace CityCouncil
             var initial = new CouncilScoreData
             {
                 m_TrophyEntries = new FixedList512Bytes<ScoreEntry>(),
+                m_CoalitionEntries = new FixedList512Bytes<ScoreEntry>(),
+                m_LawEntries = new FixedList512Bytes<ScoreEntry>(),
                 m_HasLastGeneralMajority = false
             };
             foreach (PoliticalParty p in Enum.GetValues(typeof(PoliticalParty)))
+            {
                 initial.m_TrophyEntries.Add(new ScoreEntry { m_Party = p, m_TrophyScore = 0 });
+                initial.m_CoalitionEntries.Add(new ScoreEntry { m_Party = p, m_TrophyScore = 0 });
+                initial.m_LawEntries.Add(new ScoreEntry { m_Party = p, m_TrophyScore = 0 });
+            }
 
             m_SingletonEntity = EntityManager.CreateEntity();
             EntityManager.AddComponentData(m_SingletonEntity, initial);
@@ -162,6 +170,61 @@ namespace CityCouncil
         public void AddExternalTrophyScore(PoliticalParty party, long amount)
         {
             AddTrophyScore(party, amount);
+        }
+
+        /// <summary>
+        /// Crédite le score "Coalitions conclues" d'un parti — catégorie séparée des trophées
+        /// (district/majorité générale), appelée par CouncilCoalitionSystem.CommitCoalition.
+        /// </summary>
+        public void AddCoalitionScore(PoliticalParty party, long amount)
+        {
+            var data = GetData();
+            AddToScoreList(ref data.m_CoalitionEntries, party, amount);
+            SetData(data);
+        }
+
+        public long GetCoalitionScore(PoliticalParty party)
+        {
+            foreach (var e in GetData().m_CoalitionEntries)
+                if (e.m_Party == party) return e.m_TrophyScore;
+            return 0;
+        }
+
+        /// <summary>
+        /// Crédite le score "Lois votées" d'un parti — catégorie séparée des trophées, appelée
+        /// par CouncilLawSystem.GrantLawScore (adoption ou abrogation réussie).
+        /// </summary>
+        public void AddLawScore(PoliticalParty party, long amount)
+        {
+            var data = GetData();
+            AddToScoreList(ref data.m_LawEntries, party, amount);
+            SetData(data);
+        }
+
+        public long GetLawScore(PoliticalParty party)
+        {
+            foreach (var e in GetData().m_LawEntries)
+                if (e.m_Party == party) return e.m_TrophyScore;
+            return 0;
+        }
+
+        /// <summary>
+        /// Helper générique partagé par AddCoalitionScore/AddLawScore : incrémente l'entrée d'un
+        /// parti dans une liste "parti -> points", ou l'ajoute si absente (compat v1, listes vides
+        /// au premier chargement d'une sauvegarde antérieure à ce système).
+        /// </summary>
+        private static void AddToScoreList(ref FixedList512Bytes<ScoreEntry> list, PoliticalParty party, long delta)
+        {
+            if (delta == 0) return;
+            for (int i = 0; i < list.Length; i++)
+            {
+                if (list[i].m_Party != party) continue;
+                var e = list[i];
+                e.m_TrophyScore += delta;
+                list[i] = e;
+                return;
+            }
+            list.Add(new ScoreEntry { m_Party = party, m_TrophyScore = delta });
         }
 
         /// <summary>
@@ -280,9 +343,13 @@ namespace CityCouncil
             foreach (PoliticalParty p in Enum.GetValues(typeof(PoliticalParty)))
             {
                 long trophy = 0;
-                foreach (var e in data.m_TrophyEntries)
-                    if (e.m_Party == p) { trophy = e.m_TrophyScore; break; }
-                totals[p] = trophy + possession[p];
+                foreach (var e in data.m_TrophyEntries) if (e.m_Party == p) { trophy = e.m_TrophyScore; break; }
+                long coalition = 0;
+                foreach (var e in data.m_CoalitionEntries) if (e.m_Party == p) { coalition = e.m_TrophyScore; break; }
+                long law = 0;
+                foreach (var e in data.m_LawEntries) if (e.m_Party == p) { law = e.m_TrophyScore; break; }
+                long records = GetRecordsScore(p); // AJOUT
+                totals[p] = trophy + coalition + law + records + possession[p];
             }
             return totals;
         }
@@ -347,6 +414,14 @@ namespace CityCouncil
                 foreach (var e in trophyData.m_TrophyEntries)
                     if (e.m_Party == p) { trophy = e.m_TrophyScore; break; }
 
+                long coalition = 0; // AJOUT
+                foreach (var e in trophyData.m_CoalitionEntries)
+                    if (e.m_Party == p) { coalition = e.m_TrophyScore; break; }
+
+                long law = 0; // AJOUT
+                foreach (var e in trophyData.m_LawEntries)
+                    if (e.m_Party == p) { law = e.m_TrophyScore; break; }
+
                 var c = counts[p];
                 int members = membersCount[p];
                 long possession = c.seats * ScoreCatalog.PointsPerSeatHeld
@@ -355,16 +430,21 @@ namespace CityCouncil
                                  + c.reinforcedBastionsHeld * ScoreCatalog.PointsPerReinforcedBastionHeld
                                  + members * ScoreCatalog.PointsPerMember;
 
+                long records = GetRecordsScore(p);
+
                 result[p] = new PartyScoreBreakdown
                 {
                     TrophyScore = trophy,
+                    CoalitionScore = coalition,
+                    LawScore = law,
+                    RecordsScore = records,
                     SeatsHeld = c.seats,
                     DistrictsHeld = c.districtsHeld,
                     BastionsHeld = c.bastionsHeld,
                     ReinforcedBastionsHeld = c.reinforcedBastionsHeld,
                     MembersCount = members,
                     PossessionScore = possession,
-                    TotalScore = trophy + possession
+                    TotalScore = trophy + coalition + law + possession
                 };
             }
             return result;
@@ -374,17 +454,22 @@ namespace CityCouncil
         public void ResetScore(PoliticalParty party)
         {
             var data = GetData();
-            var entries = data.m_TrophyEntries;
-            for (int i = 0; i < entries.Length; i++)
-            {
-                if (entries[i].m_Party != party) continue;
-                var e = entries[i];
-                e.m_TrophyScore = 0;
-                entries[i] = e;
-                break;
-            }
-            data.m_TrophyEntries = entries;
+            ResetInList(ref data.m_TrophyEntries, party);
+            ResetInList(ref data.m_CoalitionEntries, party); // AJOUT
+            ResetInList(ref data.m_LawEntries, party);        // AJOUT
             SetData(data);
+        }
+
+        private static void ResetInList(ref FixedList512Bytes<ScoreEntry> list, PoliticalParty party)
+        {
+            for (int i = 0; i < list.Length; i++)
+            {
+                if (list[i].m_Party != party) continue;
+                var e = list[i];
+                e.m_TrophyScore = 0;
+                list[i] = e;
+                return;
+            }
         }
 
         /// <summary>OUTIL DE DEBUG TEMPORAIRE — force le contrôle d'élection générale immédiatement.</summary>
@@ -400,6 +485,9 @@ namespace CityCouncil
         public struct PartyScoreBreakdown
         {
             public long TrophyScore;
+            public long CoalitionScore;
+            public long LawScore;
+            public long RecordsScore;
             public int SeatsHeld;
             public int DistrictsHeld;
             public int BastionsHeld;
@@ -408,5 +496,10 @@ namespace CityCouncil
             public long PossessionScore;
             public long TotalScore;
         }
+
+        /// <summary>Score "Records" : 200 points par record actuellement détenu (live, jamais persisté — recalculé à chaque lecture comme la possession).</summary>
+        public long GetRecordsScore(PoliticalParty party) => m_RecordSystem.GetRecordsHeldCount(party) * RecordCatalog.PointsPerRecordHeld;
+
+
     }
 }
