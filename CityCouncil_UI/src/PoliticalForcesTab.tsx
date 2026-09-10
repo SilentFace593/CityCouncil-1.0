@@ -54,6 +54,7 @@ interface DistrictOverviewDto {
   bastionDisplayName?: string;
   bastionDisplayColor?: string;
   streakCount: number;
+  isReinforcedBastion: boolean;
 }
 
 function districtPartyLabel(d: DistrictOverviewDto, translate: any): string {
@@ -106,7 +107,11 @@ function DistrictRow({ d, translate }: { d: DistrictOverviewDto; translate: any 
   // Aplati en une seule chaîne — le moteur casse la ligne si plusieurs enfants JSX
   // adjacents (texte + span) sont utilisés à la place d'une seule string.
   const ledByLine = `${ledByLabel}« ${districtPartyLabel(d, translate)} »`;
-  const bastionLine = d.isBastion ? `${bastionLabel}« ${bastionPartyLabel(d, translate)} »` : "";
+    const bastionLine = d.isBastion ? `${bastionLabel}« ${bastionPartyLabel(d, translate)} »` : "";
+  const reinforcedLabel = t("CityCouncil.Admin.BASTION_REINFORCED_LABEL", "Bastion Renforcé : ");
+  const reinforcedLine = d.isReinforcedBastion
+    ? `${reinforcedLabel}« ${bastionPartyLabel(d, translate)} »`
+    : "";
 
   return (
     <div
@@ -138,7 +143,7 @@ function DistrictRow({ d, translate }: { d: DistrictOverviewDto; translate: any 
         </div>
       </div>
 
-      {expanded && (
+       {expanded && (
         <div style={{ padding: "0 10rem 10rem" }}>
           <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "12rem", lineHeight: "15rem", marginBottom: "6rem" }}>
             {detailLine}
@@ -154,6 +159,11 @@ function DistrictRow({ d, translate }: { d: DistrictOverviewDto; translate: any 
                 {bastionLine}
               </div>
               <MiniBastionBar streakCount={d.streakCount} color={PARTY_COLORS[d.bastionParty] ?? "#888"} />
+              {d.isReinforcedBastion && (
+                <div style={{ color: "rgba(255,200,120,0.9)", fontSize: "11rem", fontWeight: 700, marginTop: "4rem" }}>
+                  {reinforcedLine}
+                </div>
+              )}
             </div>
           )}
           {!d.isBastion && d.streakCount > 0 && (

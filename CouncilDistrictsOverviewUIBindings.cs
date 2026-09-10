@@ -74,6 +74,8 @@ namespace CityCouncil.Systems
                         bastionDisplayName = "",
                         bastionDisplayColor = "",
                         streakCount = data.m_StreakCount,
+                        isReinforcedBastion = data.m_IsBastion
+        && m_ReinforcedBastionSystem.IsReinforcedBastion(data.m_BastionParty, d),
                     };
 
                     if (custom.m_Exists && custom.m_SubstitutionActive)
@@ -121,6 +123,7 @@ namespace CityCouncil.Systems
         public string bastionDisplayName;
         public string bastionDisplayColor;
         public int streakCount;
+        public bool isReinforcedBastion; // AJOUT
 
         public static string ToJsonArray(System.Collections.Generic.IEnumerable<DistrictOverviewDto> items)
         {
@@ -144,7 +147,8 @@ namespace CityCouncil.Systems
                 sb.Append("\"bastionParty\":\"").Append(d.bastionParty ?? "").Append("\",");
                 sb.Append("\"bastionDisplayName\":\"").Append(Escape(d.bastionDisplayName ?? "")).Append("\",");
                 sb.Append("\"bastionDisplayColor\":\"").Append(d.bastionDisplayColor ?? "").Append("\",");
-                sb.Append("\"streakCount\":").Append(d.streakCount);
+                sb.Append("\"streakCount\":").Append(d.streakCount).Append(',');
+                sb.Append("\"isReinforcedBastion\":").Append(d.isReinforcedBastion ? "true" : "false"); // AJOUT
                 sb.Append('}');
             }
             sb.Append(']');

@@ -318,7 +318,7 @@ namespace CityCouncil
                     if (data.m_IsBastion)
                         possession[data.m_BastionParty] += ScoreCatalog.PointsPerBastionHeld;
 
-                    if (m_ReinforcedBastionSystem.IsReinforcedBastion(data.m_BastionParty, d.Index))
+                    if (m_ReinforcedBastionSystem.IsReinforcedBastion(data.m_BastionParty, d))
                         possession[data.m_BastionParty] += ScoreCatalog.PointsPerReinforcedBastionHeld;
                 }
             
@@ -390,7 +390,7 @@ namespace CityCouncil
                         var bastionCount = counts[data.m_BastionParty];
                         bastionCount.bastionsHeld += 1;
 
-                        if (m_ReinforcedBastionSystem.IsReinforcedBastion(data.m_BastionParty, d.Index))
+                        if (m_ReinforcedBastionSystem.IsReinforcedBastion(data.m_BastionParty, d))
                             bastionCount.reinforcedBastionsHeld += 1;
 
                         counts[data.m_BastionParty] = bastionCount;

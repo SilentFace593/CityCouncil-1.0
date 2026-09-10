@@ -1139,8 +1139,8 @@ public struct CouncilPollData : IComponentData, ISerializable
     public struct ReinforcedBastionEntry
     {
         public PoliticalParty m_Party;
-        public bool m_Active;        // false = pas de Bastion Renforcé actif pour ce parti
-        public int m_DistrictId;     // Entity.Index du district, valide seulement si m_Active
+        public bool m_Active;            // false = pas de Bastion Renforcé actif pour ce parti
+        public Entity m_DistrictEntity;  // MODIFIÉ — Entity au lieu d'un Entity.Index (int), non stable après rechargement (cf. bug)
         public int m_Population;
     }
 
@@ -1153,7 +1153,7 @@ public struct CouncilPollData : IComponentData, ISerializable
     {
         public FixedList512Bytes<ReinforcedBastionEntry> m_Entries;
 
-        private const int kVersion = 2;
+        private const int kVersion = 3; // MODIFIÉ — v3 : Entity au lieu d'un int Entity.Index (fix du bug de persistance)
 
         public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
         {
@@ -1163,7 +1163,7 @@ public struct CouncilPollData : IComponentData, ISerializable
             {
                 writer.Write((byte)m_Entries[i].m_Party);
                 writer.Write(m_Entries[i].m_Active);
-                writer.Write(m_Entries[i].m_DistrictId);
+                writer.Write(m_Entries[i].m_DistrictEntity); // MODIFIÉ — remappé correctement par le moteur au chargement
                 writer.Write(m_Entries[i].m_Population);
             }
         }
@@ -1177,19 +1177,33 @@ public struct CouncilPollData : IComponentData, ISerializable
             {
                 reader.Read(out byte party);
                 reader.Read(out bool active);
-                reader.Read(out int districtId);
 
+                Entity districtEntity = Entity.Null;
                 int population = 0;
-                if (version >= 2)
+
+                if (version >= 3)
                 {
+                    reader.Read(out districtEntity);
                     reader.Read(out population);
+                }
+                else
+                {
+                    // Compat v1/v2 — MODIFIÉ : l'ancien format stockait Entity.Index (un simple int),
+                    // qui N'EST PAS stable après un rechargement de sauvegarde (les index d'entité
+                    // peuvent être réattribués à la désérialisation). C'est la cause exacte du bug
+                    // "le Bastion Renforcé disparaît au rechargement". Comme on ne peut pas
+                    // reconstruire la bonne Entity à partir de cet ancien int, on désactive l'entrée
+                    // par sécurité plutôt que de risquer un mauvais rattachement à un autre district.
+                    reader.Read(out int _legacyDistrictIndex);
+                    if (version >= 2) reader.Read(out population);
+                    active = false;
                 }
 
                 m_Entries.Add(new ReinforcedBastionEntry
                 {
                     m_Party = (PoliticalParty)party,
                     m_Active = active,
-                    m_DistrictId = districtId,
+                    m_DistrictEntity = districtEntity,
                     m_Population = population
                 });
             }

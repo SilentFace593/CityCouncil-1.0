@@ -63,7 +63,7 @@ namespace CityCouncil
 
             var initial = new CouncilReinforcedBastionData { m_Entries = new FixedList512Bytes<ReinforcedBastionEntry>() };
             foreach (PoliticalParty p in System.Enum.GetValues(typeof(PoliticalParty)))
-                initial.m_Entries.Add(new ReinforcedBastionEntry { m_Party = p, m_Active = false, m_DistrictId = -1 });
+                initial.m_Entries.Add(new ReinforcedBastionEntry { m_Party = p, m_Active = false, m_DistrictEntity = Entity.Null });
 
             m_SingletonEntity = EntityManager.CreateEntity();
             EntityManager.AddComponentData(m_SingletonEntity, initial);
@@ -82,39 +82,34 @@ namespace CityCouncil
             EntityManager.SetComponentData(m_SingletonEntity, data);
         }
 
-        /// <summary>true si `party` a un Bastion Renforcé actif dans CE district précis, avec
-        /// garde-fou anti-crash si le district a été supprimé du jeu entre-temps.</summary>
-        public bool IsReinforcedBastion(PoliticalParty party, int districtId)
+        /// <summary>true si `party` a un Bastion Renforcé actif dans CE district précis (comparaison
+        /// d'Entity complète — Index + Version — donc fiable après un rechargement).</summary>
+        public bool IsReinforcedBastion(PoliticalParty party, Entity districtEntity)
         {
             foreach (var e in GetData().m_Entries)
-                if (e.m_Party == party) return e.m_Active && e.m_DistrictId == districtId;
+                if (e.m_Party == party) return e.m_Active && e.m_DistrictEntity == districtEntity;
             return false;
         }
 
-        public bool TryGetReinforcedDistrict(PoliticalParty party, out int districtId)
+        public bool TryGetReinforcedDistrict(PoliticalParty party, out Entity districtEntity)
         {
             foreach (var e in GetData().m_Entries)
             {
                 if (e.m_Party != party) continue;
-                districtId = e.m_DistrictId;
+                districtEntity = e.m_DistrictEntity;
                 return e.m_Active;
             }
-            districtId = -1;
+            districtEntity = Entity.Null;
             return false;
         }
 
-        /// <summary>
-        /// Liste des districts éligibles pour `party` : tout Bastion actuellement détenu par ce
-        /// parti, à l'exception de celui déjà choisi comme Bastion Renforcé. Calculé à la volée
-        /// (pas de liste persistée), coût négligeable — même échelle que RefreshHemicycle.
-        /// </summary>
         /// <summary>Districts éligibles pour `party` : Bastion qui vient de se prolonger au-delà de 3
         /// victoires ce cycle-ci et pas encore résolu (choisi ou expiré), à l'exception du district déjà
         /// choisi comme Bastion Renforcé.</summary>
         public System.Collections.Generic.List<Entity> GetEligibleDistricts(PoliticalParty party)
         {
             var result = new System.Collections.Generic.List<Entity>();
-            TryGetReinforcedDistrict(party, out int currentRbDistrict);
+            TryGetReinforcedDistrict(party, out Entity currentRbDistrict);
 
             var districts = m_DistrictQuery.ToEntityArray(Allocator.Temp);
             try
@@ -123,9 +118,9 @@ namespace CityCouncil
                 {
                     if (!EntityManager.HasComponent<CouncilDistrictData>(d)) continue;
                     var data = EntityManager.GetComponentData<CouncilDistrictData>(d);
-                    if (!data.m_ReinforcedBastionEligiblePending) continue; // AJOUT — filtre principal
+                    if (!data.m_ReinforcedBastionEligiblePending) continue;
                     if (data.m_BastionParty != party) continue;
-                    if (d.Index == currentRbDistrict) continue;
+                    if (d == currentRbDistrict) continue; // MODIFIÉ — comparaison d'Entity, plus fiable que .Index
                     result.Add(d);
                 }
             }
@@ -144,8 +139,8 @@ namespace CityCouncil
                 if (entries[i].m_Party != party) continue;
                 var e = entries[i];
                 e.m_Active = true;
-                e.m_DistrictId = districtEntity.Index;
-                e.m_Population = population; // AJOUT
+                e.m_DistrictEntity = districtEntity; // MODIFIÉ
+                e.m_Population = population;
                 entries[i] = e;
                 break;
             }
@@ -154,7 +149,7 @@ namespace CityCouncil
         }
 
         /// <summary>Choix (ou changement) du Bastion Renforcé par le joueur.</summary>
-        public bool TryChooseReinforcedBastion(PoliticalParty party, Entity districtEntity, int population, out string error) // MODIFIÉ — ajout population
+        public bool TryChooseReinforcedBastion(PoliticalParty party, Entity districtEntity, int population, out string error)
         {
             error = null;
             if (!EntityManager.HasComponent<CouncilDistrictData>(districtEntity))
@@ -169,7 +164,7 @@ namespace CityCouncil
                 return false;
             }
 
-            SetReinforcedBastion(party, districtEntity, population); // MODIFIÉ — appel au helper commun
+            SetReinforcedBastion(party, districtEntity, population);
 
             districtData.m_ReinforcedBastionEligiblePending = false;
             EntityManager.SetComponentData(districtEntity, districtData);
@@ -179,7 +174,7 @@ namespace CityCouncil
         }
 
         /// <summary>
-        /// AJOUT — arbitrage IA : décision immédiate dès qu'un Bastion IA devient éligible, sur le
+        /// Arbitrage IA : décision immédiate dès qu'un Bastion IA devient éligible, sur le
         /// seul critère de la population du district (le plus peuplé l'emporte). Aucun changement si
         /// le nouveau district est moins (ou aussi) peuplé que celui déjà détenu.
         /// </summary>
@@ -220,7 +215,7 @@ namespace CityCouncil
                 if (!entries[i].m_Active) return; // déjà vide, pas d'écriture inutile
                 var e = entries[i];
                 e.m_Active = false;
-                e.m_DistrictId = -1;
+                e.m_DistrictEntity = Entity.Null; // MODIFIÉ
                 entries[i] = e;
                 data.m_Entries = entries;
                 SetData(data);

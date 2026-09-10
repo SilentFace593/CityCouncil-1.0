@@ -82,6 +82,7 @@ namespace CityCouncil.Systems
         private Entity m_LastSelectedEntity = Entity.Null;
         private CouncilDistrictData m_LastPushedData;
         private bool m_HasLastPushedData;
+        private bool m_LastPushedReinforcedActive;
 
         private CouncilPartyMembershipSystem m_MembershipSystem;
         private ValueBinding<string> m_PartyMembershipJsonBinding;
@@ -708,12 +709,23 @@ namespace CityCouncil.Systems
 
             var data = m_EntityManager.GetComponentData<CouncilDistrictData>(selected);
 
+            // AJOUT — l'état "Bastion Renforcé" dépend d'une entité singleton EXTERNE
+            // (CouncilReinforcedBastionSystem), donc DataEquals (qui ne compare que
+            // CouncilDistrictData) ne peut pas le détecter : le choix du joueur (ou de l'IA)
+            // ne modifie aucun champ suivi par DataEquals, ce qui gelait le binding jusqu'à une
+            // désélection/reselection manuelle. On le calcule et compare indépendamment.
+            bool reinforcedActiveNow = data.m_IsBastion
+                && m_ReinforcedBastionSystem.IsReinforcedBastion(data.m_BastionParty, selected);
+
+            bool reinforcedChanged = !m_HasLastPushedData || reinforcedActiveNow != m_LastPushedReinforcedActive;
+
             // Ne repousse que si quelque chose a réellement changé, comme sur DistrictNotesMod.
-            if (!selectionChanged && m_HasLastPushedData && DataEquals(data, m_LastPushedData))
+            if (!selectionChanged && !reinforcedChanged && m_HasLastPushedData && DataEquals(data, m_LastPushedData))
                 return;
 
             PushAdminData(selected, data);
             m_LastPushedData = data;
+            m_LastPushedReinforcedActive = reinforcedActiveNow; // AJOUT
             m_HasLastPushedData = true;
 
         }
@@ -1430,8 +1442,11 @@ namespace CityCouncil.Systems
             m_AdminBastionActiveBinding.Update(data.m_IsBastion);
 
             bool reinforcedActive = data.m_IsBastion
-    && m_ReinforcedBastionSystem.IsReinforcedBastion(data.m_BastionParty, districtEntity.Index); // AJOUT
+&& m_ReinforcedBastionSystem.IsReinforcedBastion(data.m_BastionParty, districtEntity); // AJOUT
             m_AdminBastionReinforcedActiveBinding.Update(reinforcedActive); // AJOUT
+
+            s_Log.Info($"[CouncilUISystem][DEBUG-Reinforced] District {districtEntity.Index} ({districtEntity}), " +
+                       $"isBastion={data.m_IsBastion}, bastionParty={data.m_BastionParty}, reinforcedActive={reinforcedActive}"); // AJOUT TEMPORAIRE
 
             // Bonus permanent du parti leader (icône affichée à côté du logo côté React).
             m_AdminLeadingPartyBonusBinding.Update(
@@ -1622,7 +1637,7 @@ namespace CityCouncil.Systems
                         bastionCounts.TryGetValue(data.m_BastionParty, out int currentBastions);
                         bastionCounts[data.m_BastionParty] = currentBastions + 1;
 
-                        if (m_ReinforcedBastionSystem.IsReinforcedBastion(data.m_BastionParty, districtEntity.Index))
+                        if (m_ReinforcedBastionSystem.IsReinforcedBastion(data.m_BastionParty, districtEntity))
                         {
                             reinforcedBastionCounts.TryGetValue(data.m_BastionParty, out int currentReinforced);
                             reinforcedBastionCounts[data.m_BastionParty] = currentReinforced + 1;

@@ -274,7 +274,7 @@ namespace CityCouncil
             seniors, adults, wealth, seed, activePolicies,
             activeEvent?.Effects, cityLeadingParty,
             data.m_IsBastion, data.m_BastionParty,
-             m_ReinforcedBastionSystem.IsReinforcedBastion(data.m_BastionParty, districtEntity.Index),
+            m_ReinforcedBastionSystem.IsReinforcedBastion(data.m_BastionParty, districtEntity),
             offensiveHolders,
             activeCampaigns,
             districtCampaigns,
@@ -454,7 +454,7 @@ namespace CityCouncil
             // classique. Priorité sur le bonus Défensif (qui ne reprend la main qu'une fois le RB consommé).
             bool wasReinforcedHere = data.m_StreakCount > 0
                 && data.m_StreakParty != winner
-                && m_ReinforcedBastionSystem.IsReinforcedBastion(data.m_StreakParty, districtEntity.Index);
+                && m_ReinforcedBastionSystem.IsReinforcedBastion(data.m_StreakParty, districtEntity);
 
             if (wasReinforcedHere)
             {
