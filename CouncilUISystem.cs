@@ -62,6 +62,11 @@ namespace CityCouncil.Systems
         private ValueBinding<bool> m_AdminBastionActiveBinding;        // true si Bastion effectivement acquis
         private ValueBinding<bool> m_AdminBastionReinforcedActiveBinding;
 
+        //Evenements District
+        private CityCouncil.CouncilDistrictEventSystem m_DistrictEventSystem;
+        private ValueBinding<string> m_DistrictEventHeadlineBinding;
+        private string m_LastPushedDistrictEventId;
+
         // --- Panneau hémicycle (ville entière) ---
         private ValueBinding<string> m_HemicycleSeatsBinding; // agrégat tous districts confondus, sérialisé en JSON
         private ValueBinding<string> m_HemicycleLeaderBinding;
@@ -193,9 +198,6 @@ namespace CityCouncil.Systems
         private bool m_LastPushedShowDebugTab;
         private bool m_HasLastPushedShowDebugTab;
 
-        //District Puissant
-        private ValueBinding<string> m_PowerfulDistrictJsonBinding;
-
         // AJOUT — Coalition
         private CityCouncil.CouncilCoalitionSystem m_CoalitionSystem;
         private ValueBinding<string> m_CoalitionJsonBinding;       // état complet, JSON
@@ -227,7 +229,8 @@ namespace CityCouncil.Systems
             m_TaxSystem = World.GetOrCreateSystemManaged<CityCouncil.CouncilTaxSystem>();
             m_InstitutionSystem = World.GetOrCreateSystemManaged<CityCouncil.CouncilInstitutionSystem>();
             m_VotingInstructionSystem = World.GetOrCreateSystemManaged<CityCouncil.CouncilVotingInstructionSystem>();
-            m_ReinforcedBastionSystem = World.GetOrCreateSystemManaged<CityCouncil.CouncilReinforcedBastionSystem>(); // AJOUT
+            m_ReinforcedBastionSystem = World.GetOrCreateSystemManaged<CityCouncil.CouncilReinforcedBastionSystem>();
+            m_DistrictEventSystem = World.GetOrCreateSystemManaged<CityCouncil.CouncilDistrictEventSystem>(); // AJOUT
             m_CoalitionSystem = World.GetOrCreateSystemManaged<CityCouncil.CouncilCoalitionSystem>();
 
 
@@ -247,6 +250,7 @@ namespace CityCouncil.Systems
             m_HemicycleSeatsBinding = new ValueBinding<string>(kGroup, "hemicycleSeatsJson", "[]");
             m_HemicycleLeaderBinding = new ValueBinding<string>(kGroup, "hemicycleLeader", "");
             m_CityEventHeadlineBinding = new ValueBinding<string>(kGroup, "cityEventHeadline", "");
+            m_DistrictEventHeadlineBinding = new ValueBinding<string>(kGroup, "districtEventHeadline", "");
 
             m_CustomPartyExistsBinding = new ValueBinding<bool>(kGroup, "customPartyExists", false);
             m_CustomPartyNameBinding = new ValueBinding<string>(kGroup, "customPartyName", "");
@@ -291,8 +295,7 @@ namespace CityCouncil.Systems
             m_DemocratDigitalBonusActiveBinding = new ValueBinding<bool>(kGroup, "democratDigitalBonusActive", false);
             m_SatelliteUplinkPresentBinding = new ValueBinding<bool>(kGroup, "satelliteUplinkPresent", false);
             m_VotingInstructionDistrictsJsonBinding = new ValueBinding<string>(kGroup, "votingInstructionDistrictsJson", "[]");
-            m_ReinforcedBastionEligibleDistrictsJsonBinding = new ValueBinding<string>(kGroup, "reinforcedBastionEligibleDistrictsJson", "[]"); // AJOUT
-            m_PowerfulDistrictJsonBinding = new ValueBinding<string>(kGroup, "powerfulDistrictJson", "{}");
+            m_ReinforcedBastionEligibleDistrictsJsonBinding = new ValueBinding<string>(kGroup, "reinforcedBastionEligibleDistrictsJson", "[]");
             m_CoalitionJsonBinding = new ValueBinding<string>(kGroup, "coalitionJson", "{}");
 
 
@@ -311,6 +314,7 @@ namespace CityCouncil.Systems
             AddBinding(m_HemicycleSeatsBinding);
             AddBinding(m_HemicycleLeaderBinding);
             AddBinding(m_CityEventHeadlineBinding);
+            AddBinding(m_DistrictEventHeadlineBinding);
 
             AddBinding(m_CustomPartyExistsBinding);
             AddBinding(m_CustomPartyNameBinding);
@@ -357,8 +361,10 @@ namespace CityCouncil.Systems
             AddBinding(m_SatelliteUplinkPresentBinding);
             AddBinding(m_VotingInstructionDistrictsJsonBinding);
             AddBinding(m_ReinforcedBastionEligibleDistrictsJsonBinding);
-            AddBinding(m_PowerfulDistrictJsonBinding);
             AddBinding(m_CoalitionJsonBinding);
+
+            AddBinding(new TriggerBinding(kGroup, "debugForceDistrictEvent",
+    () => m_DistrictEventSystem.DebugForceRollDistrictEvent()));
 
             AddBinding(new TriggerBinding(kGroup, "debugForceCoalitionCheck",
     () => { m_CoalitionSystem.DebugForceCoalitionCheck(); UpdateCoalitionBindingIfChanged(force: true); }));
@@ -709,23 +715,24 @@ namespace CityCouncil.Systems
 
             var data = m_EntityManager.GetComponentData<CouncilDistrictData>(selected);
 
-            // AJOUT — l'état "Bastion Renforcé" dépend d'une entité singleton EXTERNE
-            // (CouncilReinforcedBastionSystem), donc DataEquals (qui ne compare que
-            // CouncilDistrictData) ne peut pas le détecter : le choix du joueur (ou de l'IA)
-            // ne modifie aucun champ suivi par DataEquals, ce qui gelait le binding jusqu'à une
-            // désélection/reselection manuelle. On le calcule et compare indépendamment.
             bool reinforcedActiveNow = data.m_IsBastion
                 && m_ReinforcedBastionSystem.IsReinforcedBastion(data.m_BastionParty, selected);
 
-            bool reinforcedChanged = !m_HasLastPushedData || reinforcedActiveNow != m_LastPushedReinforcedActive;
+            // AJOUT — même remarque que pour reinforcedActiveNow : l'évènement de district vit dans
+            // un système externe non-ECS, donc DataEquals ne peut pas le détecter.
+            var activeDistrictEventNow = m_DistrictEventSystem.GetActiveEventForDistrict(selected);
+            string districtEventIdNow = activeDistrictEventNow?.Id ?? "";
 
-            // Ne repousse que si quelque chose a réellement changé, comme sur DistrictNotesMod.
-            if (!selectionChanged && !reinforcedChanged && m_HasLastPushedData && DataEquals(data, m_LastPushedData))
+            bool reinforcedChanged = !m_HasLastPushedData || reinforcedActiveNow != m_LastPushedReinforcedActive;
+            bool districtEventChanged = !m_HasLastPushedData || districtEventIdNow != m_LastPushedDistrictEventId; // AJOUT
+
+            if (!selectionChanged && !reinforcedChanged && !districtEventChanged && m_HasLastPushedData && DataEquals(data, m_LastPushedData))
                 return;
 
             PushAdminData(selected, data);
             m_LastPushedData = data;
-            m_LastPushedReinforcedActive = reinforcedActiveNow; // AJOUT
+            m_LastPushedReinforcedActive = reinforcedActiveNow;
+            m_LastPushedDistrictEventId = districtEventIdNow; // AJOUT
             m_HasLastPushedData = true;
 
         }
@@ -1445,8 +1452,10 @@ namespace CityCouncil.Systems
 && m_ReinforcedBastionSystem.IsReinforcedBastion(data.m_BastionParty, districtEntity); // AJOUT
             m_AdminBastionReinforcedActiveBinding.Update(reinforcedActive); // AJOUT
 
-            s_Log.Info($"[CouncilUISystem][DEBUG-Reinforced] District {districtEntity.Index} ({districtEntity}), " +
-                       $"isBastion={data.m_IsBastion}, bastionParty={data.m_BastionParty}, reinforcedActive={reinforcedActive}"); // AJOUT TEMPORAIRE
+            // Evènement de district actif pour CE district précis (indépendant de
+            // l'évènement ville, cf. m_CityEventHeadlineBinding).
+            var activeDistrictEvent = m_DistrictEventSystem.GetActiveEventForDistrict(districtEntity);
+            m_DistrictEventHeadlineBinding.Update(activeDistrictEvent?.Headline ?? "");
 
             // Bonus permanent du parti leader (icône affichée à côté du logo côté React).
             m_AdminLeadingPartyBonusBinding.Update(
@@ -1597,10 +1606,6 @@ namespace CityCouncil.Systems
             CityCouncil.PoliticalParty leader = default;
             int leaderSeats = -1;
 
-            // AJOUT — suivi du district le plus puissant (le plus de votants)
-            Entity powerfulDistrict = Entity.Null;
-            int powerfulPopulation = -1;
-            int totalSeatsAllDistricts = 0;
 
             var districts = m_DistrictQuery.ToEntityArray(Unity.Collections.Allocator.Temp);
             try
@@ -1610,14 +1615,6 @@ namespace CityCouncil.Systems
                     var data = m_EntityManager.GetComponentData<CouncilDistrictData>(districtEntity);
                     if (data.m_Phase != ElectionPhase.Completed) continue;
 
-                    totalSeatsAllDistricts += data.m_TotalSeats; // AJOUT
-
-                    int districtPopulation = data.m_VotersRound1 + data.m_AbstentionRound1; // MODIFIÉ — adultes + séniors, pas seulement les votants
-                    if (districtPopulation > powerfulPopulation)
-                    {
-                        powerfulPopulation = districtPopulation;
-                        powerfulDistrict = districtEntity;
-                    }
 
                     foreach (var result in data.m_FinalResults)
                     {
@@ -1665,37 +1662,6 @@ namespace CityCouncil.Systems
 
             m_HemicycleSeatsBinding.Update(PartyResultDto.ToJsonArray(seatsDto));
             m_HemicycleLeaderBinding.Update(leaderSeats > 0 ? leader.ToString() : "");
-
-            // AJOUT — pousse le DTO du district le plus puissant
-            string powerfulJson = "{}";
-            if (powerfulDistrict != Entity.Null)
-            {
-                var bestData = m_EntityManager.GetComponentData<CouncilDistrictData>(powerfulDistrict);
-                float percent = totalSeatsAllDistricts > 0
-                    ? (bestData.m_TotalSeats * 100f / totalSeatsAllDistricts)
-                    : 0f;
-
-                var dto = new PowerfulDistrictDto
-                {
-                    districtName = GetDistrictDisplayName(powerfulDistrict),
-                    voters = powerfulPopulation,
-                    seats = bestData.m_TotalSeats,
-                    percentOfCouncil = percent,
-                    leadingParty = bestData.m_LeadingParty.ToString(),
-                    displayName = "",
-                    displayColor = ""
-                };
-
-                var custom = m_CustomPartySystem.GetData();
-                if (custom.m_Exists && custom.m_SubstitutionActive && custom.m_ActiveSpace.ToString() == dto.leadingParty)
-                {
-                    dto.displayName = custom.m_Name.ToString();
-                    dto.displayColor = custom.m_Color.ToString();
-                }
-
-                powerfulJson = dto.ToJson();
-            }
-            m_PowerfulDistrictJsonBinding.Update(powerfulJson);
         }
 
         /// <summary>
@@ -2207,34 +2173,6 @@ namespace CityCouncil.Systems
             sb.Append(']');
             return sb.ToString();
         }
-        private static string EscapeJson(string s) => (s ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"");
-    }
-
-    public struct PowerfulDistrictDto
-    {
-        public string districtName;
-        public int voters;
-        public int seats;
-        public float percentOfCouncil;
-        public string leadingParty;
-        public string displayName;
-        public string displayColor;
-
-        public string ToJson()
-        {
-            var sb = new System.Text.StringBuilder();
-            sb.Append('{');
-            sb.Append("\"districtName\":\"").Append(EscapeJson(districtName)).Append("\",");
-            sb.Append("\"voters\":").Append(voters).Append(',');
-            sb.Append("\"seats\":").Append(seats).Append(',');
-            sb.Append("\"percentOfCouncil\":").Append(percentOfCouncil.ToString(System.Globalization.CultureInfo.InvariantCulture)).Append(',');
-            sb.Append("\"leadingParty\":\"").Append(leadingParty).Append("\",");
-            sb.Append("\"displayName\":\"").Append(EscapeJson(displayName ?? "")).Append("\",");
-            sb.Append("\"displayColor\":\"").Append(displayColor ?? "").Append("\"");
-            sb.Append('}');
-            return sb.ToString();
-        }
-
         private static string EscapeJson(string s) => (s ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"");
     }
 

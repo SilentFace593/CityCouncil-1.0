@@ -23,6 +23,7 @@ const DEBUG_BUTTONS: DebugButtonDef[] = [
   { label: "Forcer le contrôle de coalition", triggerName: "debugForceCoalitionCheck" },
   { label: "Forcer la résolution des votes de loi", triggerName: "debugForceResolveLawVotes" }, 
   { label: "Forcer le cycle périodique des lois (IA)", triggerName: "debugForceLawPeriodicCycle" },
+  { label: "Forcer un évènement de district", triggerName: "debugForceDistrictEvent" },
 ];
 
 function DebugButton({ label, triggerName }: DebugButtonDef) {

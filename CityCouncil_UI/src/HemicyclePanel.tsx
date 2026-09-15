@@ -31,6 +31,16 @@ import { VotingInstructionsCard } from "./VotingInstructionsCard";
 import { ReinforcedBastionCard } from "./ReinforcedBastionCard";
 import { CoalitionProposalCard } from "./CoalitionProposalCard"; // Ajout de l'import manquant
 import doodleResultatsImg from "./images/doodle_resultats.png";
+import iconeHemicycleIcon from "./images/iconeHemicycle.svg";
+import iconeVotrePartiIcon from "./images/iconeVotreParti.svg";
+import iconeForcesIcon from "./images/icone_forces.svg";
+import iconeFinancesIcon from "./images/icone_finances.svg";
+import iconePropagandeIcon from "./images/icone_propagande.svg";
+import iconeCommissionIcon from "./images/icone_commission.svg";
+import iconeSondageIcon from "./images/icone_sondage.svg";
+import iconeLoisIcon from "./images/icone_lois.svg";
+import iconeScoreIcon from "./images/icone_score.svg";
+import iconeReglesIcon from "./images/icone_regles.svg";
 
 const TAB_IMAGES = { doodleResultats: doodleResultatsImg };
 const RESULTS_FAN_MAX_WIDTH = "760rem";
@@ -41,7 +51,6 @@ const hemicycleLeader$ = bindValue<string>("cityCouncil", "hemicycleLeader");
 const playerBonusChoicePending$ = bindValue<boolean>("cityCouncil", "playerBonusChoicePending");
 const playerBonusChoiceSpace$ = bindValue<string>("cityCouncil", "playerBonusChoiceSpace");
 const showDebugTab$ = bindValue<boolean>("cityCouncil", "showDebugTab");
-const powerfulDistrictJson$ = bindValue<string>("cityCouncil", "powerfulDistrictJson");
 const coalitionJson$ = bindValue<string>("cityCouncil", "coalitionJson");
 
 const lawActiveVotesJson$ = bindValue<string>("cityCouncil", "lawActiveVotesJson");
@@ -255,87 +264,63 @@ function CoalitionStatusLine() {
   // n'importe quelle coalition existante par ailleurs.
   if (!dto || !dto.leadingIsCoalition) return null;
 
-  const label = (partyKey: string): string =>
-    dto.playerCustomName && partyKey === dto.playerCustomName ? dto.customPartyName : translatePartyName(partyKey, translate);
   const color = (partyKey: string): string =>
     dto.playerCustomName && partyKey === dto.playerCustomName
       ? (CUSTOM_PARTY_PALETTE_HEX[dto.customPartyColor] ?? "#888")
       : (PARTY_COLORS[partyKey] ?? "#888");
 
-  // AJOUT — précise si la coalition dispose ou non de la majorité absolue, pour ne pas
-  // induire en erreur ("Coalition" ne veut pas forcément dire "majoritaire").
+  // AJOUT — précise si la coalition dispose ou non de la majorité absolue.
+  // MODIFIÉ — titre + suffixe aplatis en UNE SEULE chaîne (contrainte du moteur : plusieurs
+  // enfants JSX adjacents pour du texte provoquent un retour à la ligne intempestif, même
+  // pattern que le reste du fichier).
   const majoritySuffix = dto.leadingHasAbsoluteMajority
     ? t("CityCouncil.Coalition.MAJORITY_SUFFIX", " (majorité absolue)")
     : t("CityCouncil.Coalition.PLURALITY_SUFFIX", " (majorité relative)");
+  const titleLine = `${t("CityCouncil.Coalition.HEADER", "Coalition")}${majoritySuffix}`;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "10rem" }}>
-      <div style={{ color: "rgba(150,190,255,0.95)", fontSize: "16rem", fontWeight: 700, marginBottom: "6rem" }}>
-        {t("CityCouncil.Coalition.HEADER", "Coalition")}{majoritySuffix}
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        marginBottom: "10rem",
+        padding: "10rem 16rem",
+        border: "1rem solid rgba(150,190,255,0.35)",
+        borderRadius: "6rem",
+        background: "rgba(150,190,255,0.06)",
+      }}
+    >
+      <div style={{ color: "rgba(150,190,255,0.95)", fontSize: "16rem", fontWeight: 700, marginBottom: "8rem", whiteSpace: "nowrap" }}>
+        {titleLine}
       </div>
+
+      {/* MODIFIÉ — logo seul par membre, séparé par un tiret gras en cas de coalition (2+
+          membres). Rangée d'éléments JSX (pas du texte fluide) : pas soumise à la contrainte
+          d'aplatissement en chaîne unique, même principe que HemicycleFan/ScoreTab plus bas. */}
       <div style={{ display: "flex", alignItems: "center", gap: "10rem" }}>
-        {dto.leadingMembers.map((m) => (
-          <div key={m} style={{ display: "flex", alignItems: "center", gap: "4rem" }}>
-            <PartyLogo party={m} color={color(m)} isCustom={!!dto.playerCustomName && m === dto.playerCustomName} sizeRem={40} />
-            <span style={{ color: "white", fontSize: "12rem", whiteSpace: "nowrap" }}>{label(m)}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+        {dto.leadingMembers.flatMap((m, i) => {
+          const logo = (
+            <PartyLogo
+              key={`logo-${m}`}
+              party={m}
+              color={color(m)}
+              isCustom={!!dto.playerCustomName && m === dto.playerCustomName}
+              sizeRem={40}
+            />
+          );
+          if (i === 0) return [logo];
 
-interface PowerfulDistrictDto {
-  districtName: string;
-  voters: number;
-  seats: number;
-  percentOfCouncil: number;
-  leadingParty: string;
-  displayName?: string;
-  displayColor?: string;
-}
-
-function PowerfulDistrictLine() {
-  const { translate } = useLocalization();
-  const t = (key: string, fallback: string): string => translate(key, fallback) ?? fallback;
-
-  const json = useValue(powerfulDistrictJson$);
-  const dto: PowerfulDistrictDto | null = useMemo(() => {
-    try {
-      const p = JSON.parse(json ?? "{}");
-      return p && typeof p.districtName === "string" ? p : null;
-    } catch {
-      return null;
-    }
-  }, [json]);
-
-  if (!dto) return null;
-
-  const partyLabel = dto.displayName && dto.displayName.length > 0
-    ? dto.displayName
-    : translatePartyName(dto.leadingParty, translate);
-
-  const pct = Math.round(dto.percentOfCouncil * 10) / 10;
-
-  const votersWord = t("CityCouncil.Hemicycle.POWERFUL_DISTRICT_VOTERS", "personnes en âge de voter");
-  const seatsWord = dto.seats > 1
-    ? t("CityCouncil.Hemicycle.LEGEND_SEATS_PLURAL", "sièges")
-    : t("CityCouncil.Hemicycle.LEGEND_SEATS_SINGULAR", "siège");
-
-  const prefix = t("CityCouncil.Hemicycle.POWERFUL_DISTRICT_PREFIX", "District le plus puissant : ");
-  const councilSuffix = t("CityCouncil.Hemicycle.POWERFUL_DISTRICT_COUNCIL_SUFFIX", "du Conseil Municipal");
-  const ledBy = t("CityCouncil.Hemicycle.POWERFUL_DISTRICT_LED_BY", "Dirigé par ");
-  const bonusHint = t("CityCouncil.Hemicycle.POWERFUL_DISTRICT_BONUS_HINT", "+1% d'intention de vote sur toute la ville pour ce parti.");
-
-  const line = `${prefix}« ${dto.districtName} » (${dto.voters.toLocaleString()} ${votersWord}, ${dto.seats} ${seatsWord}, ${pct}% ${councilSuffix}). ${ledBy}« ${partyLabel} ».`;
-
-  return (
-    <div style={{ marginTop: "12rem", textAlign: "center" }}>
-      <div style={{ color: "rgba(255,255,255,0.85)", fontSize: "13rem", lineHeight: "18rem" }}>
-        {line}
-      </div>
-      <div style={{ color: "rgba(150,190,255,0.8)", fontSize: "11rem", marginTop: "4rem" }}>
-        {bonusHint}
+          const dash = (
+            <span
+              key={`dash-${m}`}
+              style={{ color: "rgba(255,255,255,0.7)", fontSize: "22rem", fontWeight: 900, lineHeight: "1" }}
+            >
+              -
+            </span>
+          );
+          return [dash, logo];
+        })}
       </div>
     </div>
   );
@@ -499,7 +484,6 @@ const coalitionLeadingIsCoalition = useMemo(() => {
       {/* Bloc étroit : contenu annexe */}
       <div style={centeredTabWrapperStyle}>
         <div style={centeredTabContentStyle}>
-          <PowerfulDistrictLine />
           <BonusChoicePrompt />
           <VotingInstructionsCard />
           <ReinforcedBastionCard />
@@ -536,6 +520,16 @@ function HemicycleTabs() {
   const t = (key: string, fallback: string): string => translate(key, fallback) ?? fallback;
 
   const [tab, setTab] = useState<TabKey>("results");
+  const [resultsTabHovered, setResultsTabHovered] = useState(false);
+  const [yourPartyTabHovered, setYourPartyTabHovered] = useState(false);
+    const [forcesTabHovered, setForcesTabHovered] = useState(false);
+  const [fundingTabHovered, setFundingTabHovered] = useState(false);
+  const [propagandaTabHovered, setPropagandaTabHovered] = useState(false);
+  const [commissionTabHovered, setCommissionTabHovered] = useState(false);
+  const [pollTabHovered, setPollTabHovered] = useState(false);
+  const [lawsTabHovered, setLawsTabHovered] = useState(false);
+  const [scoreTabHovered, setScoreTabHovered] = useState(false);
+  const [rulesTabHovered, setRulesTabHovered] = useState(false);
   const showDebugTab = useValue(showDebugTab$);
 
   const tabStyle = (key: TabKey) => ({
@@ -551,36 +545,200 @@ function HemicycleTabs() {
 
   return (
     <div style={{ width: PANEL_WIDTH }}>
-      <div style={{ display: "flex", borderBottom: "1rem solid rgba(255,255,255,0.15)" }}>
-        <div style={tabStyle("results")} onClick={() => setTab("results")}>
-          {t("CityCouncil.Hemicycle.TAB_RESULTS", "Résultats")}
+           <div style={{ display: "flex", borderBottom: "1rem solid rgba(255,255,255,0.15)", height: "34rem", overflow: "visible" }}>
+                        <div
+          style={{
+            ...tabStyle("results"),
+            position: "relative",
+            height: "100%",
+            padding: "0 9rem",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            overflow: "visible",
+          }}
+          onClick={() => setTab("results")}
+          onMouseEnter={() => setResultsTabHovered(true)}
+          onMouseLeave={() => setResultsTabHovered(false)}
+        >
+          <img
+            src={iconeHemicycleIcon}
+            style={{ width: "35rem", height: "35rem", display: "block", flexShrink: 0 }}
+          />
+                    {resultsTabHovered && (
+            <div
+              style={{
+                position: "absolute",
+                top: "100%",
+                left: 0,
+                marginTop: "4rem",
+                background: "rgba(20,20,28,0.97)",
+                border: "1rem solid rgba(255,255,255,0.15)",
+                borderRadius: "4rem",
+                padding: "4rem 8rem",
+                color: "white",
+                fontSize: "11rem",
+                whiteSpace: "nowrap",
+                zIndex: 20,
+                pointerEvents: "none",
+              }}
+            >
+              {t("CityCouncil.Hemicycle.ICON_TOOLTIP", "Hémicycle")}
+            </div>
+          )}
         </div>
-        <div style={tabStyle("yourParty")} onClick={() => setTab("yourParty")}>
-          {t("CityCouncil.Hemicycle.TAB_YOUR_PARTY", "Votre Parti")}
+                <div
+          style={{
+            ...tabStyle("yourParty"),
+            position: "relative",
+            height: "100%",
+            padding: "0 9rem",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            overflow: "visible",
+          }}
+          onClick={() => setTab("yourParty")}
+          onMouseEnter={() => setYourPartyTabHovered(true)}
+          onMouseLeave={() => setYourPartyTabHovered(false)}
+        >
+          <img
+            src={iconeVotrePartiIcon}
+            style={{ width: "35rem", height: "35rem", display: "block", flexShrink: 0 }}
+          />
+          {yourPartyTabHovered && (
+            <div
+              style={{
+                position: "absolute",
+                top: "100%",
+                left: "50%",
+                transform: "translateX(-50%)",
+                marginTop: "4rem",
+                background: "rgba(20,20,28,0.97)",
+                border: "1rem solid rgba(255,255,255,0.15)",
+                borderRadius: "4rem",
+                padding: "4rem 8rem",
+                color: "white",
+                fontSize: "11rem",
+                whiteSpace: "nowrap",
+                zIndex: 20,
+                pointerEvents: "none",
+              }}
+            >
+              {t("CityCouncil.Hemicycle.YOUR_PARTY_ICON_TOOLTIP", "Votre Parti")}
+            </div>
+          )}
         </div>
-        <div style={tabStyle("forces")} onClick={() => setTab("forces")}>
-          {t("CityCouncil.Hemicycle.TAB_FORCES", "Forces Politiques")}
+                <div
+          style={{ ...tabStyle("forces"), position: "relative", height: "100%", padding: "0 9rem", display: "flex", alignItems: "center", justifyContent: "center", overflow: "visible" }}
+          onClick={() => setTab("forces")}
+          onMouseEnter={() => setForcesTabHovered(true)}
+          onMouseLeave={() => setForcesTabHovered(false)}
+        >
+          <img src={iconeForcesIcon} style={{ width: "35rem", height: "35rem", display: "block", flexShrink: 0 }} />
+          {forcesTabHovered && (
+            <div style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", marginTop: "4rem", background: "rgba(20,20,28,0.97)", border: "1rem solid rgba(255,255,255,0.15)", borderRadius: "4rem", padding: "4rem 8rem", color: "white", fontSize: "11rem", whiteSpace: "nowrap", zIndex: 20, pointerEvents: "none" }}>
+              {t("CityCouncil.Hemicycle.FORCES_ICON_TOOLTIP", "Forces Politiques")}
+            </div>
+          )}
         </div>
-        <div style={tabStyle("funding")} onClick={() => setTab("funding")}>
-          {t("CityCouncil.Hemicycle.TAB_FUNDING", "Financement")}
+
+        <div
+          style={{ ...tabStyle("funding"), position: "relative", height: "100%", padding: "0 9rem", display: "flex", alignItems: "center", justifyContent: "center", overflow: "visible" }}
+          onClick={() => setTab("funding")}
+          onMouseEnter={() => setFundingTabHovered(true)}
+          onMouseLeave={() => setFundingTabHovered(false)}
+        >
+          <img src={iconeFinancesIcon} style={{ width: "35rem", height: "35rem", display: "block", flexShrink: 0 }} />
+          {fundingTabHovered && (
+            <div style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", marginTop: "4rem", background: "rgba(20,20,28,0.97)", border: "1rem solid rgba(255,255,255,0.15)", borderRadius: "4rem", padding: "4rem 8rem", color: "white", fontSize: "11rem", whiteSpace: "nowrap", zIndex: 20, pointerEvents: "none" }}>
+              {t("CityCouncil.Hemicycle.FUNDING_ICON_TOOLTIP", "Financement")}
+            </div>
+          )}
         </div>
-        <div style={tabStyle("propaganda")} onClick={() => setTab("propaganda")}>
-          {t("CityCouncil.Propaganda.TAB_LABEL", "Propagande")}
+
+        <div
+          style={{ ...tabStyle("propaganda"), position: "relative", height: "100%", padding: "0 9rem", display: "flex", alignItems: "center", justifyContent: "center", overflow: "visible" }}
+          onClick={() => setTab("propaganda")}
+          onMouseEnter={() => setPropagandaTabHovered(true)}
+          onMouseLeave={() => setPropagandaTabHovered(false)}
+        >
+          <img src={iconePropagandeIcon} style={{ width: "35rem", height: "35rem", display: "block", flexShrink: 0 }} />
+          {propagandaTabHovered && (
+            <div style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", marginTop: "4rem", background: "rgba(20,20,28,0.97)", border: "1rem solid rgba(255,255,255,0.15)", borderRadius: "4rem", padding: "4rem 8rem", color: "white", fontSize: "11rem", whiteSpace: "nowrap", zIndex: 20, pointerEvents: "none" }}>
+              {t("CityCouncil.Hemicycle.PROPAGANDA_ICON_TOOLTIP", "Propagande")}
+            </div>
+          )}
         </div>
-        <div style={tabStyle("commission")} onClick={() => setTab("commission")}>
-          {t("CityCouncil.Commission.TAB_LABEL", "Commission Électorale")}
+
+        <div
+          style={{ ...tabStyle("commission"), position: "relative", height: "100%", padding: "0 9rem", display: "flex", alignItems: "center", justifyContent: "center", overflow: "visible" }}
+          onClick={() => setTab("commission")}
+          onMouseEnter={() => setCommissionTabHovered(true)}
+          onMouseLeave={() => setCommissionTabHovered(false)}
+        >
+          <img src={iconeCommissionIcon} style={{ width: "35rem", height: "35rem", display: "block", flexShrink: 0 }} />
+          {commissionTabHovered && (
+            <div style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", marginTop: "4rem", background: "rgba(20,20,28,0.97)", border: "1rem solid rgba(255,255,255,0.15)", borderRadius: "4rem", padding: "4rem 8rem", color: "white", fontSize: "11rem", whiteSpace: "nowrap", zIndex: 20, pointerEvents: "none" }}>
+              {t("CityCouncil.Hemicycle.COMMISSION_ICON_TOOLTIP", "Commission Électorale")}
+            </div>
+          )}
         </div>
-        <div style={tabStyle("poll")} onClick={() => setTab("poll")}>
-          {t("CityCouncil.Poll.TAB_LABEL", "Sondages")}
+
+        <div
+          style={{ ...tabStyle("poll"), position: "relative", height: "100%", padding: "0 9rem", display: "flex", alignItems: "center", justifyContent: "center", overflow: "visible" }}
+          onClick={() => setTab("poll")}
+          onMouseEnter={() => setPollTabHovered(true)}
+          onMouseLeave={() => setPollTabHovered(false)}
+        >
+          <img src={iconeSondageIcon} style={{ width: "35rem", height: "35rem", display: "block", flexShrink: 0 }} />
+          {pollTabHovered && (
+            <div style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", marginTop: "4rem", background: "rgba(20,20,28,0.97)", border: "1rem solid rgba(255,255,255,0.15)", borderRadius: "4rem", padding: "4rem 8rem", color: "white", fontSize: "11rem", whiteSpace: "nowrap", zIndex: 20, pointerEvents: "none" }}>
+              {t("CityCouncil.Hemicycle.POLL_ICON_TOOLTIP", "Sondages")}
+            </div>
+          )}
         </div>
-        <div style={tabStyle("laws")} onClick={() => setTab("laws")}>
-          {t("CityCouncil.Law.TAB_LABEL", "Lois")}
+
+        <div
+          style={{ ...tabStyle("laws"), position: "relative", height: "100%", padding: "0 9rem", display: "flex", alignItems: "center", justifyContent: "center", overflow: "visible" }}
+          onClick={() => setTab("laws")}
+          onMouseEnter={() => setLawsTabHovered(true)}
+          onMouseLeave={() => setLawsTabHovered(false)}
+        >
+          <img src={iconeLoisIcon} style={{ width: "35rem", height: "35rem", display: "block", flexShrink: 0 }} />
+          {lawsTabHovered && (
+            <div style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", marginTop: "4rem", background: "rgba(20,20,28,0.97)", border: "1rem solid rgba(255,255,255,0.15)", borderRadius: "4rem", padding: "4rem 8rem", color: "white", fontSize: "11rem", whiteSpace: "nowrap", zIndex: 20, pointerEvents: "none" }}>
+              {t("CityCouncil.Hemicycle.LAWS_ICON_TOOLTIP", "Lois")}
+            </div>
+          )}
         </div>
-        <div style={tabStyle("score")} onClick={() => setTab("score")}>
-          {t("CityCouncil.Score.TAB_LABEL", "Score")}
+
+        <div
+          style={{ ...tabStyle("score"), position: "relative", height: "100%", padding: "0 9rem", display: "flex", alignItems: "center", justifyContent: "center", overflow: "visible" }}
+          onClick={() => setTab("score")}
+          onMouseEnter={() => setScoreTabHovered(true)}
+          onMouseLeave={() => setScoreTabHovered(false)}
+        >
+          <img src={iconeScoreIcon} style={{ width: "35rem", height: "35rem", display: "block", flexShrink: 0 }} />
+          {scoreTabHovered && (
+            <div style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", marginTop: "4rem", background: "rgba(20,20,28,0.97)", border: "1rem solid rgba(255,255,255,0.15)", borderRadius: "4rem", padding: "4rem 8rem", color: "white", fontSize: "11rem", whiteSpace: "nowrap", zIndex: 20, pointerEvents: "none" }}>
+              {t("CityCouncil.Hemicycle.SCORE_ICON_TOOLTIP", "Score")}
+            </div>
+          )}
         </div>
-        <div style={tabStyle("rules")} onClick={() => setTab("rules")}>
-          {t("CityCouncil.Rules.TAB_LABEL", "Règles")}
+
+        <div
+          style={{ ...tabStyle("rules"), position: "relative", height: "100%", padding: "0 9rem", display: "flex", alignItems: "center", justifyContent: "center", overflow: "visible" }}
+          onClick={() => setTab("rules")}
+          onMouseEnter={() => setRulesTabHovered(true)}
+          onMouseLeave={() => setRulesTabHovered(false)}
+        >
+          <img src={iconeReglesIcon} style={{ width: "35rem", height: "35rem", display: "block", flexShrink: 0 }} />
+          {rulesTabHovered && (
+            <div style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", marginTop: "4rem", background: "rgba(20,20,28,0.97)", border: "1rem solid rgba(255,255,255,0.15)", borderRadius: "4rem", padding: "4rem 8rem", color: "white", fontSize: "11rem", whiteSpace: "nowrap", zIndex: 20, pointerEvents: "none" }}>
+              {t("CityCouncil.Hemicycle.RULES_ICON_TOOLTIP", "Règles")}
+            </div>
+          )}
         </div>
         {showDebugTab && (
           <div style={tabStyle("debug")} onClick={() => setTab("debug")}>

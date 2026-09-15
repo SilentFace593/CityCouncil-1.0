@@ -88,7 +88,15 @@ function MiniBastionBar({ streakCount, color }: { streakCount: number; color: st
   );
 }
 
-function DistrictRow({ d, translate }: { d: DistrictOverviewDto; translate: any }) {
+function DistrictRow({
+  d,
+  translate,
+  isMostPowerful,
+}: {
+  d: DistrictOverviewDto;
+  translate: any;
+  isMostPowerful: boolean;
+}) {
   const t = (key: string, fallback: string): string => translate(key, fallback) ?? fallback;
   const [expanded, setExpanded] = useState(false);
 
@@ -104,22 +112,29 @@ function DistrictRow({ d, translate }: { d: DistrictOverviewDto; translate: any 
   const detailLine = `${d.voters.toLocaleString()} ${votersWord}, ${d.seats} ${seatsWord}, ${pct}% ${councilSuffix}`;
   const leaderColor = districtPartyColor(d);
 
-  // Aplati en une seule chaîne — le moteur casse la ligne si plusieurs enfants JSX
-  // adjacents (texte + span) sont utilisés à la place d'une seule string.
   const ledByLine = `${ledByLabel}« ${districtPartyLabel(d, translate)} »`;
-    const bastionLine = d.isBastion ? `${bastionLabel}« ${bastionPartyLabel(d, translate)} »` : "";
+  const bastionLine = d.isBastion ? `${bastionLabel}« ${bastionPartyLabel(d, translate)} »` : "";
   const reinforcedLabel = t("CityCouncil.Admin.BASTION_REINFORCED_LABEL", "Bastion Renforcé : ");
   const reinforcedLine = d.isReinforcedBastion
     ? `${reinforcedLabel}« ${bastionPartyLabel(d, translate)} »`
     : "";
+
+  // AJOUT — suffixe accolé au nom du district (une seule chaîne, même contrainte que le reste
+  // du fichier : le moteur casse la ligne si plusieurs enfants JSX adjacents sont utilisés).
+  const mostPowerfulSuffix = isMostPowerful
+    ? ` — ⭐ ${t("CityCouncil.Forces.MOST_POWERFUL_DISTRICT_SUFFIX", "District le plus puissant")}`
+    : "";
+  const districtNameLine = `${d.districtName}${mostPowerfulSuffix}`;
+
+  const powerfulBonusHint = t("CityCouncil.Hemicycle.POWERFUL_DISTRICT_BONUS_HINT", "+1% d'intention de vote sur toute la ville pour ce parti.");
 
   return (
     <div
       style={{
         marginBottom: "6rem",
         borderRadius: "6rem",
-        border: "1rem solid rgba(255,255,255,0.15)",
-        background: "rgba(255,255,255,0.05)",
+        border: isMostPowerful ? "1rem solid rgba(255,215,120,0.35)" : "1rem solid rgba(255,255,255,0.15)",
+        background: isMostPowerful ? "rgba(255,215,120,0.06)" : "rgba(255,255,255,0.05)",
         overflow: "hidden",
       }}
     >
@@ -136,14 +151,14 @@ function DistrictRow({ d, translate }: { d: DistrictOverviewDto; translate: any 
           <PartyLogo party={d.leadingParty} color={leaderColor} isCustom={!!(d.displayName && d.displayName.length > 0)} sizeRem={30} />
         </div>
         <div style={{ flex: 1, minWidth: 0, color: "white", fontSize: "15rem", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {d.districtName}
+          {districtNameLine}
         </div>
         <div style={{ color: "rgba(255,255,255,0.5)", fontSize: "11rem", flexShrink: 0, marginLeft: "8rem" }}>
           {expanded ? "▲" : "▼"}
         </div>
       </div>
 
-       {expanded && (
+      {expanded && (
         <div style={{ padding: "0 10rem 10rem" }}>
           <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "12rem", lineHeight: "15rem", marginBottom: "6rem" }}>
             {detailLine}
@@ -152,6 +167,12 @@ function DistrictRow({ d, translate }: { d: DistrictOverviewDto; translate: any 
           <div style={{ color: "rgba(255,255,255,0.85)", fontSize: "12rem", fontWeight: 700 }}>
             {ledByLine}
           </div>
+
+          {isMostPowerful && (
+            <div style={{ color: "rgba(255,215,120,0.85)", fontSize: "11rem", lineHeight: "15rem", marginTop: "6rem" }}>
+              {powerfulBonusHint}
+            </div>
+          )}
 
           {d.isBastion && (
             <div style={{ marginTop: "6rem" }}>
@@ -194,12 +215,14 @@ function DistrictsPanel() {
       <div style={{ color: "white", fontSize: "18rem", fontWeight: 700, marginBottom: "12rem" }}>
         {t("CityCouncil.Forces.DISTRICTS_HEADER", "Districts")}
       </div>
-      {districts.length === 0 ? (
+            {districts.length === 0 ? (
         <div style={{ color: "rgba(255,255,255,0.5)", fontSize: "12rem" }}>
           {t("CityCouncil.Forces.DISTRICTS_EMPTY", "Aucun district avec des votants pour le moment.")}
         </div>
       ) : (
-        districts.map((d) => <DistrictRow key={d.districtId} d={d} translate={translate} />)
+        districts.map((d, i) => (
+          <DistrictRow key={d.districtId} d={d} translate={translate} isMostPowerful={i === 0} />
+        ))
       )}
     </div>
   );

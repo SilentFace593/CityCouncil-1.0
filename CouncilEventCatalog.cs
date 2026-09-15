@@ -224,6 +224,168 @@ namespace CityCouncil
                 },
             },
 
+            // --- SCANDALES (4 nouveaux) ---
+            new CouncilEventDefinition
+            {
+                Id = "fraude_subventions_culture",
+                Headline = LocaleKeys.Event_FraudeSubventionsCulture,
+                Category = EventCategory.Scandale,
+                Effects = new[]
+                {
+                    EventEffect.PartyBonus(PoliticalParty.Democrate, -0.07f, EventAgeScope.All),
+                },
+            },
+            new CouncilEventDefinition
+            {
+                Id = "detournement_fonds_publics",
+                Headline = LocaleKeys.Event_DétournementFondsPublics,
+                Category = EventCategory.Scandale,
+                Effects = new[]
+                {
+                    EventEffect.PartyBonus(PoliticalParty.Republicain, -0.08f, EventAgeScope.All),
+                },
+            },
+            new CouncilEventDefinition
+            {
+                Id = "conflit_interet_urbanisme",
+                Headline = LocaleKeys.Event_ConflitInteretUrbanisme,
+                Category = EventCategory.Scandale,
+                Effects = new[]
+                {
+                    EventEffect.PartyBonus(PoliticalParty.GaucheRadicale, -0.06f, EventAgeScope.All),
+                },
+            },
+            new CouncilEventDefinition
+            {
+                Id = "fuite_donnees_citoyens",
+                Headline = LocaleKeys.Event_FuiteDonneesCitoyens,
+                Category = EventCategory.Scandale,
+                Effects = new[]
+                {
+                    EventEffect.LeadingPartyBonus(-0.08f, EventAgeScope.All),
+                    EventEffect.AbstentionDelta(0.05f, EventAgeScope.All),
+                },
+            },
+
+            // --- ÉVÈNEMENTS MAJEURS (5 nouveaux) ---
+            new CouncilEventDefinition
+            {
+                Id = "greve_transports_collectifs",
+                Headline = LocaleKeys.Event_GreveTransportsCollectifs,
+                Category = EventCategory.Evenement,
+                Effects = new[]
+                {
+                    EventEffect.PartyBonus(PoliticalParty.GaucheRadicale, 0.08f, EventAgeScope.AdultsOnly),
+                    EventEffect.PartyBonus(PoliticalParty.Republicain, 0.04f, EventAgeScope.All),
+                },
+            },
+            new CouncilEventDefinition
+            {
+                Id = "inauguration_parc_eolien",
+                Headline = LocaleKeys.Event_InaugurationParcEolien,
+                Category = EventCategory.Evenement,
+                Effects = new[]
+                {
+                    EventEffect.PartyBonus(PoliticalParty.Ecologiste, 0.08f, EventAgeScope.All),
+                    EventEffect.PartyBonus(PoliticalParty.Populiste, 0.03f, EventAgeScope.SeniorsOnly),
+                },
+            },
+            new CouncilEventDefinition
+            {
+                Id = "pic_pollution_atmospherique",
+                Headline = LocaleKeys.Event_PicPollutionAtmospherique,
+                Category = EventCategory.Evenement,
+                Effects = new[]
+                {
+                    EventEffect.PartyBonus(PoliticalParty.Ecologiste, 0.10f, EventAgeScope.All),
+                },
+            },
+            new CouncilEventDefinition
+            {
+                Id = "sommet_economique_local",
+                Headline = LocaleKeys.Event_SommetEconomiqueLocal,
+                Category = EventCategory.Evenement,
+                Effects = new[]
+                {
+                    EventEffect.PartyBonus(PoliticalParty.Republicain, 0.07f, EventAgeScope.All),
+                    EventEffect.PartyBonus(PoliticalParty.Democrate, 0.04f, EventAgeScope.All),
+                },
+            },
+            new CouncilEventDefinition
+            {
+                Id = "canicule_extreme",
+                Headline = LocaleKeys.Event_CaniculeExtreme,
+                Category = EventCategory.Evenement,
+                Effects = new[]
+                {
+                    EventEffect.PartyBonus(PoliticalParty.Ecologiste, 0.06f, EventAgeScope.All),
+                },
+            },
+
+            // --- FAITS DIVERS (6 nouveaux) ---
+            new CouncilEventDefinition
+            {
+                Id = "penurie_logements_etudiants",
+                Headline = LocaleKeys.Event_PenurieLogementsEtudiants,
+                Category = EventCategory.FaitDivers,
+                Effects = new[]
+                {
+                    EventEffect.PartyBonus(PoliticalParty.GaucheRadicale, 0.05f, EventAgeScope.AdultsOnly),
+                },
+            },
+            new CouncilEventDefinition
+            {
+                Id = "nuit_securite_routiere",
+                Headline = LocaleKeys.Event_NuitSecuriteRoutiere,
+                Category = EventCategory.FaitDivers,
+                Effects = new[]
+                {
+                    EventEffect.PartyBonus(PoliticalParty.Republicain, 0.03f, EventAgeScope.SeniorsOnly),
+                    EventEffect.PartyBonus(PoliticalParty.Populiste, 0.03f, EventAgeScope.All),
+                },
+            },
+            new CouncilEventDefinition
+            {
+                Id = "echec_festival_eco_responsable",
+                Headline = LocaleKeys.Event_EchecFestivalEcoResponsable,
+                Category = EventCategory.FaitDivers,
+                Effects = new[]
+                {
+                    EventEffect.PartyBonus(PoliticalParty.Ecologiste, -0.04f, EventAgeScope.All),
+                },
+            },
+            new CouncilEventDefinition
+            {
+                Id = "saisie_historique_drogue",
+                Headline = LocaleKeys.Event_SaisieHistoriqueDrogue,
+                Category = EventCategory.FaitDivers,
+                Effects = new[]
+                {
+                    EventEffect.PartyBonus(PoliticalParty.Populiste, 0.05f, EventAgeScope.All),
+                },
+            },
+            new CouncilEventDefinition
+            {
+                Id = "manifestation_taxis_thermiques",
+                Headline = LocaleKeys.Event_ManifestationTaxisThermiques,
+                Category = EventCategory.FaitDivers,
+                Effects = new[]
+                {
+                    EventEffect.PartyBonus(PoliticalParty.Populiste, 0.04f, EventAgeScope.All),
+                    EventEffect.PartyBonus(PoliticalParty.Ecologiste, -0.03f, EventAgeScope.All),
+                },
+            },
+            new CouncilEventDefinition
+            {
+                Id = "succes_projet_teletravail",
+                Headline = LocaleKeys.Event_SuccesProjetTélétravail,
+                Category = EventCategory.FaitDivers,
+                Effects = new[]
+                {
+                    EventEffect.PartyBonus(PoliticalParty.Democrate, 0.04f, EventAgeScope.AdultsOnly),
+                },
+            },
+
         };
     }
 }

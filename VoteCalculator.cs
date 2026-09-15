@@ -277,6 +277,39 @@ namespace CityCouncil
             }
         }
 
+        /// <summary>
+        /// Applique les effets d'un évènement de DISTRICT actif (cf. CouncilDistrictEventCatalog),
+        /// par tranche d'âge. Indépendant de ApplyEventEffects (ville) : peut se cumuler avec un
+        /// évènement ville actif en même temps. Ne gère que SpecificParty et LeadingPartyInDistrict
+        /// (pas d'Abstention/TransferOverride pour l'instant, cf. catalogue).
+        /// </summary>
+        private static void ApplyDistrictEventEffects(
+            Dictionary<PoliticalParty, float> shares, bool isAdult,
+            DistrictEventEffect[] effects, PoliticalParty? districtLeadingParty)
+        {
+            if (effects == null) return;
+
+            foreach (var effect in effects)
+            {
+                bool scopeMatches = effect.AgeScope == EventAgeScope.All
+                    || (effect.AgeScope == EventAgeScope.AdultsOnly && isAdult)
+                    || (effect.AgeScope == EventAgeScope.SeniorsOnly && !isAdult);
+                if (!scopeMatches) continue;
+
+                switch (effect.Target)
+                {
+                    case DistrictEventEffectTarget.SpecificParty:
+                        Boost(shares, effect.Party, effect.Percent);
+                        break;
+
+                    case DistrictEventEffectTarget.LeadingPartyInDistrict:
+                        if (districtLeadingParty.HasValue)
+                            Boost(shares, districtLeadingParty.Value, effect.Percent);
+                        break;
+                }
+            }
+        }
+
         // Marge d'erreur/incertitude électorale : ±2.5 points de pourcentage absolus,
         // tirés aléatoirement par tranche d'âge et par élection. Ajustable ici sans
         // toucher au reste de la logique.
@@ -323,7 +356,9 @@ namespace CityCouncil
     bool ecologistNuclearBonusActive = false,
     PoliticalParty? playerParty = null,
     PoliticalParty? powerfulDistrictBonusHolder = null,
-    float playerLawMalusPercent = 0f) // AJOUT — malus cumulé (cf. CouncilLawSystem.GetPlayerLawMalusPercent)
+       float playerLawMalusPercent = 0f, // AJOUT — malus cumulé (cf. CouncilLawSystem.GetPlayerLawMalusPercent)
+    DistrictEventEffect[] districtEventEffects = null, // AJOUT — effets de l'évènement de district actif sur CE district, null si aucun
+    PoliticalParty? districtLeadingPartyForEvent = null) // AJOUT — parti dirigeant CE district avant ce tour (pour LeadingPartyInDistrict)
 
         {
             var rng = new Random(seed);
@@ -335,6 +370,9 @@ namespace CityCouncil
 
             ApplyEventEffects(seniorShares, ref seniorAbst, isAdult: false, activeEventEffects, cityLeadingParty);
             ApplyEventEffects(adultShares, ref adultAbst, isAdult: true, activeEventEffects, cityLeadingParty);
+
+            ApplyDistrictEventEffects(seniorShares, isAdult: false, districtEventEffects, districtLeadingPartyForEvent);
+            ApplyDistrictEventEffects(adultShares, isAdult: true, districtEventEffects, districtLeadingPartyForEvent);
 
             // AJOUT — bonus Populiste "colère sociale" si le chômage dépasse le seuil (cf.
             // CouncilEconomySystem.UnemploymentThresholdPct), city-wide et symétrique séniors/adultes,

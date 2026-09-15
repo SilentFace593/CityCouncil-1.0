@@ -24,6 +24,7 @@ namespace CityCouncil
 
         // --- HemicyclePanel ---
         public const string Hemicycle_PanelTitle = "CityCouncil.Hemicycle.PANEL_TITLE";
+        public const string Hemicycle_IconTooltip = "CityCouncil.Hemicycle.ICON_TOOLTIP";
         public const string Hemicycle_TabResults = "CityCouncil.Hemicycle.TAB_RESULTS";
         public const string Hemicycle_TabYourParty = "CityCouncil.Hemicycle.TAB_YOUR_PARTY";
         public const string Hemicycle_TabForces = "CityCouncil.Hemicycle.TAB_FORCES";
@@ -39,7 +40,6 @@ namespace CityCouncil
         public const string VotingInstruction_ValidateButton = "CityCouncil.VotingInstruction.VALIDATE_BUTTON";
         public const string Hemicycle_LegendReinforcedBastionsPlural = "CityCouncil.Hemicycle.LEGEND_REINFORCED_BASTIONS_PLURAL";
         public const string Hemicycle_LegendReinforcedBastionsSingular = "CityCouncil.Hemicycle.LEGEND_REINFORCED_BASTIONS_SINGULAR";
-        public const string Hemicycle_PowerfulDistrictPrefix = "CityCouncil.Hemicycle.POWERFUL_DISTRICT_PREFIX";
         public const string Hemicycle_PowerfulDistrictVoters = "CityCouncil.Hemicycle.POWERFUL_DISTRICT_VOTERS";
         public const string Hemicycle_PowerfulDistrictCouncilSuffix = "CityCouncil.Hemicycle.POWERFUL_DISTRICT_COUNCIL_SUFFIX";
         public const string Hemicycle_PowerfulDistrictLedBy = "CityCouncil.Hemicycle.POWERFUL_DISTRICT_LED_BY";
@@ -47,6 +47,15 @@ namespace CityCouncil
         public const string Hemicycle_LeadingBlocLawSummaryPrefix = "CityCouncil.Hemicycle.LEADING_BLOC_LAW_SUMMARY_PREFIX";
         public const string Hemicycle_LawsVotedWord = "CityCouncil.Hemicycle.LAWS_VOTED_WORD";
         public const string Hemicycle_LawsAbrogatedWord = "CityCouncil.Hemicycle.LAWS_ABROGATED_WORD";
+        public const string Hemicycle_YourPartyIconTooltip = "CityCouncil.Hemicycle.YOUR_PARTY_ICON_TOOLTIP";
+        public const string Hemicycle_ForcesIconTooltip = "CityCouncil.Hemicycle.FORCES_ICON_TOOLTIP";
+        public const string Hemicycle_FundingIconTooltip = "CityCouncil.Hemicycle.FUNDING_ICON_TOOLTIP";
+        public const string Hemicycle_PropagandaIconTooltip = "CityCouncil.Hemicycle.PROPAGANDA_ICON_TOOLTIP";
+        public const string Hemicycle_CommissionIconTooltip = "CityCouncil.Hemicycle.COMMISSION_ICON_TOOLTIP";
+        public const string Hemicycle_PollIconTooltip = "CityCouncil.Hemicycle.POLL_ICON_TOOLTIP";
+        public const string Hemicycle_LawsIconTooltip = "CityCouncil.Hemicycle.LAWS_ICON_TOOLTIP";
+        public const string Hemicycle_ScoreIconTooltip = "CityCouncil.Hemicycle.SCORE_ICON_TOOLTIP";
+        public const string Hemicycle_RulesIconTooltip = "CityCouncil.Hemicycle.RULES_ICON_TOOLTIP";
 
         // --- Coalition ---
         public const string Coalition_Header = "CityCouncil.Coalition.HEADER";
@@ -139,6 +148,7 @@ namespace CityCouncil
         public const string Forces_DescRepublicain = "CityCouncil.Forces.DESC_REPUBLICAIN";
         public const string Forces_DescGaucheRadicale = "CityCouncil.Forces.DESC_GAUCHERADICALE";
         public const string Forces_PendingReplacement = "CityCouncil.Forces.PENDING_REPLACEMENT";
+        public const string Forces_MostPowerfulDistrictSuffix = "CityCouncil.Forces.MOST_POWERFUL_DISTRICT_SUFFIX";
         public const string Treasury_Header = "CityCouncil.Treasury.HEADER";
         public const string Treasury_CityFunding = "CityCouncil.Treasury.CITY_FUNDING";
         public const string Treasury_Dues = "CityCouncil.Treasury.DUES";
@@ -170,6 +180,47 @@ namespace CityCouncil
         public const string Event_DurcissementNorme = "CityCouncil.Event.DURCISSEMENT_NORME";
         public const string Event_InvestissementSecurite = "CityCouncil.Event.INVESTISSEMENT_SECURITE";
         public const string Event_DesaccordEcoloDemocrateInegalites = "CityCouncil.Event.DESACCORD_ECOLO_DEMOCRATE_INEGALITES";
+        // --- Nouveaux Évènements ---
+        public const string Event_FraudeSubventionsCulture = "CityCouncil.Event.FRAUDE_SUBVENTIONS_CULTURE";
+        public const string Event_DétournementFondsPublics = "CityCouncil.Event.DETOURNEMENT_FONDS_PUBLICS";
+        public const string Event_ConflitInteretUrbanisme = "CityCouncil.Event.CONFLIT_INTERET_URBANISME";
+        public const string Event_FuiteDonneesCitoyens = "CityCouncil.Event.FUITE_DONNEES_CITOYENS";
+        public const string Event_GreveTransportsCollectifs = "CityCouncil.Event.GREVE_TRANSPORTS_COLLECTIFS";
+        public const string Event_PenurieLogementsEtudiants = "CityCouncil.Event.PENURIE_LOGEMENTS_ETUDIANTS";
+        public const string Event_InaugurationParcEolien = "CityCouncil.Event.INAUGURATION_PARC_EOLIEN";
+        public const string Event_PicPollutionAtmospherique = "CityCouncil.Event.PIC_POLLUTION_ATMOSPHERIQUE";
+        public const string Event_SommetEconomiqueLocal = "CityCouncil.Event.SOMMET_ECONOMIQUE_LOCAL";
+        public const string Event_CaniculeExtreme = "CityCouncil.Event.CANICULE_EXTREME";
+        public const string Event_NuitSecuriteRoutiere = "CityCouncil.Event.NUIT_SECURITE_ROUTIERE";
+        public const string Event_EchecFestivalEcoResponsable = "CityCouncil.Event.ECHEC_FESTIVAL_ECO_RESPONSABLE";
+        public const string Event_SaisieHistoriqueDrogue = "CityCouncil.Event.SAISIE_HISTORIQUE_DROGUE";
+        public const string Event_ManifestationTaxisThermiques = "CityCouncil.Event.MANIFESTATION_TAXIS_THERMIQUES";
+        public const string Event_SuccesProjetTélétravail = "CityCouncil.Event.SUCCES_PROJET_TELETRAVAIL";
+
+
+        //Districts Events
+        public const string DistrictEvent_TravauxVoirieRetard = "CityCouncil.DistrictEvent.TRAVAUX_VOIRIE_RETARD";
+        public const string DistrictEvent_MeetingPopuliste = "CityCouncil.DistrictEvent.MEETING_POPULISTE";
+        public const string DistrictEvent_ScandaleFavoritisme = "CityCouncil.DistrictEvent.SCANDALE_FAVORITISME";
+        public const string DistrictEvent_PetitionVegetalisation = "CityCouncil.DistrictEvent.PETITION_VEGETALISATION";
+        public const string DistrictEvent_SecuriteQuartierSeniors = "CityCouncil.DistrictEvent.SECURITE_QUARTIER_SENIORS";
+        public const string DistrictEvent_TensionsGaucheRadicale = "CityCouncil.DistrictEvent.TENSIONS_GAUCHE_RADICALE";
+        // --- Nouveaux District Events ---
+        public const string DistrictEvent_NuisancesChantierFermeture = "CityCouncil.DistrictEvent.NUISANCES_CHANTIER_FERMETURE";
+        public const string DistrictEvent_TensionsCommerçantsSeniors = "CityCouncil.DistrictEvent.TENSIONS_COMMERÇANTS_SENIORS";
+        public const string DistrictEvent_InaugurationCentreSocial = "CityCouncil.DistrictEvent.INAUGURATION_CENTRE_SOCIAL";
+        public const string DistrictEvent_SquatImmeubleAncien = "CityCouncil.DistrictEvent.SQUAT_IMMEUBLE_ANCIEN";
+        public const string DistrictEvent_RondeCitoyenneSécurité = "CityCouncil.DistrictEvent.RONDE_CITOYENNE_SECURITE";
+        public const string DistrictEvent_SuccesVideGrenierQuartier = "CityCouncil.DistrictEvent.SUCCES_VIDE_GRENIER_QUARTIER";
+        public const string DistrictEvent_ScandalePermisConstruire = "CityCouncil.DistrictEvent.SCANDALE_PERMIS_CONSTRUIRE";
+        public const string DistrictEvent_SoupçonPriseInteretEluLocal = "CityCouncil.DistrictEvent.SOUPÇON_PRISE_INTERET_ELU_LOCAL";
+        public const string DistrictEvent_RivaliteInterneGauche = "CityCouncil.DistrictEvent.RIVALITE_INTERNE_GAUCHE";
+        public const string DistrictEvent_DétournementCaisseFete = "CityCouncil.DistrictEvent.DETOURNEMENT_CAISSE_FETE";
+        public const string DistrictEvent_RénovationPisteCycable = "CityCouncil.DistrictEvent.RENOVATION_PISTE_CYCABLE";
+        public const string DistrictEvent_FermetureClasseMaternelle = "CityCouncil.DistrictEvent.FERMETURE_CLASSE_MATERNELLE";
+        public const string DistrictEvent_InaugurationZoneArtisanale = "CityCouncil.DistrictEvent.INAUGURATION_ZONE_ARTISANALE";
+        public const string DistrictEvent_AlerteDegatEauxCommerces = "CityCouncil.DistrictEvent.ALERTE_DEGAT_EAUX_COMMERCES";
+        public const string DistrictEvent_CollectePropreteQuartier = "CityCouncil.DistrictEvent.COLLECTE_PROPRETE_QUARTIER";
 
 
         // Party Labels

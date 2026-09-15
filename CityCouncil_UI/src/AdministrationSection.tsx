@@ -32,6 +32,7 @@ const adminAbstention$ = bindValue<number>("cityCouncil", "adminAbstention");
 const adminResultsJson$ = bindValue<string>("cityCouncil", "adminResultsJson");
 const adminRound1ResultsJson$ = bindValue<string>("cityCouncil", "adminRound1ResultsJson");
 const cityEventHeadline$ = bindValue<string>("cityCouncil", "cityEventHeadline");
+const districtEventHeadline$ = bindValue<string>("cityCouncil", "districtEventHeadline");
 const adminBastionStreakParty$ = bindValue<string>("cityCouncil", "adminBastionStreakParty");
 const adminBastionStreakCount$ = bindValue<number>("cityCouncil", "adminBastionStreakCount");
 const adminBastionActive$ = bindValue<boolean>("cityCouncil", "adminBastionActive");
@@ -417,6 +418,7 @@ const round1Results: Round1ResultDto[] = useMemo(() => {
 }, [round1ResultsJson]);
 
   const cityEventHeadline = useValue(cityEventHeadline$);
+  const districtEventHeadline = useValue(districtEventHeadline$);
 
   if (!visible || !InfoSection) return null;
 
@@ -561,7 +563,7 @@ const round1Results: Round1ResultDto[] = useMemo(() => {
           </div>
         )}
 
-        {cityEventHeadline && (
+                {cityEventHeadline && (
           <div
             style={{
               marginTop: "10rem",
@@ -575,6 +577,27 @@ const round1Results: Round1ResultDto[] = useMemo(() => {
             {t(cityEventHeadline, cityEventHeadline)}
           </div>
           )}
+
+        {districtEventHeadline && (
+          <>
+            <div
+              style={{
+                marginTop: "8rem",
+                borderTop: "1rem solid rgba(255,255,255,0.10)",
+              }}
+            />
+            <div
+              style={{
+                marginTop: "8rem",
+                color: "rgba(200,170,255,0.9)",
+                fontSize: "12rem",
+                fontFamily: "Overpass, 'Noto Sans', sans-serif",
+              }}
+            >
+              {t(districtEventHeadline, districtEventHeadline)}
+            </div>
+          </>
+        )}
           </>
         )}
       </div>

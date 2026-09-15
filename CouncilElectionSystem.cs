@@ -48,6 +48,7 @@ namespace CityCouncil
         private CouncilTaxSystem m_TaxSystem;
         private CouncilVotingInstructionSystem m_VotingInstructionSystem;
         private CouncilLawSystem m_LawSystem; // AJOUT — malus city-wide "vote de loi contradictoire"
+        private CityCouncil.CouncilDistrictEventSystem m_DistrictEventSystem;
         private readonly Random m_InstructionRng = new Random();
 
         protected override void OnCreate()
@@ -68,7 +69,8 @@ namespace CityCouncil
             m_TaxSystem = World.GetOrCreateSystemManaged<CouncilTaxSystem>();
             m_VotingInstructionSystem = World.GetOrCreateSystemManaged<CouncilVotingInstructionSystem>();
             m_ReinforcedBastionSystem = World.GetOrCreateSystemManaged<CouncilReinforcedBastionSystem>();
-            m_LawSystem = World.GetOrCreateSystemManaged<CouncilLawSystem>(); // AJOUT
+            m_LawSystem = World.GetOrCreateSystemManaged<CouncilLawSystem>();
+            m_DistrictEventSystem = World.GetOrCreateSystemManaged<CityCouncil.CouncilDistrictEventSystem>();
 
 
             m_DistrictQuery = GetEntityQuery(new EntityQueryDesc
@@ -241,6 +243,9 @@ namespace CityCouncil
             // Coût du calcul du parti majoritaire évité quand aucun évènement n'est actif.
             PoliticalParty? cityLeadingParty = activeEvent != null ? GetCityLeadingParty() : null;
 
+            var activeDistrictEvent = m_DistrictEventSystem.GetActiveEventForDistrict(districtEntity);
+            PoliticalParty? districtLeadingPartyForEvent = activeDistrictEvent != null ? data.m_LeadingParty : (PoliticalParty?)null;
+
             var offensiveHolders = GetOffensiveBonusHolders(data);
             var activeCampaigns = m_PropagandaSystem.GetActiveCampaigns();
             var districtCampaigns = m_PropagandaSystem.GetActiveDistrictCampaigns(districtEntity);
@@ -286,7 +291,9 @@ namespace CityCouncil
             ecologistNuclearBonus,
             playerParty,
             powerfulDistrictHolder,
-            playerLawMalusPercent); // AJOUT
+            playerLawMalusPercent,
+            activeDistrictEvent?.Effects,
+            districtLeadingPartyForEvent);
 
             data.m_VotersRound1 = result.m_Voters;
             data.m_AbstentionRound1 = result.m_Abstention;
