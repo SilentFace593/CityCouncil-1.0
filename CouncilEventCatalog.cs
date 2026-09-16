@@ -187,6 +187,18 @@ namespace CityCouncil
 
             },
 
+             new CouncilEventDefinition
+            {
+                Id = "police_bavure",
+                Headline = LocaleKeys.Event_PoliceBavure,
+                Category = EventCategory.FaitDivers,
+                Effects = new[]
+                {
+                    EventEffect.PartyBonus(PoliticalParty.GaucheRadicale, 0.05f, EventAgeScope.All),
+                },
+
+            },
+
             new CouncilEventDefinition
             {
                 Id = "investissement_securite",
