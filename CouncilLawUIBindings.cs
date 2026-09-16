@@ -86,6 +86,24 @@ namespace CityCouncil.Systems
 
             AddBinding(new TriggerBinding(kGroup, "debugForceLawPeriodicCycle",
                 () => { m_LawSystem.DebugForcePeriodicCycle(); UpdateLawBindingIfChanged(force: true); }));
+
+            AddBinding(new TriggerBinding<string>(kGroup, "proposeLawConstitutional",
+    (recordIndexStr) =>
+    {
+        var custom = m_CustomPartySystem.GetData();
+        if (!custom.m_Exists || !custom.m_SubstitutionActive) return;
+        if (!int.TryParse(recordIndexStr, out int recordIndex)) return;
+        m_LawSystem.TryProposeConstitutionalInscription(custom.m_ActiveSpace, recordIndex, out _);
+        UpdateLawBindingIfChanged(force: true);
+    }));
+
+            AddBinding(new TriggerBinding<string, string>(kGroup, "renameConstitutionalLaw",
+                (recordIndexStr, newName) =>
+                {
+                    if (!int.TryParse(recordIndexStr, out int recordIndex)) return;
+                    m_LawSystem.TryRenameConstitutionalLaw(recordIndex, newName, out _);
+                    UpdateLawBindingIfChanged(force: true);
+                }));
         }
 
         private void UpdateLawBindingIfChanged(bool force = false)
@@ -202,6 +220,7 @@ namespace CityCouncil.Systems
         public string customName;
         public string titleLocaleKey;
         public bool isRepeal;
+        public bool isConstitutional; // AJOUT
         public string proposerParty;
         public bool proposerIsCoalition;
         public List<string> proposerMembers;
@@ -225,6 +244,7 @@ namespace CityCouncil.Systems
                 customName = v.m_CustomName.ToString(),
                 titleLocaleKey = lawDef?.TitleLocaleKey ?? "",
                 isRepeal = v.m_IsRepeal,
+                isConstitutional = v.m_IsConstitutional, // AJOUT
                 proposerParty = proposerKey.ToString(),
                 proposerIsCoalition = bloc.IsCoalition,
                 proposerMembers = bloc.Members.Select(p => p.ToString()).ToList(),
@@ -249,6 +269,7 @@ namespace CityCouncil.Systems
                 sb.Append("\"customName\":\"").Append(Escape(v.customName)).Append("\",");
                 sb.Append("\"titleLocaleKey\":\"").Append(v.titleLocaleKey).Append("\",");
                 sb.Append("\"isRepeal\":").Append(v.isRepeal ? "true" : "false").Append(',');
+                sb.Append("\"isConstitutional\":").Append(v.isConstitutional ? "true" : "false").Append(','); // AJOUT
                 sb.Append("\"proposerParty\":\"").Append(v.proposerParty).Append("\",");
                 sb.Append("\"proposerIsCoalition\":").Append(v.proposerIsCoalition ? "true" : "false").Append(',');
                 sb.Append("\"proposerMembers\":[").Append(string.Join(",", v.proposerMembers.Select(m => $"\"{m}\""))).Append("],");
@@ -280,6 +301,9 @@ namespace CityCouncil.Systems
         public bool repealerIsCoalition;
         public double repealedDay;
         public bool canPlayerRepeal;
+        public bool constitutional;                 // AJOUT
+        public string constitutionalCustomName;      // AJOUT
+        public bool canPlayerProposeConstitutional;  // AJOUT
 
         public static LawHistoryDto From(
             CityCouncil.LawRecordEntry r, int index, CityCouncil.PoliticalParty? playerParty,
@@ -290,12 +314,17 @@ namespace CityCouncil.Systems
             var proposerKey = (CityCouncil.PoliticalParty)r.m_ProposerBlocKey;
 
             bool canPlayerRepeal = false;
+            bool canPlayerProposeConstitutional = false; // AJOUT
             if (playerParty.HasValue && r.m_Outcome == CityCouncil.LawRecordOutcome.Adopted && !r.m_Repealed)
             {
                 var playerBlocKey = coalitionSystem.GetBlocKey(playerParty.Value);
-                bool notOwnLaw = playerBlocKey != proposerKey;
                 bool noActiveVoteForPlayerBloc = !activeVotes.Any(v => (CityCouncil.PoliticalParty)v.m_ProposerBlocKey == playerBlocKey);
+                bool notOwnLaw = playerBlocKey != proposerKey;
+
                 canPlayerRepeal = notOwnLaw && noActiveVoteForPlayerBloc;
+
+                // AJOUT — pas de restriction "pas sa propre loi" pour l'inscription constitutionnelle.
+                canPlayerProposeConstitutional = !r.m_Constitutional && noActiveVoteForPlayerBloc;
             }
 
             return new LawHistoryDto
@@ -313,6 +342,9 @@ namespace CityCouncil.Systems
                 repealerIsCoalition = r.m_RepealerWasCoalition,
                 repealedDay = r.m_RepealedDay,
                 canPlayerRepeal = canPlayerRepeal,
+                constitutional = r.m_Constitutional,                                // AJOUT
+                constitutionalCustomName = r.m_ConstitutionalCustomName.ToString(), // AJOUT
+                canPlayerProposeConstitutional = canPlayerProposeConstitutional,    // AJOUT
             };
         }
 
@@ -338,7 +370,10 @@ namespace CityCouncil.Systems
                 sb.Append("\"repealerParty\":\"").Append(r.repealerParty).Append("\",");
                 sb.Append("\"repealerIsCoalition\":").Append(r.repealerIsCoalition ? "true" : "false").Append(',');
                 sb.Append("\"repealedDay\":").Append(r.repealedDay.ToString(System.Globalization.CultureInfo.InvariantCulture)).Append(',');
-                sb.Append("\"canPlayerRepeal\":").Append(r.canPlayerRepeal ? "true" : "false");
+                sb.Append("\"canPlayerRepeal\":").Append(r.canPlayerRepeal ? "true" : "false").Append(','); // MODIFIÉ — virgule ajoutée
+                sb.Append("\"constitutional\":").Append(r.constitutional ? "true" : "false").Append(','); // AJOUT
+                sb.Append("\"constitutionalCustomName\":\"").Append(Escape(r.constitutionalCustomName)).Append("\","); // AJOUT
+                sb.Append("\"canPlayerProposeConstitutional\":").Append(r.canPlayerProposeConstitutional ? "true" : "false"); // AJOUT
                 sb.Append('}');
             }
             sb.Append(']');

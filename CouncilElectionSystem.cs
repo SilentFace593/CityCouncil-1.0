@@ -270,7 +270,7 @@ namespace CityCouncil
                 : (PoliticalParty?)null;
 
             // AJOUT — malus cumulé "vote de loi contradictoire" (cf. CouncilLawSystem), 0 si aucun actif.
-            float playerLawMalusPercent = m_LawSystem.GetPlayerLawMalusPercent();
+            var lawMalusByParty = m_LawSystem.GetLawMalusByParty(playerParty);
 
             // AJOUT — l'état Bastion utilisé ici est celui d'AVANT cette élection (m_IsBastion/
             // m_BastionParty ne sont mis à jour qu'après, dans FinalizeResults), donc le bonus profite
@@ -291,7 +291,7 @@ namespace CityCouncil
             ecologistNuclearBonus,
             playerParty,
             powerfulDistrictHolder,
-            playerLawMalusPercent,
+            lawMalusByParty,
             activeDistrictEvent?.Effects,
             districtLeadingPartyForEvent);
 

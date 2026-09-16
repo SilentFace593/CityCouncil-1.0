@@ -28,6 +28,7 @@ namespace CityCouncil
         public FixedString64Bytes m_CustomName;
         public byte m_ProposerBlocKey;     // PoliticalParty leader du bloc proposeur (cf. GetBlocKey)
         public bool m_IsRepeal;
+        public bool m_IsConstitutional;
         public int m_TargetRecordIndex;    // valide seulement si m_IsRepeal (index dans m_Records)
         public double m_ExpiryDay;
 
@@ -58,6 +59,9 @@ namespace CityCouncil
         public byte m_RepealerBlocKey;
         public bool m_RepealerWasCoalition;
         public double m_RepealedDay;
+        public bool m_Constitutional;
+        public FixedString64Bytes m_ConstitutionalCustomName;
+        public double m_ConstitutionalDay;
     }
 
     /// <summary>Malus d'intention de vote (-5%, ville entière) infligé au parti joueur pour avoir voté
@@ -70,13 +74,23 @@ namespace CityCouncil
         public double m_ExpiryDay;
     }
 
+    /// <summary>Malus -10% pour inscription constitutionnelle contraire à sa ligne — contrairement à
+    /// PlayerLawMalusEntry, s'applique à N'IMPORTE QUEL parti (joueur OU IA), d'où le champ m_Party.</summary>
+    public struct ConstitutionalMalusEntry
+    {
+        public PoliticalParty m_Party;
+        public FixedString64Bytes m_LawId;
+        public double m_ExpiryDay;
+    }
+
     public struct CouncilLawData : IComponentData, ISerializable
     {
         public FixedList4096Bytes<LawVoteEntry> m_ActiveVotes;
         public FixedList4096Bytes<LawRecordEntry> m_Records;
         public FixedList512Bytes<PlayerLawMalusEntry> m_PlayerMalus;
+        public FixedList512Bytes<ConstitutionalMalusEntry> m_ConstitutionalMalus; // AJOUT
 
-        private const int kVersion = 1;
+        private const int kVersion = 2; // MODIFIÉ — 1 -> 2 (inscription constitutionnelle)
 
         public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
         {
@@ -90,6 +104,7 @@ namespace CityCouncil
                 writer.Write(v.m_CustomName.ToString());
                 writer.Write(v.m_ProposerBlocKey);
                 writer.Write(v.m_IsRepeal);
+                writer.Write(v.m_IsConstitutional); // AJOUT
                 writer.Write(v.m_TargetRecordIndex);
                 writer.Write(v.m_ExpiryDay);
                 writer.Write(v.m_HasPlayerBloc);
@@ -111,6 +126,9 @@ namespace CityCouncil
                 writer.Write(r.m_RepealerBlocKey);
                 writer.Write(r.m_RepealerWasCoalition);
                 writer.Write(r.m_RepealedDay);
+                writer.Write(r.m_Constitutional);                         // AJOUT
+                writer.Write(r.m_ConstitutionalCustomName.ToString());    // AJOUT
+                writer.Write(r.m_ConstitutionalDay);                      // AJOUT
             }
 
             writer.Write(m_PlayerMalus.Length);
@@ -119,11 +137,20 @@ namespace CityCouncil
                 writer.Write(m_PlayerMalus[i].m_LawId.ToString());
                 writer.Write(m_PlayerMalus[i].m_ExpiryDay);
             }
+
+            // AJOUT
+            writer.Write(m_ConstitutionalMalus.Length);
+            for (int i = 0; i < m_ConstitutionalMalus.Length; i++)
+            {
+                writer.Write((byte)m_ConstitutionalMalus[i].m_Party);
+                writer.Write(m_ConstitutionalMalus[i].m_LawId.ToString());
+                writer.Write(m_ConstitutionalMalus[i].m_ExpiryDay);
+            }
         }
 
         public void Deserialize<TReader>(TReader reader) where TReader : IReader
         {
-            reader.Read(out int _);
+            reader.Read(out int version);
 
             reader.Read(out int voteCount);
             m_ActiveVotes = new FixedList4096Bytes<LawVoteEntry>();
@@ -133,6 +160,10 @@ namespace CityCouncil
                 reader.Read(out string customName);
                 reader.Read(out byte proposerKey);
                 reader.Read(out bool isRepeal);
+
+                bool isConstitutional = false;
+                if (version >= 2) reader.Read(out isConstitutional); // AJOUT
+
                 reader.Read(out int targetIndex);
                 reader.Read(out double expiry);
                 reader.Read(out bool hasPlayerBloc);
@@ -144,6 +175,7 @@ namespace CityCouncil
                     m_CustomName = customName,
                     m_ProposerBlocKey = proposerKey,
                     m_IsRepeal = isRepeal,
+                    m_IsConstitutional = isConstitutional,
                     m_TargetRecordIndex = targetIndex,
                     m_ExpiryDay = expiry,
                     m_HasPlayerBloc = hasPlayerBloc,
@@ -166,6 +198,17 @@ namespace CityCouncil
                 reader.Read(out byte repealerKey);
                 reader.Read(out bool repealerWasCoalition);
                 reader.Read(out double repealedDay);
+
+                bool constitutional = false;
+                string constitutionalCustomName = "";
+                double constitutionalDay = 0;
+                if (version >= 2) // AJOUT
+                {
+                    reader.Read(out constitutional);
+                    reader.Read(out constitutionalCustomName);
+                    reader.Read(out constitutionalDay);
+                }
+
                 m_Records.Add(new LawRecordEntry
                 {
                     m_LawId = lawId,
@@ -178,6 +221,9 @@ namespace CityCouncil
                     m_RepealerBlocKey = repealerKey,
                     m_RepealerWasCoalition = repealerWasCoalition,
                     m_RepealedDay = repealedDay,
+                    m_Constitutional = constitutional,
+                    m_ConstitutionalCustomName = constitutionalCustomName,
+                    m_ConstitutionalDay = constitutionalDay,
                 });
             }
 
@@ -188,6 +234,25 @@ namespace CityCouncil
                 reader.Read(out string lawId);
                 reader.Read(out double expiry);
                 m_PlayerMalus.Add(new PlayerLawMalusEntry { m_LawId = lawId, m_ExpiryDay = expiry });
+            }
+
+            // AJOUT
+            m_ConstitutionalMalus = new FixedList512Bytes<ConstitutionalMalusEntry>();
+            if (version >= 2)
+            {
+                reader.Read(out int constitutionalMalusCount);
+                for (int i = 0; i < constitutionalMalusCount; i++)
+                {
+                    reader.Read(out byte party);
+                    reader.Read(out string lawId);
+                    reader.Read(out double expiry);
+                    m_ConstitutionalMalus.Add(new ConstitutionalMalusEntry
+                    {
+                        m_Party = (PoliticalParty)party,
+                        m_LawId = lawId,
+                        m_ExpiryDay = expiry
+                    });
+                }
             }
         }
     }
@@ -224,6 +289,9 @@ namespace CityCouncil
 
         private Entity m_SingletonEntity = Entity.Null;
         private double m_LastCycleDay = -1;
+        private const double ConstitutionalVoteDurationDays = 16.0 / 24.0; // 16h in-game
+        private const float ConstitutionalMalusPercent = 0.10f;
+        private const float AiProposeConstitutionalChance = 0.40f;
 
         protected override void OnCreate()
         {
@@ -259,6 +327,7 @@ namespace CityCouncil
             double currentDay = CurrentDay();
             ResolveExpiredVotesIfNeeded(currentDay);
             ExpirePlayerMalusIfNeeded(currentDay);
+            ExpireConstitutionalMalusIfNeeded(currentDay);
 
             if (m_LastCycleDay < 0)
             {
@@ -296,6 +365,7 @@ namespace CityCouncil
                 m_ActiveVotes = new FixedList4096Bytes<LawVoteEntry>(),
                 m_Records = new FixedList4096Bytes<LawRecordEntry>(),
                 m_PlayerMalus = new FixedList512Bytes<PlayerLawMalusEntry>(),
+                m_ConstitutionalMalus = new FixedList512Bytes<ConstitutionalMalusEntry>(),
             });
             s_Log.Info("[CouncilLawSystem] Entité singleton créée.");
         }
@@ -440,13 +510,97 @@ namespace CityCouncil
             return true;
         }
 
-        private void StartVote(PoliticalParty blocKey, CouncilCoalitionSystem.PoliticalBloc bloc, string lawId, string customName, bool isRepeal, int targetRecordIndex)
+        /// <summary>
+        /// Propose l'inscription d'une loi déjà en vigueur (Adoptée, non abrogée, pas déjà
+        /// constitutionnelle) dans la constitution de la ville. Contrairement à l'abrogation, pas de
+        /// restriction "pas sa propre loi" : un bloc peut au contraire vouloir consolider ses propres
+        /// acquis. Nécessite la majorité des 3/5 des suffrages exprimés (cf. ResolveVote), et un délai
+        /// de vote allongé à 16h in-game.
+        /// </summary>
+        public bool TryProposeConstitutionalInscription(PoliticalParty actingParty, int targetRecordIndex, out string error)
+        {
+            error = null;
+
+            if (m_CoalitionSystem.GetSeatsForParty(actingParty) <= 0)
+            {
+                error = "Votre parti ne détient aucun siège au conseil : aucune légitimité pour proposer une inscription constitutionnelle.";
+                return false;
+            }
+
+            var data = GetData();
+            if (targetRecordIndex < 0 || targetRecordIndex >= data.m_Records.Length)
+            {
+                error = "Loi introuvable dans l'historique.";
+                return false;
+            }
+            var record = data.m_Records[targetRecordIndex];
+            if (record.m_Outcome != LawRecordOutcome.Adopted || record.m_Repealed)
+            {
+                error = "Cette loi n'est pas actuellement en vigueur.";
+                return false;
+            }
+            if (record.m_Constitutional)
+            {
+                error = "Cette loi est déjà inscrite dans la constitution.";
+                return false;
+            }
+
+            var bloc = m_CoalitionSystem.GetBlocOf(actingParty);
+            var blocKey = m_CoalitionSystem.GetBlocKey(actingParty);
+
+            if (HasActiveVoteForBloc(blocKey))
+            {
+                error = "Ce bloc a déjà un vote de loi en cours.";
+                return false;
+            }
+
+            StartVote(blocKey, bloc, record.m_LawId.ToString(), record.m_CustomName.ToString(), isRepeal: false, targetRecordIndex, isConstitutional: true);
+            return true;
+        }
+
+        /// <summary>
+        /// Renomme une loi constitutionnelle — fonctionnalité purement roleplay, réservée au JOUEUR :
+        /// aucune logique IA n'appelle cette méthode (seul le trigger UI dédié y donne accès, jamais
+        /// invoqué par le cycle IA).
+        /// </summary>
+        public bool TryRenameConstitutionalLaw(int recordIndex, string newName, out string error)
+        {
+            error = null;
+            newName = (newName ?? "").Trim();
+            if (newName.Length == 0 || newName.Length > MaxCustomNameLength)
+            {
+                error = $"Nom invalide (1 à {MaxCustomNameLength} caractères).";
+                return false;
+            }
+
+            var data = GetData();
+            if (recordIndex < 0 || recordIndex >= data.m_Records.Length)
+            {
+                error = "Loi introuvable.";
+                return false;
+            }
+            var record = data.m_Records[recordIndex];
+            if (!record.m_Constitutional)
+            {
+                error = "Cette loi n'est pas inscrite dans la constitution.";
+                return false;
+            }
+
+            record.m_ConstitutionalCustomName = newName;
+            data.m_Records[recordIndex] = record;
+            SetData(data);
+            s_Log.Info($"[CouncilLawSystem] Loi constitutionnelle '{record.m_LawId}' renommée en \"{newName}\".");
+            return true;
+        }
+
+        private void StartVote(PoliticalParty blocKey, CouncilCoalitionSystem.PoliticalBloc bloc, string lawId, string customName, bool isRepeal, int targetRecordIndex, bool isConstitutional = false)
         {
             var playerParty = GetPlayerActiveParty();
-
-            // Le bloc du joueur doit-il répondre explicitement à CE vote ? Uniquement s'il existe,
-            // n'est PAS le proposeur (auto-FOR dans ce cas), et n'est pas déjà tranché.
             bool hasPlayerBloc = playerParty.HasValue && m_CoalitionSystem.GetBlocKey(playerParty.Value) != blocKey;
+
+            // AJOUT — une inscription constitutionnelle dure 16h in-game au lieu des 12h habituelles,
+            // pour illustrer une délibération plus complexe.
+            double duration = isConstitutional ? ConstitutionalVoteDurationDays : VoteDurationDays;
 
             var entry = new LawVoteEntry
             {
@@ -454,8 +608,9 @@ namespace CityCouncil
                 m_CustomName = customName,
                 m_ProposerBlocKey = (byte)blocKey,
                 m_IsRepeal = isRepeal,
+                m_IsConstitutional = isConstitutional,
                 m_TargetRecordIndex = targetRecordIndex,
-                m_ExpiryDay = CurrentDay() + VoteDurationDays,
+                m_ExpiryDay = CurrentDay() + duration,
                 m_HasPlayerBloc = hasPlayerBloc,
                 m_PlayerHasAnswered = false,
                 m_PlayerAnsweredFor = false,
@@ -465,7 +620,8 @@ namespace CityCouncil
             data.m_ActiveVotes.Add(entry);
             SetData(data);
 
-            s_Log.Info($"[CouncilLawSystem] Vote démarré : {(isRepeal ? "ABROGATION" : "PROPOSITION")} '{lawId}' (\"{customName}\") par le bloc de {blocKey}" +
+            string typeLabel = isConstitutional ? "INSCRIPTION CONSTITUTIONNELLE" : (isRepeal ? "ABROGATION" : "PROPOSITION");
+            s_Log.Info($"[CouncilLawSystem] Vote démarré : {typeLabel} '{lawId}' (\"{customName}\") par le bloc de {blocKey}" +
                        (bloc.IsCoalition ? $" (coalition : {string.Join("+", bloc.Members)})" : "") + $", expire jour {entry.m_ExpiryDay:F2}.");
         }
 
@@ -531,13 +687,27 @@ namespace CityCouncil
             var playerParty = GetPlayerActiveParty();
             var lawDef = CouncilLawCatalog.GetById(vote.m_LawId.ToString());
 
+            // AJOUT — une inscription constitutionnelle, OU l'abrogation d'une loi déjà
+            // constitutionnelle, exige la majorité des 3/5 des suffrages exprimés au lieu de la
+            // majorité simple habituelle.
+            bool targetIsConstitutional = false;
+            if (vote.m_IsRepeal)
+            {
+                var dataForTarget = GetData();
+                if (vote.m_TargetRecordIndex >= 0 && vote.m_TargetRecordIndex < dataForTarget.m_Records.Length)
+                    targetIsConstitutional = dataForTarget.m_Records[vote.m_TargetRecordIndex].m_Constitutional;
+            }
+            bool requireThreeFifths = vote.m_IsConstitutional || targetIsConstitutional;
+
             bool adopted;
             var forParties = new List<PoliticalParty>(proposerBloc.Members);
 
-            if (totalSeats > 0 && proposerBloc.Seats > totalSeats / 2)
+            bool proposerAloneWins = requireThreeFifths
+                ? (totalSeats > 0 && proposerBloc.Seats >= ThreeFifths(totalSeats))
+                : (totalSeats > 0 && proposerBloc.Seats > totalSeats / 2);
+
+            if (proposerAloneWins)
             {
-                // Majorité absolue à elle seule : adoption automatique (les autres blocs sont
-                // consultés pour la narration/l'historique mais ne peuvent pas bloquer le vote).
                 adopted = true;
             }
             else
@@ -565,10 +735,16 @@ namespace CityCouncil
                         forParties.AddRange(bloc.Members);
                     }
                 }
-                adopted = totalSeats > 0 && forSeats > totalSeats / 2;
+                adopted = requireThreeFifths
+                    ? (totalSeats > 0 && forSeats >= ThreeFifths(totalSeats))
+                    : (totalSeats > 0 && forSeats > totalSeats / 2);
             }
 
-            if (vote.m_IsRepeal)
+            if (vote.m_IsConstitutional)
+            {
+                ResolveConstitutionalOutcome(vote, adopted, proposerKey, proposerBloc, forParties, currentDay, lawDef);
+            }
+            else if (vote.m_IsRepeal)
             {
                 ResolveRepealOutcome(vote, adopted, proposerKey, proposerBloc, currentDay);
             }
@@ -577,11 +753,11 @@ namespace CityCouncil
                 ResolveNewLawOutcome(vote, adopted, proposerKey, proposerBloc, forParties, currentDay, lawDef, playerParty);
             }
 
-            // Relance immédiate du check IA pour CE bloc (cf. discussion design : "12h après,
-            // l'IA peut repartir sur un nouveau cycle"), sauf si c'est le bloc du joueur.
             if (!BlocContainsPlayer(proposerKey, playerParty))
                 TryRunAiDecisionForBloc(proposerKey, currentDay);
         }
+
+        private static int ThreeFifths(int totalSeats) => (int)Math.Ceiling(totalSeats * 3.0 / 5.0);
 
         /// <summary>Probabilité qu'un bloc vote POUR une loi donnée, basée sur la moyenne d'adhésion de ses membres.</summary>
         private bool RollBlocDecision(CouncilCoalitionSystem.PoliticalBloc bloc, CouncilLawDefinition lawDef)
@@ -629,6 +805,122 @@ namespace CityCouncil
             s_Log.Info($"[CouncilLawSystem] Loi '{vote.m_LawId}' (\"{vote.m_CustomName}\") ADOPTÉE, +{ScoreCatalog.PointsLawVoted} points de loi partagés entre {string.Join("+", proposerBloc.Members)}.");
 
             ApplyPlayerMalusIfNeeded(vote.m_LawId.ToString(), forParties, playerParty, currentDay, lawDef);
+        }
+
+        /// <summary>
+        /// Résout un vote d'inscription constitutionnelle : si adopté (3/5), marque la loi comme
+        /// constitutionnelle (nom repris par défaut, renommable ensuite par le joueur uniquement),
+        /// crédite +500 points partagés au bloc proposeur, et applique le malus -10% (n'importe quel
+        /// parti, joueur ou IA) à tout bloc ayant voté POUR contre sa propre ligne politique.
+        /// </summary>
+        private void ResolveConstitutionalOutcome(
+            LawVoteEntry vote, bool adopted, PoliticalParty proposerKey, CouncilCoalitionSystem.PoliticalBloc proposerBloc,
+            List<PoliticalParty> forParties, double currentDay, CouncilLawDefinition lawDef)
+        {
+            if (!adopted)
+            {
+                s_Log.Info($"[CouncilLawSystem] Inscription constitutionnelle de '{vote.m_LawId}' proposée par {proposerKey} : ÉCHOUÉE (3/5 non atteints).");
+                return;
+            }
+
+            var data = GetData();
+            if (vote.m_TargetRecordIndex < 0 || vote.m_TargetRecordIndex >= data.m_Records.Length)
+            {
+                s_Log.Warn($"[CouncilLawSystem] Inscription constitutionnelle : record cible introuvable pour '{vote.m_LawId}'.");
+                return;
+            }
+
+            var target = data.m_Records[vote.m_TargetRecordIndex];
+            target.m_Constitutional = true;
+            target.m_ConstitutionalCustomName = target.m_CustomName; // repris par défaut, renommable ensuite
+            target.m_ConstitutionalDay = currentDay;
+            data.m_Records[vote.m_TargetRecordIndex] = target;
+            SetData(data);
+
+            GrantConstitutionalScore(proposerBloc.Members, ScoreCatalog.PointsConstitutionalLaw);
+            ApplyConstitutionalMalusIfNeeded(vote.m_LawId.ToString(), forParties, lawDef, currentDay);
+
+            s_Log.Info($"[CouncilLawSystem] Loi '{vote.m_LawId}' (\"{target.m_ConstitutionalCustomName}\") INSCRITE DANS LA CONSTITUTION par {proposerKey}, +{ScoreCatalog.PointsConstitutionalLaw} points partagés entre {string.Join("+", proposerBloc.Members)}.");
+        }
+
+        private void ApplyConstitutionalMalusIfNeeded(string lawId, List<PoliticalParty> forParties, CouncilLawDefinition lawDef, double currentDay)
+        {
+            if (lawDef == null) return;
+
+            var data = GetData();
+            bool changed = false;
+            foreach (var party in forParties)
+            {
+                var adherence = lawDef.GetAdherence(party);
+                if (adherence != LawAdherence.PlutotDefavorable && adherence != LawAdherence.TresDefavorable) continue;
+
+                data.m_ConstitutionalMalus.Add(new ConstitutionalMalusEntry
+                {
+                    m_Party = party,
+                    m_LawId = lawId,
+                    m_ExpiryDay = currentDay + CycleIntervalDays // même durée que le malus loi classique
+                });
+                changed = true;
+                s_Log.Info($"[CouncilLawSystem] Malus constitutionnel appliqué à {party} (-{ConstitutionalMalusPercent:P0}) pour '{lawId}' — expire jour {currentDay + CycleIntervalDays:F2}.");
+            }
+            if (changed) SetData(data);
+        }
+
+        private void ExpireConstitutionalMalusIfNeeded(double currentDay)
+        {
+            var data = GetData();
+            if (data.m_ConstitutionalMalus.Length == 0) return;
+
+            var kept = new FixedList512Bytes<ConstitutionalMalusEntry>();
+            bool changed = false;
+            foreach (var m in data.m_ConstitutionalMalus)
+            {
+                if (currentDay < m.m_ExpiryDay) kept.Add(m);
+                else changed = true;
+            }
+            if (changed)
+            {
+                data.m_ConstitutionalMalus = kept;
+                SetData(data);
+            }
+        }
+
+        /// <summary>
+        /// Malus combinés à passer à VoteCalculator : le malus loi classique (joueur uniquement, cible
+        /// le parti joueur ACTUEL — même limitation assumée que GetPlayerLawMalusPercent) fusionné
+        /// avec le malus constitutionnel (n'importe quel parti, stocké avec sa propre identité).
+        /// </summary>
+        public List<(PoliticalParty party, float malusPercent)> GetLawMalusByParty(PoliticalParty? currentPlayerParty)
+        {
+            var result = new List<(PoliticalParty, float)>();
+
+            float classicMalus = GetPlayerLawMalusPercent();
+            if (currentPlayerParty.HasValue && classicMalus > 0f)
+                result.Add((currentPlayerParty.Value, classicMalus));
+
+            var byParty = new Dictionary<PoliticalParty, float>();
+            foreach (var m in GetData().m_ConstitutionalMalus)
+            {
+                byParty.TryGetValue(m.m_Party, out float cur);
+                byParty[m.m_Party] = cur + ConstitutionalMalusPercent;
+            }
+
+            foreach (var kv in byParty)
+            {
+                int idx = result.FindIndex(r => r.Item1 == kv.Key);
+                if (idx >= 0) result[idx] = (kv.Key, result[idx].Item2 + kv.Value);
+                else result.Add((kv.Key, kv.Value));
+            }
+
+            return result;
+        }
+
+        private void GrantConstitutionalScore(List<PoliticalParty> members, long totalPoints)
+        {
+            if (members.Count == 0) return;
+            long share = (long)Math.Round((double)totalPoints / members.Count, MidpointRounding.AwayFromZero);
+            foreach (var p in members)
+                m_ScoreSystem.AddConstitutionalScore(p, share);
         }
 
         private void ResolveRepealOutcome(LawVoteEntry vote, bool adopted, PoliticalParty proposerKey, CouncilCoalitionSystem.PoliticalBloc proposerBloc, double currentDay)
@@ -707,12 +999,18 @@ namespace CityCouncil
             var records = data.m_Records;
             if (records.Length >= MaxRecordsKept)
             {
-                // Éviction FIFO : la loi la plus ancienne quitte l'historique. Limitation assumée
-                // (cf. discussion design) — si elle était encore en vigueur, elle "sort du radar"
-                // (plus proposable à l'abrogation), mais un malus joueur déjà en cours continue de
-                // vivre indépendamment (suivi par m_PlayerMalus, pas par l'historique).
+                // MODIFIÉ — évince en priorité la plus ancienne loi NON constitutionnelle : perdre le
+                // suivi (score/renommage) d'une loi inscrite serait plus dommageable que d'évincer une
+                // loi ordinaire ancienne. Si tout l'historique est constitutionnel (cas limite), on
+                // retombe sur l'éviction FIFO classique (index 0).
+                int evictIndex = 0;
+                for (int i = 0; i < records.Length; i++)
+                {
+                    if (!records[i].m_Constitutional) { evictIndex = i; break; }
+                }
                 var trimmed = new FixedList4096Bytes<LawRecordEntry>();
-                for (int i = 1; i < records.Length; i++) trimmed.Add(records[i]);
+                for (int i = 0; i < records.Length; i++)
+                    if (i != evictIndex) trimmed.Add(records[i]);
                 records = trimmed;
             }
             records.Add(entry);
@@ -756,7 +1054,9 @@ namespace CityCouncil
 
             foreach (var v in data.m_ActiveVotes)
             {
-                if (v.m_IsRepeal) continue; // une tentative d'abrogation annulée ne laisse pas de trace en historique
+                // AJOUT — même remarque pour une inscription constitutionnelle : elle cible un record
+                // EXISTANT (pas de nouvelle loi à créer), donc rien à ajouter à l'historique si annulée.
+                if (v.m_IsRepeal || v.m_IsConstitutional) continue;
                 AddRecord(new LawRecordEntry
                 {
                     m_LawId = v.m_LawId,
@@ -778,6 +1078,42 @@ namespace CityCouncil
             if (HasActiveVoteForBloc(blocKey)) return;
 
             var bloc = m_CoalitionSystem.GetBlocOf(blocKey);
+
+            // AJOUT — priorité à l'inscription constitutionnelle : si ce bloc contrôle à lui seul 3/5 du
+            // conseil, il cherche à inscrire une loi déjà en vigueur en accord avec sa ligne (adhésion
+            // Favorable/TrèsFavorable de TOUS ses membres). Sans loi éligible (ou si le tirage échoue), on
+            // retombe sur le comportement classique ci-dessous ce cycle-ci ; la vérification d'inscription
+            // revient naturellement au cycle suivant.
+            int totalSeatsForConstitutional = m_CoalitionSystem.GetAllBlocs().Sum(b => b.Seats);
+            if (totalSeatsForConstitutional > 0 && bloc.Seats >= ThreeFifths(totalSeatsForConstitutional))
+            {
+                var dataForConstitutional = GetData();
+                var eligibleIndices = new List<int>();
+                for (int i = 0; i < dataForConstitutional.m_Records.Length; i++)
+                {
+                    var record = dataForConstitutional.m_Records[i];
+                    if (record.m_Outcome != LawRecordOutcome.Adopted || record.m_Repealed || record.m_Constitutional) continue;
+
+                    var lawDefForConstitutional = CouncilLawCatalog.GetById(record.m_LawId.ToString());
+                    if (lawDefForConstitutional == null) continue;
+
+                    bool favorable = bloc.Members.All(p =>
+                    {
+                        var adherence = lawDefForConstitutional.GetAdherence(p);
+                        return adherence == LawAdherence.PlutotFavorable || adherence == LawAdherence.TresFavorable;
+                    });
+                    if (favorable) eligibleIndices.Add(i);
+                }
+
+                if (eligibleIndices.Count > 0 && m_Rng.NextDouble() < AiProposeConstitutionalChance)
+                {
+                    int chosenIndex = eligibleIndices[m_Rng.Next(eligibleIndices.Count)];
+                    var chosenRecord = dataForConstitutional.m_Records[chosenIndex];
+                    StartVote(blocKey, bloc, chosenRecord.m_LawId.ToString(), chosenRecord.m_CustomName.ToString(),
+                              isRepeal: false, chosenIndex, isConstitutional: true);
+                    return; // une seule action IA par check
+                }
+            }
 
             // Priorité à l'abrogation si une loi en vigueur est détestée par ce bloc.
             var data = GetData();

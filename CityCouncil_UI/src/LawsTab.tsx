@@ -14,13 +14,19 @@ const customPartyExists$ = bindValue<boolean>("cityCouncil", "customPartyExists"
 const customPartySpace$ = bindValue<string>("cityCouncil", "customPartySpace");
 const customPartyName$ = bindValue<string>("cityCouncil", "customPartyName");
 const customPartyPendingActivation$ = bindValue<boolean>("cityCouncil", "customPartyPendingActivation");
+const currentSimulationDay$ = bindValue<number>("cityCouncil", "currentSimulationDay");
 
 const MAX_NAME_LENGTH = 50;
+
+// Durées de vote — dupliquées depuis CouncilLawSystem.cs (VoteDurationDays / ConstitutionalVoteDurationDays),
+// même choix de duplication de constante que documenté ailleurs dans le mod (cf. MAX_AMOUNT, INTENSITY_TIERS).
+const VOTE_DURATION_DAYS = 0.5;            // 12h in-game
+const CONSTITUTIONAL_VOTE_DURATION_DAYS = 16 / 24; // 16h in-game
 
 interface LawAdherenceDto { party: string; adherence: string; }
 interface LawCatalogDto { id: string; titleLocaleKey: string; theme: string; adherence: LawAdherenceDto[]; }
 interface LawActiveVoteDto {
-  lawId: string; customName: string; titleLocaleKey: string; isRepeal: boolean;
+  lawId: string; customName: string; titleLocaleKey: string; isRepeal: boolean; isConstitutional: boolean;
   proposerParty: string; proposerIsCoalition: boolean; proposerMembers: string[];
   expiryDay: number; hasPlayerBloc: boolean; playerHasAnswered: boolean; isPlayerProposer: boolean;
 }
@@ -29,6 +35,9 @@ interface LawHistoryDto {
   proposerParty: string; proposerIsCoalition: boolean; outcome: string; resolvedDay: number;
   repealed: boolean; repealerParty: string; repealerIsCoalition: boolean; repealedDay: number;
   canPlayerRepeal: boolean;
+  constitutional: boolean;
+  constitutionalCustomName: string;
+  canPlayerProposeConstitutional: boolean;
 }
 
 const ADHERENCE_LABELS: Record<string, string> = {
@@ -68,6 +77,52 @@ function ActionButton({ label, enabled, onClick, danger }: { label: string; enab
   );
 }
 
+/// Décompte + mini barre de progression pour un vote en cours (classique 12h / constitutionnel 16h).
+function VoteTimer({
+  expiryDay,
+  isConstitutional,
+  currentDay,
+  t,
+}: {
+  expiryDay: number;
+  isConstitutional: boolean;
+  currentDay: number;
+  t: (key: string, fallback: string) => string;
+}) {
+  const totalDuration = isConstitutional ? CONSTITUTIONAL_VOTE_DURATION_DAYS : VOTE_DURATION_DAYS;
+  const remainingDays = Math.max(0, expiryDay - currentDay);
+  const progress = totalDuration > 0 ? Math.min(1, Math.max(0, 1 - remainingDays / totalDuration)) : 1;
+
+  const totalMinutes = Math.max(0, Math.round(remainingDays * 24 * 60));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  const suffix = t("CityCouncil.Law.TIMER_REMAINING_SUFFIX", "restantes");
+
+  const timeLabel =
+    remainingDays <= 0
+      ? t("CityCouncil.Law.TIMER_EXPIRING", "Résolution imminente")
+      : hours > 0
+      ? `${hours}h${minutes.toString().padStart(2, "0")} ${suffix}`
+      : `${minutes}min ${suffix}`;
+
+  return (
+    <div style={{ marginTop: "6rem" }}>
+      <div style={{ color: "rgba(255,255,255,0.55)", fontSize: "10rem", marginBottom: "3rem", whiteSpace: "nowrap" }}>
+        {`⏱ ${timeLabel}`}
+      </div>
+      <div style={{ height: "4rem", borderRadius: "2rem", background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
+        <div
+          style={{
+            width: `${progress * 100}%`,
+            height: "100%",
+            background: "rgba(150,190,255,0.75)",
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
 export function LawsTab() {
   const { translate } = useLocalization();
   const t = (key: string, fallback: string): string => translate(key, fallback) ?? fallback;
@@ -81,6 +136,7 @@ export function LawsTab() {
   const customSpace = useValue(customPartySpace$);
   const customName = useValue(customPartyName$);
   const customPending = useValue(customPartyPendingActivation$);
+  const currentDay = useValue(currentSimulationDay$);
 
   const playerAvailable = !!customExists && !customPending && !!customSpace;
 
@@ -99,9 +155,13 @@ export function LawsTab() {
     catch { return []; }
   }, [historyJson]);
 
+  const constitutionalLaws = useMemo(() => history.filter((r) => r.constitutional), [history]);
+
   const [selectedLawId, setSelectedLawId] = useState<string>("");
   const [lawName, setLawName] = useState<string>("");
   const [historyExpanded, setHistoryExpanded] = useState(false);
+  const [renamingIndex, setRenamingIndex] = useState<number | null>(null);
+  const [renameValue, setRenameValue] = useState<string>("");
 
   const selectedLaw = catalog.find((l) => l.id === selectedLawId);
 
@@ -131,6 +191,18 @@ export function LawsTab() {
 
   const handleRespond = (accept: boolean) => trigger("cityCouncil", "respondToLawVote", accept ? "true" : "false");
   const handleRepeal = (recordIndex: number) => trigger("cityCouncil", "proposeLawRepeal", String(recordIndex));
+  const handleProposeConstitutional = (recordIndex: number) => trigger("cityCouncil", "proposeLawConstitutional", String(recordIndex));
+
+  const handleStartRename = (recordIndex: number, currentNameValue: string) => {
+    setRenamingIndex(recordIndex);
+    setRenameValue(currentNameValue);
+  };
+  const handleConfirmRename = (recordIndex: number) => {
+    const trimmed = renameValue.trim();
+    if (trimmed.length === 0 || trimmed.length > MAX_NAME_LENGTH) return;
+    trigger("cityCouncil", "renameConstitutionalLaw", String(recordIndex), trimmed);
+    setRenamingIndex(null);
+  };
 
   const outcomeLabel = (outcome: string): string => {
     switch (outcome) {
@@ -150,7 +222,7 @@ export function LawsTab() {
           {t("CityCouncil.Law.TAB_TITLE", "Lois")}
         </div>
         <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "12rem", lineHeight: "17rem", marginBottom: "14rem" }}>
-          {t("CityCouncil.Law.TAB_INTRO", "Proposez une loi au vote du conseil municipal, ou répondez aux propositions des autres partis. Chaque bloc politique (parti seul ou coalition) ne peut porter qu'un seul vote à la fois. La votation dure 12h in-game.")}
+          {t("CityCouncil.Law.TAB_INTRO", "Proposez une loi au vote du conseil municipal, ou répondez aux propositions des autres partis. Chaque bloc politique (parti seul ou coalition) ne peut porter qu'un seul vote à la fois. La votation dure 12h in-game — 16h pour une inscription constitutionnelle, qui nécessite la majorité des 3/5.")}
         </div>
 
         {malusPercent > 0 && (
@@ -167,16 +239,26 @@ export function LawsTab() {
             <div style={{ color: "rgba(150,190,255,0.95)", fontSize: "13rem", fontWeight: 700, marginBottom: "6rem" }}>
               {t("CityCouncil.Law.DECISION_HEADER", "Votre parti est sollicité")}
             </div>
-            <div style={{ color: "white", fontSize: "12rem", marginBottom: "10rem" }}>
+            <div style={{ color: "white", fontSize: "12rem", marginBottom: "8rem" }}>
               {(() => {
                 const proposer = proposerLine(pendingPlayerDecisionVote.proposerParty, pendingPlayerDecisionVote.proposerIsCoalition, pendingPlayerDecisionVote.proposerMembers);
-                const verb = pendingPlayerDecisionVote.isRepeal
+                const verb = pendingPlayerDecisionVote.isConstitutional
+                  ? t("CityCouncil.Law.PROPOSES_CONSTITUTIONAL_OF", "propose d'inscrire dans la constitution ")
+                  : pendingPlayerDecisionVote.isRepeal
                   ? t("CityCouncil.Law.PROPOSES_REPEAL_OF", "propose l'abrogation de ")
                   : t("CityCouncil.Law.PROPOSES_LAW", "propose la loi ");
                 return `${proposer} ${verb}« ${pendingPlayerDecisionVote.customName} »`;
               })()}
             </div>
-            <div style={{ display: "flex", gap: "10rem" }}>
+
+            <VoteTimer
+              expiryDay={pendingPlayerDecisionVote.expiryDay}
+              isConstitutional={pendingPlayerDecisionVote.isConstitutional}
+              currentDay={currentDay}
+              t={t}
+            />
+
+            <div style={{ display: "flex", gap: "10rem", marginTop: "10rem" }}>
               <ActionButton label={t("CityCouncil.Law.VOTE_FOR", "Voter pour")} enabled={true} onClick={() => handleRespond(true)} />
               <ActionButton label={t("CityCouncil.Law.VOTE_AGAINST", "Voter contre")} enabled={true} onClick={() => handleRespond(false)} danger />
             </div>
@@ -243,6 +325,57 @@ export function LawsTab() {
           </div>
         )}
 
+        {/* --- Constitution --- */}
+        <div style={{ padding: "10rem", background: "rgba(150,190,255,0.06)", border: "1rem solid rgba(150,190,255,0.25)", borderRadius: "6rem", marginBottom: "14rem" }}>
+          <div style={{ color: "rgba(150,190,255,0.9)", fontSize: "13rem", fontWeight: 700, marginBottom: "8rem", textTransform: "uppercase" }}>
+            {t("CityCouncil.Law.CONSTITUTION_HEADER", "Constitution")}
+          </div>
+
+          {constitutionalLaws.length === 0 ? (
+            <div style={{ color: "rgba(255,255,255,0.5)", fontSize: "12rem" }}>
+              {t("CityCouncil.Law.CONSTITUTION_EMPTY", "Aucune loi inscrite dans la constitution pour le moment.")}
+            </div>
+          ) : (
+            constitutionalLaws.map((r) => (
+              <div key={r.recordIndex} style={{ padding: "8rem 10rem", background: "rgba(255,255,255,0.05)", borderRadius: "4rem", marginBottom: "6rem" }}>
+                {renamingIndex === r.recordIndex ? (
+                  <div style={{ display: "flex", alignItems: "center", gap: "8rem" }}>
+                    <input
+                      value={renameValue}
+                      maxLength={MAX_NAME_LENGTH}
+                      onChange={(e: any) => setRenameValue(e.target.value)}
+                      style={{
+                        flex: 1, boxSizing: "border-box", background: "rgba(255,255,255,0.08)",
+                        border: "1rem solid rgba(255,255,255,0.15)", borderRadius: "4rem", color: "white",
+                        fontSize: "12rem", padding: "5rem 7rem",
+                      }}
+                    />
+                    <ActionButton
+                      label={t("CityCouncil.Law.RENAME_CONFIRM_BUTTON", "Valider")}
+                      enabled={renameValue.trim().length > 0 && renameValue.trim().length <= MAX_NAME_LENGTH}
+                      onClick={() => handleConfirmRename(r.recordIndex)}
+                    />
+                    <ActionButton label={t("CityCouncil.YourPartyTab.CANCEL_BUTTON", "Annuler")} enabled={true} onClick={() => setRenamingIndex(null)} />
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ color: "white", fontSize: "12rem" }}>
+                      {`« ${r.constitutionalCustomName || r.customName} »`}
+                    </span>
+                    {playerAvailable && (
+                      <ActionButton
+                        label={t("CityCouncil.Law.RENAME_BUTTON", "Renommer")}
+                        enabled={true}
+                        onClick={() => handleStartRename(r.recordIndex, r.constitutionalCustomName || r.customName)}
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+
         {/* --- Votes en cours (tous blocs) --- */}
         <div style={{ marginBottom: "14rem" }}>
           <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "12rem", marginBottom: "8rem", textTransform: "uppercase" }}>
@@ -258,12 +391,16 @@ export function LawsTab() {
                 <div style={{ color: "white", fontSize: "12rem" }}>
                   {(() => {
                     const proposer = proposerLine(v.proposerParty, v.proposerIsCoalition, v.proposerMembers);
-                    const label = v.isRepeal
+                    const label = v.isConstitutional
+                      ? t("CityCouncil.Law.LABEL_CONSTITUTIONAL", "Inscription constitutionnelle : ")
+                      : v.isRepeal
                       ? t("CityCouncil.Law.LABEL_REPEAL", "Abrogation : ")
                       : t("CityCouncil.Law.LABEL_PROPOSAL", "Proposition : ");
                     return `${proposer} — ${label}« ${v.customName} »`;
                   })()}
                 </div>
+
+                <VoteTimer expiryDay={v.expiryDay} isConstitutional={v.isConstitutional} currentDay={currentDay} t={t} />
               </div>
             ))
           )}
@@ -294,12 +431,24 @@ export function LawsTab() {
                         const repealSuffix = r.repealed
                           ? ` — ${t("CityCouncil.Law.REPEALED_BY", "abrogée par")} ${partyLabel(r.repealerParty)}`
                           : "";
-                        return `« ${r.customName} » — ${proposer} — ${outcomeLabel(r.outcome)}${repealSuffix}`;
+                        const constitutionalSuffix = r.constitutional
+                          ? ` — ★ ${t("CityCouncil.Law.CONSTITUTIONAL_BADGE", "Constitutionnelle")}`
+                          : "";
+                        return `« ${r.customName} » — ${proposer} — ${outcomeLabel(r.outcome)}${repealSuffix}${constitutionalSuffix}`;
                       })()}
                     </span>
-                    {r.canPlayerRepeal && (
-                      <ActionButton label={t("CityCouncil.Law.REPEAL_BUTTON", "Proposer l'abrogation")} enabled={true} onClick={() => handleRepeal(r.recordIndex)} />
-                    )}
+                    <div style={{ display: "flex", gap: "6rem", flexShrink: 0 }}>
+                      {r.canPlayerProposeConstitutional && (
+                        <ActionButton
+                          label={t("CityCouncil.Law.PROPOSE_CONSTITUTIONAL_BUTTON", "Inscrire à la Constitution")}
+                          enabled={true}
+                          onClick={() => handleProposeConstitutional(r.recordIndex)}
+                        />
+                      )}
+                      {r.canPlayerRepeal && (
+                        <ActionButton label={t("CityCouncil.Law.REPEAL_BUTTON", "Proposer l'abrogation")} enabled={true} onClick={() => handleRepeal(r.recordIndex)} />
+                      )}
+                    </div>
                   </div>
                 </div>
               ))

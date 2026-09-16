@@ -23,6 +23,7 @@ import { FundingTab } from "./FundingTab";
 import { PropagandaTab } from "./PropagandaTab"; 
 import { ElectoralCommissionTab } from "./ElectoralCommissionTab";
 import { PollTab } from "./PollTab";
+import { BonusTab } from "./BonusTab";
 import { ScoreTab } from "./ScoreTab";
 import { RulesTab } from "./RulesTab";
 import { DebugTab } from "./DebugTab";
@@ -41,6 +42,7 @@ import iconeSondageIcon from "./images/icone_sondage.svg";
 import iconeLoisIcon from "./images/icone_lois.svg";
 import iconeScoreIcon from "./images/icone_score.svg";
 import iconeReglesIcon from "./images/icone_regles.svg";
+import bonusOffensifIcon from "./images/bonus_offensif.png";
 
 const TAB_IMAGES = { doodleResultats: doodleResultatsImg };
 const RESULTS_FAN_MAX_WIDTH = "760rem";
@@ -510,8 +512,7 @@ const coalitionLeadingIsCoalition = useMemo(() => {
   );
 }
 
-type TabKey = "results" | "yourParty" | "forces" | "funding" | "propaganda" | "commission" | "poll" | "laws" | "score" | "rules" | "debug";
-
+type TabKey = "results" | "yourParty" | "forces" | "funding" | "propaganda" | "commission" | "poll" | "laws" | "score" | "bonus" | "rules" | "debug";
 const PANEL_WIDTH = "820rem";
 const PANEL_CONTENT_HEIGHT = "560rem";
 
@@ -529,6 +530,7 @@ function HemicycleTabs() {
   const [pollTabHovered, setPollTabHovered] = useState(false);
   const [lawsTabHovered, setLawsTabHovered] = useState(false);
   const [scoreTabHovered, setScoreTabHovered] = useState(false);
+  const [bonusTabHovered, setBonusTabHovered] = useState(false);
   const [rulesTabHovered, setRulesTabHovered] = useState(false);
   const showDebugTab = useValue(showDebugTab$);
 
@@ -728,6 +730,20 @@ function HemicycleTabs() {
         </div>
 
         <div
+  style={{ ...tabStyle("bonus"), position: "relative", height: "100%", padding: "0 9rem", display: "flex", alignItems: "center", justifyContent: "center", overflow: "visible" }}
+  onClick={() => setTab("bonus")}
+  onMouseEnter={() => setBonusTabHovered(true)}
+  onMouseLeave={() => setBonusTabHovered(false)}
+>
+  <img src={bonusOffensifIcon} style={{ width: "24rem", height: "34rem", objectFit: "contain", display: "block", flexShrink: 0 }} />
+  {bonusTabHovered && (
+    <div style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", marginTop: "4rem", background: "rgba(20,20,28,0.97)", border: "1rem solid rgba(255,255,255,0.15)", borderRadius: "4rem", padding: "4rem 8rem", color: "white", fontSize: "11rem", whiteSpace: "nowrap", zIndex: 20, pointerEvents: "none" }}>
+      {t("CityCouncil.Bonus.ICON_TOOLTIP", "Bonus")}
+    </div>
+  )}
+</div>
+
+        <div
           style={{ ...tabStyle("rules"), position: "relative", height: "100%", padding: "0 9rem", display: "flex", alignItems: "center", justifyContent: "center", overflow: "visible" }}
           onClick={() => setTab("rules")}
           onMouseEnter={() => setRulesTabHovered(true)}
@@ -757,6 +773,7 @@ function HemicycleTabs() {
         {effectiveTab === "poll" && <SafeBoundary><PollTab /></SafeBoundary>}
         {effectiveTab === "laws" && <SafeBoundary><LawsTab /></SafeBoundary>}
         {effectiveTab === "score" && <SafeBoundary><ScoreTab /></SafeBoundary>}
+        {effectiveTab === "bonus" && <SafeBoundary><BonusTab /></SafeBoundary>}
         {effectiveTab === "rules" && <SafeBoundary><RulesTab /></SafeBoundary>}
         {effectiveTab === "debug" && showDebugTab && <SafeBoundary><DebugTab /></SafeBoundary>}
       </Scrollable>

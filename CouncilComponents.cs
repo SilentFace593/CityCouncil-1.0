@@ -1034,18 +1034,14 @@ public struct CouncilPollData : IComponentData, ISerializable
     public struct CouncilScoreData : IComponentData, ISerializable
     {
         public FixedList512Bytes<ScoreEntry> m_TrophyEntries;
-
-        // AJOUT — catégories de score séparées des trophées classiques (district/majorité
-        // générale) : coalitions conclues et lois votées, cf. ScoreCatalog.PointsCoalitionConcluded
-        // / PointsLawVoted. Même struct ScoreEntry réutilisée génériquement comme "parti -> points"
-        // (le champ m_TrophyScore reste nommé ainsi mais porte un total différent selon la liste).
         public FixedList512Bytes<ScoreEntry> m_CoalitionEntries;
         public FixedList512Bytes<ScoreEntry> m_LawEntries;
+        public FixedList512Bytes<ScoreEntry> m_ConstitutionalEntries; // AJOUT
 
         public bool m_HasLastGeneralMajority;
         public PoliticalParty m_LastGeneralMajorityParty;
 
-        private const int kVersion = 2; // AJOUT m_CoalitionEntries/m_LawEntries -> bump version
+        private const int kVersion = 3; // MODIFIÉ — 2 -> 3
 
         public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
         {
@@ -1059,18 +1055,26 @@ public struct CouncilPollData : IComponentData, ISerializable
             writer.Write(m_HasLastGeneralMajority);
             writer.Write((byte)m_LastGeneralMajorityParty);
 
-            writer.Write(m_CoalitionEntries.Length); // AJOUT
+            writer.Write(m_CoalitionEntries.Length);
             for (int i = 0; i < m_CoalitionEntries.Length; i++)
             {
                 writer.Write((byte)m_CoalitionEntries[i].m_Party);
                 writer.Write(m_CoalitionEntries[i].m_TrophyScore);
             }
 
-            writer.Write(m_LawEntries.Length); // AJOUT
+            writer.Write(m_LawEntries.Length);
             for (int i = 0; i < m_LawEntries.Length; i++)
             {
                 writer.Write((byte)m_LawEntries[i].m_Party);
                 writer.Write(m_LawEntries[i].m_TrophyScore);
+            }
+
+            // AJOUT
+            writer.Write(m_ConstitutionalEntries.Length);
+            for (int i = 0; i < m_ConstitutionalEntries.Length; i++)
+            {
+                writer.Write((byte)m_ConstitutionalEntries[i].m_Party);
+                writer.Write(m_ConstitutionalEntries[i].m_TrophyScore);
             }
         }
 
@@ -1108,8 +1112,19 @@ public struct CouncilPollData : IComponentData, ISerializable
                     m_LawEntries.Add(new ScoreEntry { m_Party = (PoliticalParty)party, m_TrophyScore = points });
                 }
             }
-            // Compat v1 : listes vides -> AddToScoreList (CouncilScoreSystem) ajoute l'entrée
-            // manquante au premier gain, même garde-fou que CouncilBonusData.m_ExclusiveBonusEntries.
+
+            // AJOUT
+            m_ConstitutionalEntries = new FixedList512Bytes<ScoreEntry>();
+            if (version >= 3)
+            {
+                reader.Read(out int constitutionalCount);
+                for (int i = 0; i < constitutionalCount; i++)
+                {
+                    reader.Read(out byte party);
+                    reader.Read(out long points);
+                    m_ConstitutionalEntries.Add(new ScoreEntry { m_Party = (PoliticalParty)party, m_TrophyScore = points });
+                }
+            }
         }
     }
 
@@ -1133,6 +1148,7 @@ public struct CouncilPollData : IComponentData, ISerializable
         // proposeur, cf. CouncilLawSystem.GrantLawScore. Catégorie de score séparée des trophées
         // (ligne dédiée "Lois votées" côté UI).
         public const long PointsLawVoted = 300;
+        public const long PointsConstitutionalLaw = 500;
     }
 
     /// <summary>Bastion Renforcé détenu par un parti : un seul district à la fois par parti.</summary>

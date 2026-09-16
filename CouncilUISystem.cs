@@ -44,6 +44,8 @@ namespace CityCouncil.Systems
 
         // --- Évènement de ville actif (affiché en bas de l'encart Administration) ---
         private ValueBinding<string> m_CityEventHeadlineBinding;
+        private ValueBinding<double> m_CurrentSimulationDayBinding;
+        private double m_LastPushedCurrentDay = double.MinValue;
         private string m_LastPushedEventId; // pour ne repousser que sur changement réel
 
         // --- Encart "Administration" (district sélectionné) ---
@@ -297,6 +299,7 @@ namespace CityCouncil.Systems
             m_VotingInstructionDistrictsJsonBinding = new ValueBinding<string>(kGroup, "votingInstructionDistrictsJson", "[]");
             m_ReinforcedBastionEligibleDistrictsJsonBinding = new ValueBinding<string>(kGroup, "reinforcedBastionEligibleDistrictsJson", "[]");
             m_CoalitionJsonBinding = new ValueBinding<string>(kGroup, "coalitionJson", "{}");
+            m_CurrentSimulationDayBinding = new ValueBinding<double>(kGroup, "currentSimulationDay", 0);
 
 
 
@@ -362,6 +365,7 @@ namespace CityCouncil.Systems
             AddBinding(m_VotingInstructionDistrictsJsonBinding);
             AddBinding(m_ReinforcedBastionEligibleDistrictsJsonBinding);
             AddBinding(m_CoalitionJsonBinding);
+            AddBinding(m_CurrentSimulationDayBinding);
 
             AddBinding(new TriggerBinding(kGroup, "debugForceDistrictEvent",
     () => m_DistrictEventSystem.DebugForceRollDistrictEvent()));
@@ -682,6 +686,7 @@ namespace CityCouncil.Systems
             UpdateLawBindingIfChanged();
             UpdateDistrictsOverviewBindingIfChanged();
             UpdateRecordsBindingIfChanged();
+            UpdateCurrentDayBinding();
 
 
             Entity selected = m_ToolSystem.selected;
@@ -1077,6 +1082,20 @@ namespace CityCouncil.Systems
             return sim != null ? (double)sim.frameIndex / 262144.0 : 0.0;
         }
 
+        /// <summary>
+        /// Pousse le jour de simulation courant vers React, avec une granularité d'environ 1 minute
+        /// in-game (1/1440 de jour) plutôt qu'à chaque frame UI — suffisant pour un décompte de vote
+        /// lisible, sans spammer le binding à chaque tick.
+        /// </summary>
+        private void UpdateCurrentDayBinding()
+        {
+            double day = GetApproxCurrentDay();
+            if (Math.Abs(day - m_LastPushedCurrentDay) < (1.0 / 1440.0)) return;
+
+            m_CurrentSimulationDayBinding.Update(day);
+            m_LastPushedCurrentDay = day;
+        }
+
         private Entity FindDistrictByIndex(int index)
         {
             var districts = m_DistrictQuery.ToEntityArray(Unity.Collections.Allocator.Temp);
@@ -1240,6 +1259,7 @@ namespace CityCouncil.Systems
                     trophyScore = kv.Value.TrophyScore,
                     coalitionScore = kv.Value.CoalitionScore,
                     lawScore = kv.Value.LawScore,
+                    constitutionalScore = kv.Value.ConstitutionalScore,
                     recordsScore = kv.Value.RecordsScore,
                     seatsHeld = kv.Value.SeatsHeld,
                     districtsHeld = kv.Value.DistrictsHeld,
@@ -1968,6 +1988,7 @@ namespace CityCouncil.Systems
         public long trophyScore;
         public long coalitionScore;
         public long lawScore;
+        public long constitutionalScore;
         public long recordsScore;
         public int seatsHeld;
         public int districtsHeld;
@@ -1999,6 +2020,7 @@ namespace CityCouncil.Systems
                 sb.Append("\"bastionsHeld\":").Append(d.bastionsHeld).Append(',');
                 sb.Append("\"reinforcedBastionsHeld\":").Append(d.reinforcedBastionsHeld).Append(',');
                 sb.Append("\"membersCount\":").Append(d.membersCount).Append(',');
+                sb.Append("\"constitutionalScore\":").Append(d.constitutionalScore).Append(',');
                 sb.Append("\"possessionScore\":").Append(d.possessionScore);
                 sb.Append('}');
             }

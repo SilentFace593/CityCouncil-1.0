@@ -356,7 +356,7 @@ namespace CityCouncil
     bool ecologistNuclearBonusActive = false,
     PoliticalParty? playerParty = null,
     PoliticalParty? powerfulDistrictBonusHolder = null,
-       float playerLawMalusPercent = 0f, // AJOUT — malus cumulé (cf. CouncilLawSystem.GetPlayerLawMalusPercent)
+    IEnumerable<(PoliticalParty party, float malusPercent)> lawMalusByParty = null, // MODIFIÉ — n'importe quel parti (joueur ou IA), cf. CouncilLawSystem.GetLawMalusByParty
     DistrictEventEffect[] districtEventEffects = null, // AJOUT — effets de l'évènement de district actif sur CE district, null si aucun
     PoliticalParty? districtLeadingPartyForEvent = null) // AJOUT — parti dirigeant CE district avant ce tour (pour LeadingPartyInDistrict)
 
@@ -407,10 +407,16 @@ namespace CityCouncil
             // loi mal votée, cf. GetPlayerLawMalusPercent), donc pas de garde-fou d'exclusivité ici
             // contrairement au mécontentement fiscal (qui exclut le parti concerné de son propre bonus) :
             // ce malus vise justement le parti joueur lui-même, jamais un autre.
-            if (playerParty.HasValue && playerLawMalusPercent > 0f)
+            // MODIFIÉ — un malus par parti (classique joueur + constitutionnel n'importe quel parti),
+            // combinés en amont par CouncilLawSystem.GetLawMalusByParty.
+            if (lawMalusByParty != null)
             {
-                Boost(seniorShares, playerParty.Value, -playerLawMalusPercent);
-                Boost(adultShares, playerParty.Value, -playerLawMalusPercent);
+                foreach (var (party, malus) in lawMalusByParty)
+                {
+                    if (malus <= 0f) continue;
+                    Boost(seniorShares, party, -malus);
+                    Boost(adultShares, party, -malus);
+                }
             }
 
             if (isBastion)

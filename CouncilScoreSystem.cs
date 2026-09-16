@@ -110,6 +110,7 @@ namespace CityCouncil
                 m_TrophyEntries = new FixedList512Bytes<ScoreEntry>(),
                 m_CoalitionEntries = new FixedList512Bytes<ScoreEntry>(),
                 m_LawEntries = new FixedList512Bytes<ScoreEntry>(),
+                m_ConstitutionalEntries = new FixedList512Bytes<ScoreEntry>(),
                 m_HasLastGeneralMajority = false
             };
             foreach (PoliticalParty p in Enum.GetValues(typeof(PoliticalParty)))
@@ -117,6 +118,7 @@ namespace CityCouncil
                 initial.m_TrophyEntries.Add(new ScoreEntry { m_Party = p, m_TrophyScore = 0 });
                 initial.m_CoalitionEntries.Add(new ScoreEntry { m_Party = p, m_TrophyScore = 0 });
                 initial.m_LawEntries.Add(new ScoreEntry { m_Party = p, m_TrophyScore = 0 });
+                initial.m_ConstitutionalEntries.Add(new ScoreEntry { m_Party = p, m_TrophyScore = 0 });
             }
 
             m_SingletonEntity = EntityManager.CreateEntity();
@@ -204,6 +206,20 @@ namespace CityCouncil
         public long GetLawScore(PoliticalParty party)
         {
             foreach (var e in GetData().m_LawEntries)
+                if (e.m_Party == party) return e.m_TrophyScore;
+            return 0;
+        }
+
+        public void AddConstitutionalScore(PoliticalParty party, long amount)
+        {
+            var data = GetData();
+            AddToScoreList(ref data.m_ConstitutionalEntries, party, amount);
+            SetData(data);
+        }
+
+        public long GetConstitutionalScore(PoliticalParty party)
+        {
+            foreach (var e in GetData().m_ConstitutionalEntries)
                 if (e.m_Party == party) return e.m_TrophyScore;
             return 0;
         }
@@ -348,8 +364,10 @@ namespace CityCouncil
                 foreach (var e in data.m_CoalitionEntries) if (e.m_Party == p) { coalition = e.m_TrophyScore; break; }
                 long law = 0;
                 foreach (var e in data.m_LawEntries) if (e.m_Party == p) { law = e.m_TrophyScore; break; }
+                long constitutional = 0;
+                foreach (var e in data.m_ConstitutionalEntries) if (e.m_Party == p) { constitutional = e.m_TrophyScore; break; }
                 long records = GetRecordsScore(p); // AJOUT
-                totals[p] = trophy + coalition + law + records + possession[p];
+                totals[p] = trophy + coalition + law + constitutional + records + possession[p];
             }
             return totals;
         }
@@ -414,13 +432,17 @@ namespace CityCouncil
                 foreach (var e in trophyData.m_TrophyEntries)
                     if (e.m_Party == p) { trophy = e.m_TrophyScore; break; }
 
-                long coalition = 0; // AJOUT
+                long coalition = 0;
                 foreach (var e in trophyData.m_CoalitionEntries)
                     if (e.m_Party == p) { coalition = e.m_TrophyScore; break; }
 
-                long law = 0; // AJOUT
+                long law = 0;
                 foreach (var e in trophyData.m_LawEntries)
                     if (e.m_Party == p) { law = e.m_TrophyScore; break; }
+
+                long constitutional = 0;
+                foreach (var e in trophyData.m_ConstitutionalEntries)
+                    if (e.m_Party == p) { constitutional = e.m_TrophyScore; break; }
 
                 var c = counts[p];
                 int members = membersCount[p];
@@ -437,6 +459,7 @@ namespace CityCouncil
                     TrophyScore = trophy,
                     CoalitionScore = coalition,
                     LawScore = law,
+                    ConstitutionalScore = constitutional,
                     RecordsScore = records,
                     SeatsHeld = c.seats,
                     DistrictsHeld = c.districtsHeld,
@@ -444,7 +467,7 @@ namespace CityCouncil
                     ReinforcedBastionsHeld = c.reinforcedBastionsHeld,
                     MembersCount = members,
                     PossessionScore = possession,
-                    TotalScore = trophy + coalition + law + possession
+                    TotalScore = trophy + coalition + law + constitutional + records + possession
                 };
             }
             return result;
@@ -455,8 +478,9 @@ namespace CityCouncil
         {
             var data = GetData();
             ResetInList(ref data.m_TrophyEntries, party);
-            ResetInList(ref data.m_CoalitionEntries, party); // AJOUT
-            ResetInList(ref data.m_LawEntries, party);        // AJOUT
+            ResetInList(ref data.m_CoalitionEntries, party);
+            ResetInList(ref data.m_LawEntries, party);
+            ResetInList(ref data.m_ConstitutionalEntries, party);
             SetData(data);
         }
 
@@ -487,6 +511,7 @@ namespace CityCouncil
             public long TrophyScore;
             public long CoalitionScore;
             public long LawScore;
+            public long ConstitutionalScore;
             public long RecordsScore;
             public int SeatsHeld;
             public int DistrictsHeld;

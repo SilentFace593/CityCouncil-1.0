@@ -241,7 +241,7 @@ namespace CityCouncil
                     : (PoliticalParty?)null;
 
                 // AJOUT — malus cumulé "vote de loi contradictoire", même valeur que pour les élections réelles.
-                float playerLawMalusPercent = m_LawSystem.GetPlayerLawMalusPercent();
+                var lawMalusByParty = m_LawSystem.GetLawMalusByParty(playerParty);
 
                 foreach (var d in districts)
                 {
@@ -267,7 +267,7 @@ namespace CityCouncil
                         ecologistNuclearBonusActive: ecologistNuclearBonus,
                         playerParty: playerParty,
                         powerfulDistrictBonusHolder: GetPowerfulDistrictLeadingPartyForPoll(),
-                        playerLawMalusPercent: playerLawMalusPercent); // AJOUT
+                        lawMalusByParty: lawMalusByParty);
 
                     foreach (var kv in result.m_VoteShares)
                         totals[kv.Key] += kv.Value * result.m_Voters;
