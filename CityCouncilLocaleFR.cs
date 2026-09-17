@@ -64,6 +64,8 @@ namespace CityCouncil
                 { LocaleKeys.Hemicycle_LeadingBlocLawSummaryPrefix, "Bilan de l'actuel parti ou coalition au pouvoir : " },
                 { LocaleKeys.Hemicycle_LawsVotedWord, "lois votées" },
                 { LocaleKeys.Hemicycle_LawsAbrogatedWord, "lois abrogées" },
+                { LocaleKeys.Hemicycle_NextElectionLabel, "Prochaine échéance électorale : " },
+                { LocaleKeys.Hemicycle_ElectionImminent, "Scrutin imminent" },
 
                 
                 // Coalition
@@ -80,8 +82,8 @@ namespace CityCouncil
                 { LocaleKeys.Law_ReseauRoutierTitle, "Développement du réseau routier" },
                 { LocaleKeys.Law_ZfeTitle, "Zones à faibles émissions (ZFE)" },
                 { LocaleKeys.Law_TabLabel, "Lois" },
-                { LocaleKeys.Law_TabTitle, "Lois" }, 
-                { LocaleKeys.Law_TabIntro, "Proposez une loi au vote du conseil municipal, ou répondez aux propositions des autres partis. Chaque bloc politique (parti seul ou coalition) ne peut porter qu'un seul vote à la fois. La votation dure 12h in-game." },
+                { LocaleKeys.Law_TabTitle, "Lois" },
+                { LocaleKeys.Law_TabIntro, "Proposez une loi au vote du conseil municipal, ou répondez aux propositions des autres partis. Chaque bloc politique (parti seul ou coalition) ne peut porter qu'un seul vote à la fois. La votation dure 12h in-game — 16h pour une inscription constitutionnelle, qui nécessite la majorité des 3/5." },
                 { LocaleKeys.Law_PlayerMalusActive, "Malus actif : " },
                 { LocaleKeys.Law_PlayerMalusSuffix, "d'intention de vote (vote contradictoire avec votre bord politique, jusqu'au prochain cycle électoral)" },
                 { LocaleKeys.Law_DecisionHeader, "Votre parti est sollicité" },
@@ -124,6 +126,16 @@ namespace CityCouncil
                 { LocaleKeys.Law_SubventionsCultureTitle, "Subventions culturelles" },
                 { LocaleKeys.Law_TaxesEnvironnementalesTitle, "Taxes environnementales" },
                 { LocaleKeys.Law_ZonesCommercialesTitle, "Zones commerciales" },
+                { LocaleKeys.Law_ConstitutionHeader, "Constitution" },
+                { LocaleKeys.Law_ConstitutionEmpty, "Aucune loi inscrite dans la constitution pour le moment." },
+                { LocaleKeys.Law_RenameButton, "Renommer" },
+                { LocaleKeys.Law_RenameConfirmButton, "Valider" },
+                { LocaleKeys.Law_ProposeConstitutionalButton, "Inscrire à la Constitution" },
+                { LocaleKeys.Law_LabelConstitutional, "Inscription constitutionnelle : " },
+                { LocaleKeys.Law_ConstitutionalBadge, "Constitutionnelle" },
+                { LocaleKeys.Law_ProposesConstitutionalOf, "propose d'inscrire dans la constitution " },
+                { LocaleKeys.Law_TimerRemainingSuffix, "restantes" },
+                { LocaleKeys.Law_TimerExpiring, "Résolution imminente" },
 
 
                 // AdministrationSection

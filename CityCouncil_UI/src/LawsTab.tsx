@@ -108,7 +108,7 @@ function VoteTimer({
   return (
     <div style={{ marginTop: "6rem" }}>
       <div style={{ color: "rgba(255,255,255,0.55)", fontSize: "10rem", marginBottom: "3rem", whiteSpace: "nowrap" }}>
-        {`⏱ ${timeLabel}`}
+        {timeLabel}
       </div>
       <div style={{ height: "4rem", borderRadius: "2rem", background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
         <div

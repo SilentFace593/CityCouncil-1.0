@@ -45,6 +45,8 @@ namespace CityCouncil.Systems
         // --- Évènement de ville actif (affiché en bas de l'encart Administration) ---
         private ValueBinding<string> m_CityEventHeadlineBinding;
         private ValueBinding<double> m_CurrentSimulationDayBinding;
+        private ValueBinding<double> m_NextElectionDayBinding;
+        private double m_LastPushedNextElectionDay = double.MinValue;
         private double m_LastPushedCurrentDay = double.MinValue;
         private string m_LastPushedEventId; // pour ne repousser que sur changement réel
 
@@ -300,6 +302,7 @@ namespace CityCouncil.Systems
             m_ReinforcedBastionEligibleDistrictsJsonBinding = new ValueBinding<string>(kGroup, "reinforcedBastionEligibleDistrictsJson", "[]");
             m_CoalitionJsonBinding = new ValueBinding<string>(kGroup, "coalitionJson", "{}");
             m_CurrentSimulationDayBinding = new ValueBinding<double>(kGroup, "currentSimulationDay", 0);
+            m_NextElectionDayBinding = new ValueBinding<double>(kGroup, "nextElectionDay", -1);
 
 
 
@@ -366,6 +369,7 @@ namespace CityCouncil.Systems
             AddBinding(m_ReinforcedBastionEligibleDistrictsJsonBinding);
             AddBinding(m_CoalitionJsonBinding);
             AddBinding(m_CurrentSimulationDayBinding);
+            AddBinding(m_NextElectionDayBinding);
 
             AddBinding(new TriggerBinding(kGroup, "debugForceDistrictEvent",
     () => m_DistrictEventSystem.DebugForceRollDistrictEvent()));
@@ -687,6 +691,7 @@ namespace CityCouncil.Systems
             UpdateDistrictsOverviewBindingIfChanged();
             UpdateRecordsBindingIfChanged();
             UpdateCurrentDayBinding();
+            UpdateNextElectionDayBinding();
 
 
             Entity selected = m_ToolSystem.selected;
@@ -1309,6 +1314,18 @@ namespace CityCouncil.Systems
             return dto;
         }
 
+        /// <summary>
+        /// Pousse le jour de la prochaine échéance électorale ville entière (-1 = aucune donnée
+        /// encore disponible), même granularité/throttle qu'UpdateCurrentDayBinding.
+        /// </summary>
+        private void UpdateNextElectionDayBinding()
+        {
+            double value = m_ElectionSystem.GetNextCityWideElectionDay() ?? -1;
+            if (Math.Abs(value - m_LastPushedNextElectionDay) < (1.0 / 1440.0)) return;
+
+            m_NextElectionDayBinding.Update(value);
+            m_LastPushedNextElectionDay = value;
+        }
 
         private void UpdatePollBindingIfChanged(bool force = false)
         {

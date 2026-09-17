@@ -54,6 +54,8 @@ const playerBonusChoicePending$ = bindValue<boolean>("cityCouncil", "playerBonus
 const playerBonusChoiceSpace$ = bindValue<string>("cityCouncil", "playerBonusChoiceSpace");
 const showDebugTab$ = bindValue<boolean>("cityCouncil", "showDebugTab");
 const coalitionJson$ = bindValue<string>("cityCouncil", "coalitionJson");
+const currentSimulationDay$ = bindValue<number>("cityCouncil", "currentSimulationDay");
+const nextElectionDay$ = bindValue<number>("cityCouncil", "nextElectionDay");
 
 const lawActiveVotesJson$ = bindValue<string>("cityCouncil", "lawActiveVotesJson");
 const votingInstructionDistrictsJson$ = bindValue<string>("cityCouncil", "votingInstructionDistrictsJson");
@@ -368,6 +370,40 @@ function LeadingBlocLawSummary() {
 }
 
 
+function ElectionCountdown() {
+  const { translate } = useLocalization();
+  const t = (key: string, fallback: string): string => translate(key, fallback) ?? fallback;
+
+  const currentDay = useValue(currentSimulationDay$);
+  const nextElectionDay = useValue(nextElectionDay$);
+
+  if (nextElectionDay < 0) return null;
+
+  const remainingDays = Math.max(0, nextElectionDay - currentDay);
+  const totalMinutes = Math.max(0, Math.round(remainingDays * 24 * 60));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  const suffix = t("CityCouncil.Law.TIMER_REMAINING_SUFFIX", "restantes");
+
+  const timeLabel =
+    remainingDays <= 0
+      ? t("CityCouncil.Hemicycle.ELECTION_IMMINENT", "Scrutin imminent")
+      : hours > 0
+      ? `${hours}h${minutes.toString().padStart(2, "0")} ${suffix}`
+      : `${minutes}min ${suffix}`;
+
+  const label = t("CityCouncil.Hemicycle.NEXT_ELECTION_LABEL", "Prochaine échéance électorale : ");
+
+  return (
+    <div style={{ marginTop: "10rem", textAlign: "center" }}>
+      <span style={{ color: "rgba(255,255,255,0.6)", fontSize: "12rem", whiteSpace: "nowrap" }}>
+        {`${label}${timeLabel}`}
+      </span>
+    </div>
+  );
+}
+
+
 function HemicycleResultsContent() {
   const { translate } = useLocalization();
   const t = (key: string, fallback: string): string => translate(key, fallback) ?? fallback;
@@ -479,6 +515,7 @@ const coalitionLeadingIsCoalition = useMemo(() => {
             </div>
           </div>
 
+          <ElectionCountdown />
           <LeadingBlocLawSummary />
         </div>
       </div>

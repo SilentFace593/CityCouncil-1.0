@@ -65,6 +65,8 @@ namespace CityCouncil
                 { LocaleKeys.Hemicycle_LeadingBlocLawSummaryPrefix, "Track record of the party or coalition currently in power: " },
                 { LocaleKeys.Hemicycle_LawsVotedWord, "laws voted" },
                 { LocaleKeys.Hemicycle_LawsAbrogatedWord, "laws repealed" },
+                { LocaleKeys.Hemicycle_NextElectionLabel, "Next election deadline: " },
+                { LocaleKeys.Hemicycle_ElectionImminent, "Election imminent" },
 
 
                 // Coalition
@@ -82,7 +84,7 @@ namespace CityCouncil
                 { LocaleKeys.Law_ZfeTitle, "Low-emission zones (LEZ)" },
                 { LocaleKeys.Law_TabLabel, "Laws" },
                 { LocaleKeys.Law_TabTitle, "Laws" },
-                { LocaleKeys.Law_TabIntro, "Propose a law for the city council to vote on, or respond to proposals from other parties. Each political bloc (solo party or coalition) can only carry one vote at a time. Voting lasts 12 in-game hours." },
+                { LocaleKeys.Law_TabIntro, "Propose a law for the city council to vote on, or respond to proposals from other parties. Each political bloc (solo party or coalition) can only carry one vote at a time. Voting lasts 12 in-game hours — 16 hours for a constitutional inscription, which requires a 3/5 majority." },
                 { LocaleKeys.Law_PlayerMalusActive, "Active penalty: " },
                 { LocaleKeys.Law_PlayerMalusSuffix, "voting intention (voted against your own political stance, until the next election cycle)" },
                 { LocaleKeys.Law_DecisionHeader, "Your party is being consulted" },
@@ -125,6 +127,16 @@ namespace CityCouncil
                 { LocaleKeys.Law_SubventionsCultureTitle, "Cultural Subsidies" },
                 { LocaleKeys.Law_TaxesEnvironnementalesTitle, "Environmental Taxes" },
                 { LocaleKeys.Law_ZonesCommercialesTitle, "Commercial Zones" },
+                { LocaleKeys.Law_ConstitutionHeader, "Constitution" },
+                { LocaleKeys.Law_ConstitutionEmpty, "No law inscribed in the constitution yet." },
+                { LocaleKeys.Law_RenameButton, "Rename" },
+                { LocaleKeys.Law_RenameConfirmButton, "Confirm" },
+                { LocaleKeys.Law_ProposeConstitutionalButton, "Inscribe in the Constitution" },
+                { LocaleKeys.Law_LabelConstitutional, "Constitutional inscription: " },
+                { LocaleKeys.Law_ConstitutionalBadge, "Constitutional" },
+                { LocaleKeys.Law_ProposesConstitutionalOf, "proposes inscribing in the constitution " },
+                { LocaleKeys.Law_TimerRemainingSuffix, "remaining" },
+                { LocaleKeys.Law_TimerExpiring, "Resolving shortly" },
 
 
                 // AdministrationSection

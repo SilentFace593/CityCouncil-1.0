@@ -611,6 +611,39 @@ namespace CityCouncil
             return best != Entity.Null ? bestParty : (PoliticalParty?)null;
         }
 
+        /// <summary>
+        /// Prochaine échéance électorale à l'échelle de la ville : le jour de simulation le plus
+        /// proche parmi tous les districts, qu'il s'agisse d'un 1er tour à venir (ou reconduit) ou
+        /// d'un 2e tour déjà en attente. Retourne null si aucun district n'a encore de données
+        /// électorales (tout début de partie).
+        /// </summary>
+        public double? GetNextCityWideElectionDay()
+        {
+            double? earliest = null;
+            var districts = m_DistrictQuery.ToEntityArray(Allocator.Temp);
+            try
+            {
+                foreach (var d in districts)
+                {
+                    if (!EntityManager.HasComponent<CouncilDistrictData>(d)) continue;
+                    var data = EntityManager.GetComponentData<CouncilDistrictData>(d);
+
+                    double? candidate = data.m_Phase switch
+                    {
+                        ElectionPhase.Round1Scheduled => data.m_NextRound1Day,
+                        ElectionPhase.Completed => data.m_NextRound1Day,
+                        ElectionPhase.Round1Done when !data.m_WonInRound1 => data.m_Round1CompletedDay + Round2DelayDays,
+                        _ => (double?)null
+                    };
+
+                    if (candidate.HasValue && (!earliest.HasValue || candidate.Value < earliest.Value))
+                        earliest = candidate.Value;
+                }
+            }
+            finally { districts.Dispose(); }
+            return earliest;
+        }
+
         private (int seniors, int adults, WealthLevel wealth) GetDistrictDemographics(Entity districtEntity)
         {
             int seniors = 0;

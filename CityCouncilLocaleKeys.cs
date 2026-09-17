@@ -56,6 +56,8 @@ namespace CityCouncil
         public const string Hemicycle_LawsIconTooltip = "CityCouncil.Hemicycle.LAWS_ICON_TOOLTIP";
         public const string Hemicycle_ScoreIconTooltip = "CityCouncil.Hemicycle.SCORE_ICON_TOOLTIP";
         public const string Hemicycle_RulesIconTooltip = "CityCouncil.Hemicycle.RULES_ICON_TOOLTIP";
+        public const string Hemicycle_NextElectionLabel = "CityCouncil.Hemicycle.NEXT_ELECTION_LABEL";
+        public const string Hemicycle_ElectionImminent = "CityCouncil.Hemicycle.ELECTION_IMMINENT";
 
         // --- Coalition ---
         public const string Coalition_Header = "CityCouncil.Coalition.HEADER";
@@ -115,6 +117,16 @@ namespace CityCouncil
         public const string Law_SubventionsCultureTitle = "CityCouncil.Law.SUBVENTIONS_CULTURE_TITLE";
         public const string Law_TaxesEnvironnementalesTitle = "CityCouncil.Law.TAXES_ENVIRONNEMENTALES_TITLE";
         public const string Law_ZonesCommercialesTitle = "CityCouncil.Law.ZONES_COMMERCIALES_TITLE";
+        public const string Law_ConstitutionHeader = "CityCouncil.Law.CONSTITUTION_HEADER";
+        public const string Law_ConstitutionEmpty = "CityCouncil.Law.CONSTITUTION_EMPTY";
+        public const string Law_RenameButton = "CityCouncil.Law.RENAME_BUTTON";
+        public const string Law_RenameConfirmButton = "CityCouncil.Law.RENAME_CONFIRM_BUTTON";
+        public const string Law_ProposeConstitutionalButton = "CityCouncil.Law.PROPOSE_CONSTITUTIONAL_BUTTON";
+        public const string Law_LabelConstitutional = "CityCouncil.Law.LABEL_CONSTITUTIONAL";
+        public const string Law_ConstitutionalBadge = "CityCouncil.Law.CONSTITUTIONAL_BADGE";
+        public const string Law_ProposesConstitutionalOf = "CityCouncil.Law.PROPOSES_CONSTITUTIONAL_OF";
+        public const string Law_TimerRemainingSuffix = "CityCouncil.Law.TIMER_REMAINING_SUFFIX";
+        public const string Law_TimerExpiring = "CityCouncil.Law.TIMER_EXPIRING";
 
 
 
